@@ -1,0 +1,11 @@
+BP07 Day6 is incomplete and doesn't follow the format my current code for getting ss logs
+    it doesn't have a csv file but has a ss logs
+Same for BP07 Day10, except the ss log follows the format for my code
+    but no csv file
+TH508 Day 15 - more than one DLC file
+
+benefits of tracking the body instead of head for initial analysis of where the rat is in space
+
+filtered out based on likelihood first, because i assume the jumps shouldn't include coords with low likelihood
+
+do framerates for occupancy again
