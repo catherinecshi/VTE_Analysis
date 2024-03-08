@@ -4,6 +4,10 @@ import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+from sklearn.cluster import DBSCAN
+from sklearn.linear_model import LinearRegression
+from scipy.spatial import ConvexHull, Delaunay
 
 # DATA STRUCTURE METHODS ---------
 def process_dlc_data(file_path):
@@ -160,10 +164,10 @@ def load_data_structure(save_path): # this function assumes no errors bc they wo
 
 
 # DATA MANIPULATION/ANALYSIS METHODS ---------
-def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 3):
+def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 3): # currently keeps original indices
     # modify a copy instead of the original
     # also filter based on likelihood values
-    filtered_data = df[df[(track_part, 'likelihood')] > 0.9].copy()
+    filtered_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
     
     
     # diff between consecutive frames
@@ -389,13 +393,270 @@ def time_until_choice(content): # currently only for the first choice
     time_diff = time_arm_seconds - time_home_seconds
     
     return time_diff
-     
+
+
+# VTE METHODS -------------
+def define_zones(x, y, x_min, x_max, y_min, y_max):
+    # calculate elliptical parameters
+    centre_x = (x_min + x_max) / 2
+    centre_y = (y_min + y_max) / 2
+    radius_x = (x_max - x_min) / 2
+    radius_y = (y_max - y_min) / 2
+    
+    distances = ((x - centre_x) / radius_x) ** 2 + ((y - centre_y) / radius_y) ** 2 # distance from centre for each point
+    
+    # confine to bounds
+    region_mask = distances <= 1
+    filtered_points = np.array(list(zip(x[region_mask], y[region_mask]))) # combine into single array
+
+    # convex hull
+    hull = ConvexHull(filtered_points)
+    
+    '''
+    plt.plot(x, y, 'o', markersize=5, label='Outside')
+    plt.plot(filtered_points[:, 0], filtered_points[:, 1], 'ro', label='inside')
+    
+    for simplex in hull.simplices:
+        plt.plot(filtered_points[simplex, 0], filtered_points[simplex, 1], 'k-')
+        
+    plt.fill(filtered_points[hull.vertices, 0], filtered_points[hull.vertices, 1], 'k', alpha = 0.1)
+    ellipse = Ellipse((centre_x, centre_y), width = 2 * radius_x, height = 2 * radius_y, edgecolor = 'g', fill = False, linewidth = 2, linestyle = '--')
+    plt.gca().add_artist(ellipse)
+    
+    plt.legend()
+    plt.show()
+    '''
+    
+    return hull
+
+def check_if_inside(point, hull):
+    # delaunay triangulation of hull points
+    del_tri = Delaunay(hull.points)
+    
+    # check if point is inside the hull
+    return del_tri.find_simplex(point) >= 0
+
+def get_trial_start_times(x, y, SS_df, home_hull):
+    lines = SS_df.splitlines()
+    
+    # storage variables
+    last_line = None # get the last line in the ss log that only has numbers
+    start_of_trial = False # know when the last line was the start of new trial
+    trial_info = {} # store trial start times and trial types
+    
+    # get the trial starts from SS
+    for line in lines:
+        if line.startswith('#'): # skip the starting comments
+            continue
+        
+        elif start_of_trial and all(char.isdigit() or char.isspace() for char in line): # the next lick line after trial start
+            last_line = line
+            parts = line.split()
+            
+            if parts[1] == 0:
+                continue
+            elif parts[1] == 1:
+                start_of_trial = False # this is more to check trial is starting at home, bc will be problematic for analysis if not
+            else:
+                print("start of trial not at home.")
+        
+        elif start_of_trial and "trialType" in line: # store trial type
+            parts = line.split()
+            trial_type = parts[3]
+            trial_info[trial_start[-1]] = trial_type # assumes this will always come after New Trial'
+        
+        elif all(char.isdigit() or char.isspace() for char in line): # a normal licking line
+            last_line = line # will update until it's the last line -> get that number
+                
+        elif 'New Trial' in line: # indicate start of a new trial
+            start_of_trial = True
+            
+            # store the time during this event
+            parts = line.split()
+            trial_start = parts[0]
+            trial_info[trial_start] = None
+    
+    # try to align SS time with DLC time
+    # find index of first few times rat enters home hull
+    # storage variables
+    ticks_inside_home = []
+    first_ticks = []
+    first_true = True
+    
+    # this records all the first ticks when rats enter home after exiting home
+    for index, x_val in enumerate(x):
+        point = np.array([x_val, y[index]]) # combining x and y into a single point to test if in hull
+        inside_true = check_if_inside(point, home_hull)
+        
+        if inside_true:
+            # add into ticks
+            ticks_inside_home.append(index) # index here would be the time tick associated with the x array
+            if first_true:
+                first_ticks.append(index)
+                first_true = False
+        else:
+            first_true = True
+            
+    # check if the new trials line up with everytime rats enter home (incase they enter home when not new trial)
+    consistent = len(trial_info) == len(first_ticks)
+    scaling_factor = None
+    offset = None
+    
+    # calculate scaling factor and offset to align both trial start times
+    if consistent: 
+        ss_times = np.array(list(map(int, trial_info.keys()))).reshape(-1, 1)
+        dlc_times = np.array(first_ticks)
+        
+        model = LinearRegression().fit(ss_times, dlc_times)
+        
+        scaling_factor = model.coef_[0]
+        offset = model.intercept_
+    else:
+        print("will implement")
+    
+    # convert into same frames
+    trial_info_times_scaled = {int((float(key) - offset) * scaling_factor): value for key, value in trial_info.items()}
+    
+    # closest matching times
+    matching_trials = {}
+    for trial_time, trial_type in trial_info_times_scaled.items():
+        closest_time_index = min(range(len(first_ticks)), key = lambda i: abs(first_ticks[i] - trial_time))
+        closest_time = first_ticks[closest_time_index]
+        
+        matching_trials[closest_time] = trial_type
+    
+    return matching_trials
+
+def DBSCAN_window(x, y): # failed. tried to use DBSCAN to determine central choice point window
+    # the centre is probably gonna be in this range
+    x_min, x_max = 450, 700
+    y_min, y_max = 330, 570
+    
+    # filter to only include the central range
+    central_region_mask = (x > x_min) & (x < x_max) & (y > y_min) & (y < y_max)
+    central_points = np.array(list(zip(x[central_region_mask], y[central_region_mask]))) # combine into single array
+    
+    # DBSCAN Clustering
+    dbscan = DBSCAN(eps = 10, min_samples = 100) # where eps -> radius around point & min -> min points to be dense
+    clusters = dbscan.fit_predict(central_points)
+    
+    # identify central cluster by looking for densest cluster
+    if len(set(clusters)) > 1: # checks to make sure a cluster has been identified
+        central_cluster_label = max(set(clusters), key = list(clusters).count)
+        cluster_points = central_points[clusters == central_cluster_label]
+    else:
+        cluster_points = central_points
+    
+    # apply convex hull -> so end result isn't just a rectangular space
+    if len(cluster_points) > 3:
+        hull = ConvexHull(central_points)
+        
+        # plotting
+        plt.scatter(x, y, alpha = 0.5)
+        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], color = 'red')
+        #for simplex in hull.simplices:
+            #plt.plot(cluster_points[simplex, 0], cluster_points[simplex, 1], 'k-')
+            
+        plt.show()
+    else: 
+        print("Not enough points for convex hull in the central cluster")
+    
+    return
+
+def calculate_trajectory(x, y, window_size = 100):
+    # Assuming x and y are your coordinates
+    x_median = np.median(x)
+    y_median = np.median(y)
+
+    # Define a window size based on your observations of the maze's layout
+    window_size = 100  # This is an example size; adjust based on your specific maze dimensions
+
+    # Define the choice point window around the medians
+    window_bounds = {
+        'xmin': x_median - window_size / 2,
+        'xmax': x_median + window_size / 2,
+        'ymin': y_median - window_size / 2,
+        'ymax': y_median + window_size / 2
+    }
+
+    # Plot to verify the window
+    plt.scatter(x, y, alpha=0.5)  # Plot all points
+    plt.gca().add_patch(plt.Rectangle((window_bounds['xmin'], window_bounds['ymin']), window_size, window_size, linewidth=1, edgecolor='r', facecolor='none'))
+    plt.axvline(x=x_median, color='k', linestyle='--')
+    plt.axhline(y=y_median, color='k', linestyle='--')
+    plt.title('Estimated Choice Point Area')
+    plt.show()
+
+def derivative(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
+    v_est = np.zeros_like(values) # initialise slope array with zeroes / velocity estimates
+    
+    # start from second element for differentiation
+    for i in range(1, len(values)):
+        window_len = 0
+        can_increase_window = True
+
+        while True: # infinite loop
+            window_len += 1
+            
+            if window_len > m or i - window_len < 0: # reached end of window / safety check
+                window_len -= 1
+                break
+            
+            # calculate slope from values[i] to values[i - window_len]
+            slope_ = v_est[i] # save previous slope
+            slope = (values[i] - values[i - window_len]) / (window_len * sr)
+            
+            if window_len > 1:
+                # y = mx + c where c -> y-intercept, values[i] -> y, slope -> m, i * sr -> x (time at point i)
+                c = values[i] - slope * i * sr
+
+                # check every point
+                for j in range(1, window_len):
+                    # diff between actual point and position calculated by model at every point up to i
+                    delta = values[i - j] - (c + slope * (i - j) * sr)
+                    
+                    # use delta to assess quality of linear approximation -> 2 * d is threshold
+                    if abs(delta) > 2 * d: # if model too far from actuality, excludes the problematic point in model
+                        can_increase_window = False
+                        window_len -= 1
+                        slope = slope_
+                        break
+            
+            if not can_increase_window:
+                break # exit while loop if window cannot be increased
+        
+        v_est[i] = slope
+    
+    return v_est
+            
+def calculate_IdPhi(trajectory_x, trajectory_y):
+    # parameters - need to change
+    sr = 0.02 # sampling rate
+    d = 0.05 # position noise boundary
+    m = 20 # window size
+    
+    # derivatives
+    dx = derivative(trajectory_x, sr, m, d)
+    dy = derivative(trajectory_y, sr, m, d)
+    
+    # calculate + unwrap angular velocity
+    Phi = np.arctan2(dy, dx)
+    Phi = np.unwrap(Phi)
+    dPhi = derivative(Phi, sr, m, d)
+    
+    # integrate change in angular velocity
+    IdPhi = np.trapz(np.abs(dPhi))
+    
+    return IdPhi
+            
             
 # PLOTTING METHODS --------
 def create_scatter_plot(x, y):
     plt.figure(figsize = (10, 6))
     plt.scatter(x, y, c = 'green', alpha = 0.6)
     plt.title('Tracking Data')
+    plt.xlabel('X coordinate')
+    plt.ylabel('Y coordinate')
     plt.grid(True)
     plt.show()
 
@@ -492,6 +753,33 @@ def time_until_first_choice(data_structure, ratID, day):
     time = time_until_choice(content)
     print(time)
 
+def quantify_VTE(data_structure, ratID, day):
+    DLC_df = data_structure[ratID][day]['DLC_tracking']
+    SS_df = data_structure[ratID][day]['stateScriptLog']
+    
+    # get x and y coordinates
+    x, y = filter_dataframe(DLC_df)
+    
+    # define zones
+    home_hull = define_zones(x, y, x_min = 850, x_max = 1050, y_min = 0, y_max = 250)
+    arm_3_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 0, y_max = 250)
+    arm_5_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 700, y_max = 930)
+    arm_7_hull = define_zones(x, y, x_min = 850, x_max = 1100, y_min = 700, y_max = 960)
+    centre_hull = define_zones(x, y, x_min = 460, x_max = 740, y_min = 330, y_max = 600)
+    
+    # do a time delay before something counts as outside the hull / set upper and lower bound for  Idphi
+    # get trial start times + trial type
+    trial_starts = get_trial_start_times(x, y, SS_df, home_hull)
+    
+    # calculate IdPhi for each trial
+    for trial_start in trial_starts:
+        # cut out the trajectory for each trial
+        # look through points starting at trial start time to see when it goes into different hulls
+        for x_val in x[trial_start: ]:
+            break
+            
+
+
 # ASSIGNMENT 1 --------
 # creating the main data structure
 #base_path = '/Users/catpillow/Downloads/Data 2'
@@ -510,7 +798,7 @@ ratID = 'BP06'
 day = 'Day7'
 
 # plot positioning for greenLED
-#scatter_plot(loaded_data_structure, ratID, day)
+scatter_plot(loaded_data_structure, ratID, day)
 
 # occupancy map
 #occupancy_map(loaded_data_structure, ratID, day)
@@ -522,6 +810,7 @@ day = 'Day7'
 #trial_accuracy(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 4 ---------
-time_until_first_choice(loaded_data_structure, ratID, day)
+#time_until_first_choice(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 5 --------
+# quantify_VTE(loaded_data_structure, ratID, day)

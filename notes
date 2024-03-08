@@ -271,3 +271,23 @@
 - os.rmdir()
     - remove directories
     - cannot remove directories unless it is empty
+
+
+### Discrete-Time Adaptive Windowing for Velocity Estimation
+- ok the maths here is kinda crazy im ngl
+- i'm not sure if this is necessary
+    - seems more like to check the position is correct
+    - but we already ran it through dlc
+- so when you think about the position coordinates you see after putting it through dlc 
+    - everything is sorted through discrete time points t
+    - you can use time points to find the coordinates -> x(t)
+    - but, there is always error when you measure the position -> e(t)
+        - encoders, digital converters, etc
+        - can assume the error is bounded
+            - meaning there is a maximum possible deviation from true value
+        - so assume error has zero mean bounded uniform distribution (pure quantisation)
+            - averages out to zero over time
+            - errors are evenly spread
+    - measured response -> y(t) = x(t) + e(t)
+- how to estimate true position x(t) given noisy measurements y(t)?
+    - use past measurements
