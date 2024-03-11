@@ -1,3 +1,4 @@
+# packages
 import os
 import fnmatch
 import re
@@ -8,6 +9,9 @@ from matplotlib.patches import Ellipse
 from sklearn.cluster import DBSCAN
 from sklearn.linear_model import LinearRegression
 from scipy.spatial import ConvexHull, Delaunay
+
+# other helper files
+import readCameraModuleTimeStamps
 
 # DATA STRUCTURE METHODS ---------
 def process_dlc_data(file_path):
@@ -436,7 +440,7 @@ def check_if_inside(point, hull):
     # check if point is inside the hull
     return del_tri.find_simplex(point) >= 0
 
-def get_trial_start_times(x, y, SS_df, home_hull):
+def get_trial_start_times_old(x, y, SS_df, home_hull): # i don't think this is needed anymore
     lines = SS_df.splitlines()
     
     # storage variables
@@ -526,6 +530,9 @@ def get_trial_start_times(x, y, SS_df, home_hull):
         matching_trials[closest_time] = trial_type
     
     return matching_trials
+
+def get_trial_start_times(timeStamps, SS_df):
+    return
 
 def DBSCAN_window(x, y): # failed. tried to use DBSCAN to determine central choice point window
     # the centre is probably gonna be in this range
@@ -653,7 +660,8 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
 # PLOTTING METHODS --------
 def create_scatter_plot(x, y):
     plt.figure(figsize = (10, 6))
-    plt.scatter(x, y, c = 'green', alpha = 0.6)
+    #plt.scatter(x, y, c = 'green', alpha = 0.6)
+    plt.plot(x, y, color='green', alpha=0.4)
     plt.title('Tracking Data')
     plt.xlabel('X coordinate')
     plt.ylabel('Y coordinate')

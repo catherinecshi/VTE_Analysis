@@ -20,8 +20,3 @@ def readCameraModuleTimeStamps(filename):
     junk = np.fromfile(fid, count=50, dtype=np.uint8)
     timestamps = np.fromfile(fid, dtype=np.uint32) / clockRate
     return timestamps
-
-
-# Example import and call
-# import readCameraModuleTimeStamps as readCMTS
-timestampData = readCMTS.readCameraModuleTimeStamps(r"C:\Users\<YOURPATH>\<YOURFILENAME>.videoTimeStamps")
