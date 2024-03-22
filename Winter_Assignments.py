@@ -1,195 +1,71 @@
 # packages
 import os
-import fnmatch
-import re
+import pickle
+import bisect
 import pandas as pd
 import numpy as np
+import math
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Ellipse
+from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 from sklearn.linear_model import LinearRegression
 from scipy.spatial import ConvexHull, Delaunay
+from scipy.stats import zscore
 
 # other helper files
-import readCameraModuleTimeStamps
-
-# DATA STRUCTURE METHODS ---------
-def process_dlc_data(file_path):
-    df = pd.read_csv(file_path, header=[1, 2])
-    df.set_index(('bodyparts', 'coords'), inplace=True)
-    return df
-
-def process_loaded_dlc_data(file_path):
-    df = pd.read_csv(file_path, header=[0, 1])
-    return df
-
-def process_statescript_log(file_path):
-    with open(file_path) as file:
-        content = file.read()
-    
-    return content
-
-def create_main_data_structure(base_path): # creates a nested dictionary
-    data_structure = {}
-
-    for rat_folder in os.listdir(base_path): # loop for each rat
-        rat_path = os.path.join(base_path, rat_folder, 'inferenceTraining')
-        
-        # skip over .DS_Store
-        if not os.path.isdir(rat_path):
-            print(f"Skipping over non-directory folder: {rat_path}")
-            continue
-        
-        # skip over empty folders
-        day_folders = os.listdir(rat_path)
-        if not day_folders: # if folder is empty
-            print(f"{rat_path} is empty")
-            continue
-            
-        data_structure[rat_folder] = {} # first nest in dictionary
-        
-        for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
-            day_path = os.path.join(rat_path, day_folder)
-            dlc_data = None
-            ss_data = None
-            
-            # for checking if a ss log & dlc csv file has been found for each day for each rat
-            ss = False
-            dlc = False
-        
-            for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
-                for f in files:
-                    f = f.lower() # there were some problems with cases
-                    
-                    # storing the DLC csv
-                    if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                        # checks if there is a duplication
-                        if dlc == True:
-                            print("More than one DLC file found")
-                        else:
-                            dlc = True
-                        
-                        file_path = os.path.join(root, f)
-                        dlc_data = process_dlc_data(file_path)
-                        
-                        print(file_path)
-                    
-                    # storing the statescript log
-                    if fnmatch.fnmatch(f, '*track*.statescriptlog'):
-                        # checks if there is a duplication
-                        if ss == True:
-                            print("More than one SS Log found")
-                        else:
-                            ss = True
-                        
-                        file_path = os.path.join(root, f)
-                        ss_data = process_statescript_log(file_path)
-                        
-                        print(file_path)
-            
-            # add to dictionary
-            if ss and dlc:
-                data_structure[rat_folder][day_folder] = {
-                    "DLC_tracking": dlc_data,
-                    "stateScriptLog": ss_data
-                }
-            elif (not ss) and (not dlc):
-                print(f"No stateScriptLog or DLC file found for rat {rat_folder} for {day_folder}")
-            elif not ss:
-                print(f"No stateScriptLog found for rat {rat_folder} for {day_folder}")
-            elif not dlc:
-                print(f"No DLC .csv found for rat {rat_folder} for {day_folder}")
-
-    return data_structure
-
-def save_data_structure(data_structure, save_path):
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    
-    for rat, days in data_structure.items():
-        rat_path = os.path.join(save_path, rat)
-        if not os.path.exists(rat_path):
-            os.makedirs(rat_path)
-        
-        
-        for day, data in days.items():
-            day_path = os.path.join(rat_path, day)
-            if not os.path.exists(day_path):
-                os.makedirs(day_path)
-
-            if "DLC_tracking" in data:
-                dlc_path = os.path.join(day_path, f"{day}_DLC_tracking.csv")
-                data["DLC_tracking"].to_csv(dlc_path, header = True, index = False)
-            
-            if "stateScriptLog" in data:
-                ss_path = os.path.join(day_path, f"{day}_stateScriptLog.txt")
-                with open(ss_path, 'w') as file:
-                    file.write(data["stateScriptLog"])
-
-def load_data_structure(save_path): # this function assumes no errors bc they would've been caught before saving
-    data_structure = {}
-
-    for rat_folder in os.listdir(save_path): # loop for each rat
-        rat_path = os.path.join(save_path, rat_folder)
-        
-        # skip over .DS_Store
-        if not os.path.isdir(rat_path):
-            print(f"Skipping over non-directory folder: {rat_path}")
-            continue
-            
-        data_structure[rat_folder] = {} # first nest in dictionary
-        
-        for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
-            day_path = os.path.join(rat_path, day_folder)
-            dlc_data = None
-            ss_data = None
-        
-            for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
-                for f in files:
-                    f = f.lower()
-                    
-                    # storing the DLC csv
-                    if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                        file_path = os.path.join(root, f)
-                        dlc_data = process_loaded_dlc_data(file_path)
-                    
-                    # storing the statescript log
-                    if fnmatch.fnmatch(f, '*statescriptlog*'):
-                        file_path = os.path.join(root, f)
-                        ss_data = process_statescript_log(file_path)
-            
-            # add to dictionary
-            data_structure[rat_folder][day_folder] = {
-                "DLC_tracking": dlc_data,
-                "stateScriptLog": ss_data
-            }
-
-    return data_structure
-
+import data_structure
+import performance_analysis
 
 # DATA MANIPULATION/ANALYSIS METHODS ---------
-def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 3): # currently keeps original indices
+def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190): # currently keeps original indices
     # modify a copy instead of the original
     # also filter based on likelihood values
-    filtered_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
+    likely_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
     
+    # DBSCAN Cluster analysis
+    coordinates = likely_data[[track_part]].copy()[[(track_part, 'x'), (track_part, 'y')]]
+    coordinates.dropna(inplace = True) # don't drop nan for dbscan
     
-    # diff between consecutive frames
-    filtered_data['diff_x'] = filtered_data[(track_part, 'x')].diff().abs()
-    filtered_data['diff_y'] = filtered_data[(track_part, 'y')].diff().abs()
+    clustering = DBSCAN(eps = eps, min_samples = min_samples).fit(coordinates)
+    labels = clustering.labels_
+    #noise_points_count = (labels == -1).sum() # so ik how many points were filtered out
+    #print(f"DBSCAN Filtered out {noise_points_count}")
+
+    filtered_indices = labels != -1 # filter out noise
+    filtered_data = likely_data[filtered_indices].copy()
     
-    # determining position threshold
-    threshold_x = filtered_data['diff_x'].std() * std_multiplier
-    threshold_y = filtered_data['diff_y'].std() * std_multiplier
+    # calculate thresholds
+    diff_x = df[(track_part, 'x')].diff().abs()
+    diff_y = df[(track_part, 'y')].diff().abs()
+    threshold_x = diff_x.std() * std_multiplier
+    threshold_y = diff_y.std() * std_multiplier
     
-    # filtering out jumps in coordinates
-    jumps = (filtered_data['diff_x'] > threshold_x) | (filtered_data['diff_y'] > threshold_y)
-    filtered_data.loc[jumps, [(track_part, 'x'), (track_part, 'y')]] = None
+    # calculate diff between current point and last non-jump point
+    last_valid_index = 0
+    jump_indices = [] # just to see how many points are jumped over
+    
+    for i in range(1, len(filtered_data)):
+        diff_x = abs(filtered_data.iloc[i][(track_part, 'x')] - filtered_data.iloc[last_valid_index][(track_part, 'x')])
+        diff_y = abs(filtered_data.iloc[i][(track_part, 'y')] - filtered_data.iloc[last_valid_index][(track_part, 'y')])
+        #distance = np.sqrt(diff_x**2 + diff_y**2) # euclidean distance
+        
+        # check for jumps
+        if diff_x > threshold_x or diff_y > threshold_y:
+            # mark as NaN
+            filtered_data.at[filtered_data.index[i], (track_part, 'x')] = np.nan
+            filtered_data.at[filtered_data.index[i], (track_part, 'y')] = np.nan
+            jump_indices.append(i)
+        else:
+            # udpate last valid index
+            last_valid_index = i
     
     # interpolating
     filtered_data[(track_part, 'x')].interpolate(inplace = True)
     filtered_data[(track_part, 'y')].interpolate(inplace = True)
     
+    print(f"number of points filtered out - {len(jump_indices)}")
     
     # final coordinate points
     x = filtered_data[(track_part, 'x')]
@@ -252,100 +128,7 @@ def calculate_speed(x, y, framerate):
     
     speed = displacement_per_frame * framerate
     
-    return speed
-
-def trial_analysis(content):
-    lines = content.splitlines()
-    
-    # temporary variables
-    middle_numbers = set() # array to hold the middle numbers
-    end_of_trial = False # checks if middle_numbers should be reset
-    error_trial = None
-    current_trial = None
-    last_line = len(lines) - 1 # this is for the last trial of a session bc no 'New Trial' to signal end of trial
-    
-    # stored for graphing
-    total_trials = np.zeros(10) # start out with the total number of possible trial types
-    correct_trials = np.zeros(10)
-    
-    for index, line in enumerate(lines):
-        if line.startswith('#'): # skip the starting comments
-            continue
-        
-        elif all(char.isdigit() or char.isspace() for char in line): # a normal licking line
-            # check the middle numbers to determine arms that has been ran to
-            parts = line.split()
-            if len(parts) == 3:
-                middle_numbers.add(parts[1])
-            else:
-                print('All number line has ' + str(len(parts)) + ' integers')
-                print(parts)
-                
-        elif 'New Trial' in line: # indicate start of a new trial
-            end_of_trial = True
-            
-        elif end_of_trial and 'trialType' in line: # this excludes 'trialType' from summaries
-            current_trial = int(line[-1]) - 1 # last char is the trial type
-            end_of_trial = False # reset
-            
-        elif index == last_line:
-            end_of_trial = True
-        
-        # analysis when a trial has ended
-        if end_of_trial and middle_numbers: # excludes first trial (bc it would be empty at the start)
-            if len(middle_numbers) == 3:
-                error_trial = True
-            elif len(middle_numbers) == 4:
-                error_trial = False
-            else:
-                print('middle_numbers has ' + str(len(middle_numbers)) + 'integers')
-                print(middle_numbers) 
-                continue # this usually happens at the start when the rat first licks for a session
-            
-            # add to total trials
-            total_trials[current_trial] += 1
-            
-            # add to correct trials if correct
-            if not error_trial:
-                correct_trials[current_trial] += 1
-                
-            middle_numbers = set() # reset
-    
-    # removing the zeroes in the trial count arrays
-    total_mask = total_trials != 0
-    final_total_trials = total_trials[total_mask]
-    
-    correct_mask = correct_trials != 0
-    final_correct_trials = correct_trials[correct_mask]
-    
-    return final_total_trials, final_correct_trials
-
-def get_trial_types(content):
-    trial_types = np.empty(10, dtype=object)
-    lines = content.splitlines()
-    
-    for line in lines:
-        if '#' not in line: # i only want to look at the starting comments
-            break
-        
-        if 'iTrialType' and 'Num' and '%' in line: # select the lines I want
-            parts = line.split('%')
-            number_part = parts[0]
-            letter_pair = parts[1].strip()
-            
-            # store the trial 
-            match = re.search(r'iTrialType(\d+)', number_part)
-            if match:
-                number = int(match.group(1)) - 1 # minus one for the index
-            
-            # store into array
-            trial_types[number] = letter_pair
-                    
-    # remove any excess pairs
-    trial_mask = trial_types != None
-    final_trial_types = trial_types[trial_mask]
-    
-    return final_trial_types              
+    return speed            
  
 def time_until_choice(content): # currently only for the first choice
     lines = content.splitlines()
@@ -398,9 +181,76 @@ def time_until_choice(content): # currently only for the first choice
     
     return time_diff
 
+def check_timestamps(df, timestamps):
+    # first check - makes sure there is around 0.03s between each frame
+    time_off = np.zeros(len(timestamps)) # records indices where time isn't ~0.03s between frames
+    index_off = 0
+    print(timestamps)
+    
+    for index, time in enumerate(timestamps): #loops through timestamps
+        if index == 0:
+            continue
+    
+        # calculate diff in seconds between frames
+        current_time = timestamps[index]
+        past_time = timestamps[index - 1]
+        time_diff = current_time - past_time
+        
+        # make sure it's around the 0.03 range
+        if time_diff > 0.05 or time_diff < 0.01:
+            print(time_diff)
+            time_off[index] = time_diff # time is off here
+            
+            if index_off < 5:
+                print(f"time_diff is off norm for {index}")
+                #index_off += 1
+        else:
+            continue
+    
+    # second check - make sure x and timestamps are the same length
+    if not(len(df) == len(timestamps)):
+        print("length of x and timestamps don't match up")
+        print(len(df))
+        print(len(timestamps))
+        
+        diff = len(df) - len(timestamps)
+        # it seems like most of them differ by 1, where df = timestamps - 1, so i'm doing a rough subtraction here
+        if diff == 1:
+            timestamps.pop()
+    
+    return timestamps
+
+def calculate_range(x, y):
+    x_min = min(x)
+    x_max = max(x)
+    y_min = min(y)
+    y_max = max(y)
+    
+    return x_min, x_max, y_min, y_max
+
+def is_point_in_ellipse(x, y, ellipse_params):
+    center, width, height, angle = ellipse_params['center'], ellipse_params['width'], ellipse_params['height'], ellipse_params['angle']
+    
+    # Convert angle from degrees to radians for np.cos and np.sin
+    theta = np.radians(angle)
+    
+    # Translate point to origin based on ellipse center
+    x_translated = x - center[0]
+    y_translated = y - center[1]
+    
+    # Rotate point by -theta to align with ellipse axes
+    x_rotated = x_translated * np.cos(-theta) - y_translated * np.sin(-theta)
+    y_rotated = x_translated * np.sin(-theta) + y_translated * np.cos(-theta)
+    
+    # Check if rotated point is inside the ellipse
+    if (x_rotated**2 / (width/2)**2) + (y_rotated**2 / (height/2)**2) <= 1:
+        return True  # Inside the ellipse
+    else:
+        return False  # Outside the ellipse
+
 
 # VTE METHODS -------------
-def define_zones(x, y, x_min, x_max, y_min, y_max):
+def define_zones(x, y, x_min, x_max, y_min, y_max, will_plot = False):
     # calculate elliptical parameters
     centre_x = (x_min + x_max) / 2
     centre_y = (y_min + y_max) / 2
@@ -416,20 +266,9 @@ def define_zones(x, y, x_min, x_max, y_min, y_max):
     # convex hull
     hull = ConvexHull(filtered_points)
     
-    '''
-    plt.plot(x, y, 'o', markersize=5, label='Outside')
-    plt.plot(filtered_points[:, 0], filtered_points[:, 1], 'ro', label='inside')
-    
-    for simplex in hull.simplices:
-        plt.plot(filtered_points[simplex, 0], filtered_points[simplex, 1], 'k-')
-        
-    plt.fill(filtered_points[hull.vertices, 0], filtered_points[hull.vertices, 1], 'k', alpha = 0.1)
-    ellipse = Ellipse((centre_x, centre_y), width = 2 * radius_x, height = 2 * radius_y, edgecolor = 'g', fill = False, linewidth = 2, linestyle = '--')
-    plt.gca().add_artist(ellipse)
-    
-    plt.legend()
-    plt.show()
-    '''
+    # plot if wanted
+    if will_plot:
+        plot_hull(x, y, filtered_points, hull, centre_x, centre_y, radius_x, radius_y)
     
     return hull
 
@@ -440,38 +279,24 @@ def check_if_inside(point, hull):
     # check if point is inside the hull
     return del_tri.find_simplex(point) >= 0
 
-def get_trial_start_times_old(x, y, SS_df, home_hull): # i don't think this is needed anymore
+def get_trial_start_times(timestamps, SS_df): # gets indices for x/y where trials start & corresponding trial type
     lines = SS_df.splitlines()
     
     # storage variables
-    last_line = None # get the last line in the ss log that only has numbers
     start_of_trial = False # know when the last line was the start of new trial
+    trial_starts = []
     trial_info = {} # store trial start times and trial types
     
-    # get the trial starts from SS
+    # get the trial start times from SS
     for line in lines:
         if line.startswith('#'): # skip the starting comments
             continue
-        
-        elif start_of_trial and all(char.isdigit() or char.isspace() for char in line): # the next lick line after trial start
-            last_line = line
-            parts = line.split()
-            
-            if parts[1] == 0:
-                continue
-            elif parts[1] == 1:
-                start_of_trial = False # this is more to check trial is starting at home, bc will be problematic for analysis if not
-            else:
-                print("start of trial not at home.")
         
         elif start_of_trial and "trialType" in line: # store trial type
             parts = line.split()
             trial_type = parts[3]
             trial_info[trial_start[-1]] = trial_type # assumes this will always come after New Trial'
-        
-        elif all(char.isdigit() or char.isspace() for char in line): # a normal licking line
-            last_line = line # will update until it's the last line -> get that number
-                
+                  
         elif 'New Trial' in line: # indicate start of a new trial
             start_of_trial = True
             
@@ -479,60 +304,52 @@ def get_trial_start_times_old(x, y, SS_df, home_hull): # i don't think this is n
             parts = line.split()
             trial_start = parts[0]
             trial_info[trial_start] = None
-    
-    # try to align SS time with DLC time
-    # find index of first few times rat enters home hull
-    # storage variables
-    ticks_inside_home = []
-    first_ticks = []
-    first_true = True
-    
-    # this records all the first ticks when rats enter home after exiting home
-    for index, x_val in enumerate(x):
-        point = np.array([x_val, y[index]]) # combining x and y into a single point to test if in hull
-        inside_true = check_if_inside(point, home_hull)
+            trial_starts.append(trial_start)
         
-        if inside_true:
-            # add into ticks
-            ticks_inside_home.append(index) # index here would be the time tick associated with the x array
-            if first_true:
-                first_ticks.append(index)
-                first_true = False
         else:
-            first_true = True
-            
-    # check if the new trials line up with everytime rats enter home (incase they enter home when not new trial)
-    consistent = len(trial_info) == len(first_ticks)
-    scaling_factor = None
-    offset = None
+            start_of_trial = False
     
-    # calculate scaling factor and offset to align both trial start times
-    if consistent: 
-        ss_times = np.array(list(map(int, trial_info.keys()))).reshape(-1, 1)
-        dlc_times = np.array(first_ticks)
-        
-        model = LinearRegression().fit(ss_times, dlc_times)
-        
-        scaling_factor = model.coef_[0]
-        offset = model.intercept_
-    else:
-        print("will implement")
+    video_starts = video_trial_starts(timestamps, trial_starts) # this should be the indices for x/y where trials start
     
-    # convert into same frames
-    trial_info_times_scaled = {int((float(key) - offset) * scaling_factor): value for key, value in trial_info.items()}
+    # change trial_info such that the key is video_starts instead of trial_starts
+    video_trial_info = {}
     
-    # closest matching times
-    matching_trials = {}
-    for trial_time, trial_type in trial_info_times_scaled.items():
-        closest_time_index = min(range(len(first_ticks)), key = lambda i: abs(first_ticks[i] - trial_time))
-        closest_time = first_ticks[closest_time_index]
-        
-        matching_trials[closest_time] = trial_type
+    if len(video_starts) == len(trial_starts):
+        for index, video_start in enumerate(video_starts):
+            original_start_time = trial_starts[index]
+            trial_type = trial_info.get(original_start_time)
+            video_trial_info[video_start] = trial_type
     
-    return matching_trials
+    return video_trial_info
 
-def get_trial_start_times(timeStamps, SS_df):
-    return
+def video_trial_starts(timestamps, SS_times):
+    trial_starts = []
+    
+    for time in SS_times:
+        # ensure consistent data types
+        time = float(int(time) / 1000)
+        
+        if time in timestamps: # if there is a perfect match between MCU & ECU and the time is in timestamps
+            index = timestamps.index(time)
+            trial_starts.append(timestamps[index])
+        else: # if there isn't a perfect match
+            print(f"Imperfect match between ECU and MCU at {time}")
+            
+            # index where time is inserted into timestamps
+            idx = bisect.bisect_left(timestamps, time)
+            
+            # check neighbours for closest time
+            if idx == 0:
+                trial_starts.append(timestamps[0])
+            elif idx == len(timestamps):
+                trial_starts.append(timestamps[-1])
+            else:
+                before = timestamps[idx - 1]
+                after = timestamps[idx]
+                closest_time = before if (time - before) <= (after - time) else after
+                trial_starts.append(closest_time)
+    
+    return trial_starts
 
 def DBSCAN_window(x, y): # failed. tried to use DBSCAN to determine central choice point window
     # the centre is probably gonna be in this range
@@ -596,6 +413,7 @@ def calculate_trajectory(x, y, window_size = 100):
 
 def derivative(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
     v_est = np.zeros_like(values) # initialise slope array with zeroes / velocity estimates
+    print(values)
     
     # start from second element for differentiation
     for i in range(1, len(values)):
@@ -610,10 +428,11 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
                 break
             
             # calculate slope from values[i] to values[i - window_len]
-            slope_ = v_est[i] # save previous slope
+            slope_ = v_est[i - 1] # save previous slope / i changed from original code to be v_est[i - 1] instead of v_est[i]
             slope = (values[i] - values[i - window_len]) / (window_len * sr)
             
             if window_len > 1:
+                print("window_len > 1")
                 # y = mx + c where c -> y-intercept, values[i] -> y, slope -> m, i * sr -> x (time at point i)
                 c = values[i] - slope * i * sr
 
@@ -627,6 +446,7 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
                         can_increase_window = False
                         window_len -= 1
                         slope = slope_
+                        print("model too far from actual results")
                         break
             
             if not can_increase_window:
@@ -643,20 +463,323 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     m = 20 # window size
     
     # derivatives
-    dx = derivative(trajectory_x, sr, m, d)
-    dy = derivative(trajectory_y, sr, m, d)
+    dx = derivative(trajectory_x, sr, d, m)
+    print("got derivative for x")
+    dy = derivative(trajectory_y, sr, d, m)
+    print("got derivative for y")
     
     # calculate + unwrap angular velocity
     Phi = np.arctan2(dy, dx)
     Phi = np.unwrap(Phi)
-    dPhi = derivative(Phi, sr, m, d)
+    dPhi = derivative(Phi, sr, d, m)
+    print("got derivative for Phi")
     
     # integrate change in angular velocity
     IdPhi = np.trapz(np.abs(dPhi))
     
+    print("returning IdPhi")
     return IdPhi
+   
             
+# GETTING ZONES -----------
+def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 950):
+    lines = []
+    
+    # convert degree steps into slopes where m = tan(angle in radians)
+    angle_degrees = np.arange(0, 180, degree_step)
+    slopes = np.tan(np.radians(angle_degrees))
+    
+    # get range
+    x_min, x_max, y_min, y_max = calculate_range(x, y)
+    extended_range = max(x_max - x_min, y_max - y_min) * 1.5
+    
+    # determine number of lines needed
+    num_lines = int(2 * extended_range / gap_between_lines) + 1
+    
+    for slope in slopes:
+        if np.isfinite(slope) and np.abs(slope) < 1e10 and slope != 0:
+            # increment based on x intercept - add gap incrementally
+            # get number of steps i can take
+            x_steps = (x_max - x_min) / gap_between_lines
+            x_steps = math.ceil(x_steps)
             
+            for i in range(x_steps):
+                # calculate x intercept
+                x_intercept = (i * gap_between_lines) + x_min
+                
+                # get b value (y intercept) -> b = y - mx
+                b = 0 - (slope * x_intercept) + x_min
+                
+                # check for length of line and discard short ones
+                # determine end points within range
+                y_at_x_min = slope * x_min + b
+                y_at_x_max = slope * x_max + b
+                x_at_y_min = (y_min - b) / slope
+                x_at_y_max = (y_max - b) / slope
+
+                # clip line into range
+                start_x = max(min(x_at_y_min, x_at_y_max, x_max), x_min)
+                end_x = min(max(x_at_y_min, x_at_y_max, x_min), x_max)
+                start_y = max(min(y_at_x_min, y_at_x_max, y_max), y_min)
+                end_y = min(max(y_at_x_min, y_at_x_max, y_min), y_max)
+                
+                # calculate length of lines
+                length = np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
+                if length >= min_length: # only include line if it is long enough
+                    lines.append((slope ,b))
+            
+            # same thing but now increment based on y intercept
+            y_steps = (y_max - y_min) / gap_between_lines
+            y_steps = math.ceil(y_steps)
+            
+            for i in range(y_steps):
+                b = (i * gap_between_lines) + y_min
+                
+                # check for length of line and discard short ones
+                # determine end points within range
+                y_at_x_min = slope * x_min + b
+                y_at_x_max = slope * x_max + b
+                x_at_y_min = (y_min - b) / slope
+                x_at_y_max = (y_max - b) / slope
+
+                # clip line into range
+                start_x = max(min(x_at_y_min, x_at_y_max, x_max), x_min)
+                end_x = min(max(x_at_y_min, x_at_y_max, x_min), x_max)
+                start_y = max(min(y_at_x_min, y_at_x_max, y_max), y_min)
+                end_y = min(max(y_at_x_min, y_at_x_max, y_min), y_max)
+                
+                # calculate length of lines
+                length = np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
+                if length >= min_length: # only include line if it is long enough
+                    lines.append((slope ,b))
+                
+    # generating horizontal and vertical lines - all long enough so no need for filtering
+    # horizontal lines
+    for i in range(-num_lines // 2, num_lines // 2):
+        b = y_min + (i * gap_between_lines)
+        lines.append((0, b))
+        
+    #vertical lines
+    for i in range(-num_lines // 2, num_lines // 2):
+        x_position = x_min + (i * gap_between_lines)
+        lines.append((np.inf, x_position))
+            
+    return lines
+
+def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
+    coverage_scores = []
+    points = np.array(list(zip(x, y)))
+    x_min, x_max, y_min, y_max = calculate_range(x, y)
+    
+    for slope, b in lines:
+        consecutive_coverage = 0 # what i'm looking for is consecutive coverage, much like a line
+        longest_streak = 0
+        
+        # vertical lines are diff, so i'm just seeing how many points are near the line
+        if np.isinf(slope) or np.abs(slope) > 1e10:
+            segment_length = (y_max - y_min) / num_segments
+
+            for i in range(num_segments):
+                segment_start = y_min + i * segment_length
+                segment_end = segment_start + segment_length
+                segment_points = points[(y >= segment_start) & (y <= segment_end)] # points within segment
+                
+                if len(segment_points) > 0: # check if there are any points
+                    distances = np.abs(segment_points[:, 0] - b)
+                    point_on_line = np.any(distances <= threshold)
+                    
+                    # add to consecutive coverage if there is something on line, no if not
+                    if point_on_line:
+                        consecutive_coverage += 1
+                        if longest_streak < consecutive_coverage:
+                            longest_streak = consecutive_coverage # keep track of longest streak of coverage
+                    else:
+                        consecutive_coverage = 0
+            
+            coverage = longest_streak / num_segments
+            coverage_scores.append(coverage)
+            
+            continue
+        
+        # handle horizontal lines much like vertical lines
+        if np.abs(slope) < 1e-10:
+            segment_length = (x_max - x_min) / num_segments
+
+            for i in range(num_segments):
+                segment_start = x_min + i * segment_length
+                segment_end = segment_start + segment_length
+                segment_points = points[(x >= segment_start) & (x <= segment_end)]
+                
+                if len(segment_points) > 0: # check if there are any points
+                    distances = np.abs(segment_points[:, 1] - b)
+                    point_on_line = np.any(distances <= threshold)
+                    
+                    # add to consecutive coverage if there is something on line, no if not
+                    if point_on_line:
+                        consecutive_coverage += 1
+                        if longest_streak < consecutive_coverage:
+                            longest_streak = consecutive_coverage # keep track of longest streak of coverage
+                    else:
+                        consecutive_coverage = 0
+            
+            coverage = longest_streak / num_segments
+            coverage_scores.append(coverage)
+            
+            continue
+        
+        # non vertical or horizontal lines
+        # find start and end of x values to divide into segments
+        filtered_min = x[x > x_min]
+        if not filtered_min.empty:
+            line_x_min = filtered_min.min()
+        
+        filtered_max = x[x < x_max]
+        if not filtered_max.empty:
+            line_x_max = filtered_max.max()
+            
+        segment_length = (line_x_max - line_x_min) / num_segments
+        
+        segment_coverages = []
+        for i in range(num_segments):
+            segment_start = x_min + i * segment_length
+            segment_end = segment_start + segment_length
+            segment_points = points[(x >= segment_start) & (x <= segment_end)]
+            
+            if len(segment_points) > 0:
+                distances = np.abs(slope * segment_points[:, 0] - segment_points[:, 1] + b) / np.sqrt(slope ** 2 + 1)
+                point_on_line = np.any(distances <= threshold)
+                    
+                # add to consecutive coverage if there is something on line, no if not
+                if point_on_line:
+                    consecutive_coverage += 1
+                    if longest_streak < consecutive_coverage:
+                        longest_streak = consecutive_coverage # keep track of longest streak of coverage
+                else:
+                    consecutive_coverage = 0
+        
+        coverage = longest_streak / num_segments
+        coverage_scores.append(coverage)
+    
+    # plot distance to know what's a good threshold
+    # get std & mean
+    std = np.std(coverage_scores)
+    mean = np.mean(coverage_scores)
+    
+    # plot - x is freq, y is avg dist
+    plt.figure(figsize=(10, 6))
+    plt.hist(coverage_scores, bins = len(lines), color = 'skyblue')
+    plt.axvline(mean, color = 'r', linestyle = 'dashed', linewidth = 2)
+    plt.axvline(mean + std, color = 'g', linestyle = 'dashed', linewidth = 2, label = '1 std')
+    plt.axvline(mean - std, color = 'g', linestyle = 'dashed', linewidth = 2)
+    
+    plt.legend()
+    plt.show()
+    
+    return coverage_scores
+
+def make_new_lines(lines, coverages, threshold):
+    new_lines = []
+    
+    for index, coverage in enumerate(coverages):
+        if coverage > threshold:
+            #print(index)
+            new_lines.append(lines[index])
+    
+    return new_lines
+
+def find_intersections(lines):
+    intersections = []
+    
+    for i in range(len(lines)):
+        for j in range(i + 1, len(lines)):
+            line1 = lines[i]
+            line2 = lines[j]
+            
+            # Check if both lines are vertical
+            if np.isinf(line1[0]) and np.isinf(line2[0]):
+                continue  # No intersection if both are vertical
+            
+            # Check if both lines are horizontal
+            elif np.abs(line1[0]) < 1e-10 and np.abs(line2[0]) < 1e-10:
+                continue  # No intersection if both are horizontal
+            
+            # Check if one of the lines is vertical and the other is horizontal
+            elif np.isinf(line1[0]) and np.abs(line2[0]) < 1e-10: # line1 vertical, line2 horizontal
+                x = line1[1]
+                y = line2[1]
+                intersections.append((x, y))
+            elif np.isinf(line2[0]) and np.abs(line1[0]) < 1e-10: # line2 vertical, line1 horizontal
+                x = line2[1]
+                y = line1[1]
+                intersections.append((x, y))
+            
+            # Line1 is vertical and Line2 is neither
+            elif np.isinf(line1[0]):
+                x = line1[1]
+                y = line2[0] * x + line2[1]
+                intersections.append((x, y))
+            
+            # Line2 is vertical and Line1 is neither
+            elif np.isinf(line2[0]):
+                x = line2[1]
+                y = line1[0] * x + line1[1]
+                intersections.append((x, y))
+            
+            # Line1 is horizontal and Line2 is neither
+            elif np.abs(line1[0]) < 1e-10:
+                y = line1[1]
+                if np.abs(line2[0]) > 1e-10:  # Ensure Line2 is not vertical
+                    x = (y - line2[1]) / line2[0]
+                    intersections.append((x, y))
+            
+            # Line2 is horizontal and Line1 is neither
+            elif np.abs(line2[0]) < 1e-10:
+                y = line2[1]
+                if np.abs(line1[0]) > 1e-10:  # Ensure Line1 is not vertical
+                    x = (y - line1[1]) / line1[0]
+                    intersections.append((x, y))
+            
+            # Neither line is vertical or horizontal
+            else:
+                denom = (line1[0] - line2[0])
+                if np.abs(denom) > 1e-10:  # Ensure lines are not parallel
+                    x = (line2[1] - line1[1]) / denom
+                    y = line1[0] * x + line1[1]
+                    intersections.append((x, y))
+                
+    return intersections
+
+def make_ellipse(points, ax = None, scale_factor = 3):
+    # Fit the DBSCAN clusterer to the points
+    clustering = DBSCAN(eps=30, min_samples=10).fit(points)  # Adjust eps and min_samples as needed
+    core_samples_mask = np.zeros_like(clustering.labels_, dtype=bool)
+    core_samples_mask[clustering.core_sample_indices_] = True
+    labels = clustering.labels_
+
+    # Number of clusters in labels, ignoring noise if present
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+
+    if n_clusters_ > 0:
+        # Proceed with PCA and ellipse drawing for the largest cluster
+        # Find the largest cluster
+        largest_cluster_idx = np.argmax(np.bincount(labels[labels >= 0]))
+        cluster_points = points[labels == largest_cluster_idx]
+        
+        # PCA to determine the orientation
+        pca = PCA(n_components=2).fit(cluster_points)
+        center = pca.mean_
+        angle = np.arctan2(*pca.components_[0][::-1]) * (180 / np.pi)
+        width, height = 2 * np.sqrt(pca.explained_variance_) 
+        
+        # make ellipse bigger
+        width *= scale_factor
+        height *= scale_factor
+
+        return {'center': center, 'width': width, 'height': height, 'angle': angle}
+    else:
+        return None
+
+
 # PLOTTING METHODS --------
 def create_scatter_plot(x, y):
     plt.figure(figsize = (10, 6))
@@ -687,27 +810,136 @@ def create_occupancy_map(x, y, framerate, bin_size = 15):
     
     occupancy_grid = occupancy_grid / framerate
     
+    # Define the colors for the custom colormap
+    cdict = {'red':   [(0.0,  0.0, 0.0),   # Black for zero
+                       (0.01, 1.0, 1.0),   # Red for values just above zero
+                       (1.0,  1.0, 1.0)],  # Keeping it red till the end
+
+             'green': [(0.0,  0.0, 0.0),
+                       (0.01, 0.0, 0.0),   # No green for low values
+                       (1.0,  1.0, 1.0)],  # Full green at the end
+
+             'blue':  [(0.0,  0.0, 0.0),
+                       (0.01, 0.0, 0.0),   # No blue for low values
+                       (1.0,  1.0, 1.0)]}  # Full blue at the end
+
+    custom_cmap = LinearSegmentedColormap('custom_hot', segmentdata=cdict, N=256)
+    
     # plotting
     plt.figure(figsize=(10, 6))
-    plt.imshow(occupancy_grid, cmap='hot', interpolation='nearest')
-    plt.colorbar(label='Time spent')
+    plt.imshow(occupancy_grid, cmap=custom_cmap, interpolation='nearest')
+    plt.colorbar(label='Time spent in seconds')
     plt.title('Occupancy Map')
+    plt.xlabel('X Bins')
+    plt.ylabel('Y Bins')
     plt.show()
 
-def create_trial_accuracy(total_trials, correct_trials, trial_types):
-    percentage_correct = (correct_trials / total_trials) * 100
-    print(percentage_correct)
+def plot_hull(x, y, filtered_points, hull, centre_x, centre_y, radius_x, radius_y):
+    plt.plot(x, y, 'o', markersize=5, label='Outside')
+    plt.plot(filtered_points[:, 0], filtered_points[:, 1], 'ro', label='inside')
     
-    # adjusting trial types
-    length = len(total_trials)
-    trial_types = trial_types[:length]
+    for simplex in hull.simplices:
+        plt.plot(filtered_points[simplex, 0], filtered_points[simplex, 1], 'k-')
+        
+    plt.fill(filtered_points[hull.vertices, 0], filtered_points[hull.vertices, 1], 'k', alpha = 0.1)
+    ellipse = Ellipse((centre_x, centre_y), width = 2 * radius_x, height = 2 * radius_y, edgecolor = 'g', fill = False, linewidth = 2, linestyle = '--')
+    plt.gca().add_artist(ellipse)
+    
+    plt.legend()
+    plt.show()
+
+def plot_lines(x, y, lines):
+    fig, ax = plt.subplots()
+    
+    # plot data points
+    ax.scatter(x, y, label = "Data Points")
+    
+    # get range
+    x_min, x_max, y_min, y_max = calculate_range(x, y)
+    
+    # plotting lines
+    for slope, b in lines:
+        if np.isfinite(slope):
+            if slope != 0:
+                x_vals = np.array([x_min, x_max])
+                y_vals = slope * x_vals + b
+
+                ax.plot(x_vals, y_vals, 'r--', linewidth = 0.5)
+            else: # horizontal lines
+                ax.axhline(y=b, color = 'r', linestyle = '--', linewidth = 0.5)
+        else: # vertical lines
+            ax.axvline(x=b, color = 'r', linestyle = '--', linewidth = 0.5)
+    
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+    ax.grid(True)
+    ax.set_aspect('equal', 'box')
+    ax.legend()
+    plt.show()
+
+def plot_coverages(x, y, lines, coverages, threshold = 0.8):
+    # filter for lines that align well
+    new_lines = []
+    #print(len(coverages))
+    #print(len(lines))
+    
+    for index, coverage in enumerate(coverages):
+        if coverage > threshold:
+            #print(index)
+            new_lines.append(lines[index])
     
     # plot
-    plt.figure(figsize=(10, 6))
-    plt.bar(trial_types, percentage_correct, color='blue')
-    plt.title('Trial Accuracy')
-    plt.xticks(trial_types)
+    plot_lines(x, y, new_lines)
+
+def plot_ellipse(ellipse_params, x, y):
+    fig, ax = plt.subplots()
+    
+    # Plot data points
+    ax.scatter(x, y, alpha=0.5)
+    
+    # If ellipse_params is not None, create and add the ellipse
+    if ellipse_params is not None:
+        ellipse = Ellipse(xy=ellipse_params['center'], width=ellipse_params['width'],
+                          height=ellipse_params['height'], angle=ellipse_params['angle'],
+                          edgecolor='r', facecolor='none')
+        ax.add_patch(ellipse)
+    
     plt.show()
+
+def plot_zIdPhi(zIdPhi_values):
+    # Collect all zIdPhi values from all trial types
+    all_zIdPhis = []
+    for zIdPhis in zIdPhi_values.values():
+        all_zIdPhis.extend(zIdPhis)
+    
+    # Convert to a NumPy array for statistical calculations
+    all_zIdPhis = np.array(all_zIdPhis)
+    
+    # Create a single plot
+    plt.figure(figsize=(10, 6))
+    
+    # Plot the histogram
+    plt.hist(all_zIdPhis, bins=30, alpha=0.7, label='All Trial Types')
+    
+    # Calculate and plot the mean and standard deviation lines
+    mean = np.mean(all_zIdPhis)
+    std = np.std(all_zIdPhis)
+    
+    plt.axvline(mean, color='red', linestyle='dashed', linewidth=2, label='Mean')
+    plt.axvline(mean + std, color='green', linestyle='dashed', linewidth=2, label='+1 STD')
+    plt.axvline(mean - std, color='green', linestyle='dashed', linewidth=2, label='-1 STD')
+    
+    # Set the title and labels
+    plt.title('Combined IdPhi Distribution Across All Trial Types')
+    plt.xlabel('zIdPhi')
+    plt.ylabel('Frequency')
+    
+    # Show the legend
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
+
 
 
 # CENTRAL METHODS (traversing) -----------
@@ -748,65 +980,165 @@ def speed(data_structure, ratID, day):
     
     return speed
 
-def trial_accuracy(data_structure, ratID, day):
-    content = data_structure[ratID][day]['stateScriptLog']
-    
-    total_trials, correct_trials = trial_analysis(content)
-    trial_types = get_trial_types(content)
-    create_trial_accuracy(total_trials, correct_trials, trial_types)
-
 def time_until_first_choice(data_structure, ratID, day):
     content = data_structure[ratID][day]['stateScriptLog']
     
     time = time_until_choice(content)
     print(time)
 
-def quantify_VTE(data_structure, ratID, day):
+def quantify_VTE(data_structure, ratID, day, save = False):
     DLC_df = data_structure[ratID][day]['DLC_tracking']
     SS_df = data_structure[ratID][day]['stateScriptLog']
+    timestamps = data_structure[ratID][day]['videoTimeStamps']
+    
+    # check timestamps
+    check_timestamps(DLC_df, timestamps)
     
     # get x and y coordinates
     x, y = filter_dataframe(DLC_df)
     
     # define zones
-    home_hull = define_zones(x, y, x_min = 850, x_max = 1050, y_min = 0, y_max = 250)
-    arm_3_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 0, y_max = 250)
-    arm_5_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 700, y_max = 930)
-    arm_7_hull = define_zones(x, y, x_min = 850, x_max = 1100, y_min = 700, y_max = 960)
-    centre_hull = define_zones(x, y, x_min = 460, x_max = 740, y_min = 330, y_max = 600)
+    #home_hull = define_zones(x, y, x_min = 850, x_max = 1050, y_min = 0, y_max = 250, will_plot = True)
+    #arm_3_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 0, y_max = 250)
+    #arm_5_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 700, y_max = 930)
+    #arm_7_hull = define_zones(x, y, x_min = 850, x_max = 1100, y_min = 700, y_max = 960)
+    ellipse_params = get_centre_zone(x, y, ratID, day, save)
     
     # do a time delay before something counts as outside the hull / set upper and lower bound for  Idphi
     # get trial start times + trial type
-    trial_starts = get_trial_start_times(x, y, SS_df, home_hull)
+    trial_starts = get_trial_start_times(timestamps, SS_df)
     
     # calculate IdPhi for each trial
-    for trial_start in trial_starts:
+    IdPhi_values = {}
+    
+    for trial_start, trial_type in trial_starts.items():
         # cut out the trajectory for each trial
         # look through points starting at trial start time to see when it goes into different hulls
-        for x_val in x[trial_start: ]:
-            break
+        past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
+        trajectory_x = []
+        trajectory_y = []
+        
+        trial_start = math.floor(trial_start) # round down so it can be used as an index
+        
+        for index in range(trial_start, len(x)):
+            x_val = x.iloc[index]
+            y_val = y.iloc[index]
             
+            # skip loop of x or y is NaN
+            if math.isnan(x_val) or math.isnan(y_val):
+                continue
+            
+            #point = (x_val, y_val)
+            #inside = check_if_inside(point, centre_hull)
+            inside = is_point_in_ellipse(x_val, y_val, ellipse_params)
+            
+            if inside:
+                past_inside = True
+                trajectory_x.append(x_val)
+                trajectory_y.append(y_val)
+            else:
+                if past_inside:
+                    break # ok so now it has exited the centre hull
+        
+        # calculate Idphi of this trajectory
+        IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
+        
+        # store IdPhi according to trial type
+        if trial_type not in IdPhi_values:
+            IdPhi_values[trial_type] = []
+        IdPhi_values[trial_type].append(IdPhi)
+    
+    # calculate zIdPhi according to trial types
+    zIdPhi_values = {}
+    for trial_type, IdPhis in IdPhi_values.items():
+        zIdPhi = zscore(IdPhis)
+        zIdPhi_values[trial_type] = zIdPhi
+    
+    #plot_zIdPhi(zIdPhi_values)
+    
+    return zIdPhi_values, IdPhi_values
 
+def get_centre_zone(x, y, ratID, day, save = False): #currently highly experimental, ask cat for an exp if needed
+    lines = generate_lines(x, y)
+    
+    # determine whether saving is necessary
+    file_path = f'/Users/catpillow/Downloads/VTE_Data/{ratID}/{day}/coverage_scores.csv'
+    
+    if save or not os.path.exists(file_path): # saves regardless if file doesn't exist
+        coverages = calculate_line_coverages(x, y, lines)
+        df = pd.DataFrame(coverages, columns=['Coverages'])
+        df.to_csv(file_path)
+    else:
+        df = pd.read_csv(file_path)
+        coverages = df['Coverages'].tolist()
+    
+    # filter out lines that don't pass the threshold
+    threshold = 0.4
+    updated_lines = make_new_lines(lines, coverages, threshold)
+    
+    #print(updated_lines)
+    #plot_lines(x, y, updated_lines)
+    
+    # intersection points
+    intersections = find_intersections(updated_lines)
+    
+    # create convex hull
+    if intersections:
+        points = np.array(intersections)
+        points = points[~np.isinf(points).any(axis = 1)]
+        unique_points = np.unique(points, axis = 0)
+        ellipse_params = make_ellipse(unique_points)
+    else:
+        print('no intersections')
+    
+    plot_ellipse(ellipse_params, x, y)
+    plot_lines(x, y, lines)
+    
+    return ellipse_params
+
+def test(data_structure, ratID, day):
+    DLC_df = data_structure[ratID][day]['DLC_tracking']
+    
+    # get x and y coordinates
+    x, y = filter_dataframe(DLC_df)
+    
+    get_centre_zone(x, y)
+
+def rat_VTE_over_sessions(data_structure, ratID):
+    rat_path = f'/Users/catpillow/Downloads/VTE_Data/{ratID}'
+    
+    sum_zIdPhi = []
+    
+    for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
+        zIdPhi_values = quantify_VTE(data_structure, ratID, day_folder, save = True)
+        
+        for zIdPhi in zIdPhi_values:
+            sum_zIdPhi.append(zIdPhi)
+    
+    plot_zIdPhi(sum_zIdPhi)
+    
+    return
+    
 
 # ASSIGNMENT 1 --------
 # creating the main data structure
 #base_path = '/Users/catpillow/Downloads/Data 2'
-#main_data_structure = create_main_data_structure(base_path)
+#main_data_structure = data_structure.create_main_data_structure(base_path)
 
 # saving
 save_path = '/Users/catpillow/Downloads/VTE_Data'
-#save_data_structure(main_data_structure, save_path)
+#data_structure.save_data_structure(main_data_structure, save_path)
 
 # loading
-loaded_data_structure = load_data_structure(save_path)
+loaded_data_structure = data_structure.load_data_structure(save_path)
 
 # ASSIGNMENT 2 ---------
 # example
-ratID = 'BP06'
+ratID = 'TH405'
 day = 'Day7'
 
 # plot positioning for greenLED
-scatter_plot(loaded_data_structure, ratID, day)
+#scatter_plot(loaded_data_structure, ratID, day)
 
 # occupancy map
 #occupancy_map(loaded_data_structure, ratID, day)
@@ -815,10 +1147,23 @@ scatter_plot(loaded_data_structure, ratID, day)
 #speed(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 3 ---------
-#trial_accuracy(loaded_data_structure, ratID, day)
+performance_analysis.rat_performance_one_session(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 4 ---------
 #time_until_first_choice(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 5 --------
-# quantify_VTE(loaded_data_structure, ratID, day)
+#zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
+#print(f"zIdPhi - {zIdPhi}")
+#print(f"IdPhi - {IdPhi}")
+#test(loaded_data_structure, ratID, day)
+
+#rat_VTE_over_sessions(loaded_data_structure, ratID)
+
+# LEARNING RATES --------
+#rat_performance = performance_analysis.rat_performance_over_sessions(loaded_data_structure, ratID)
+performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
+    
+# for loading
+'''with open(pickle_path, 'rb') as fp:
+    rat_performance = pickle.load(fp)'''

@@ -9,7 +9,7 @@ Assumes Python 3.9
 import numpy as np
 
 
-def readCameraModuleTimeStamps(filename):
+def read_timestamps(filename):
     fid = open(filename, "rb")
 
     headerText = np.fromfile(fid, dtype=np.int8, count=50)
