@@ -4,8 +4,21 @@ Same for BP07 Day10, except the ss log follows the format for my code
     but no csv file
 TH508 Day 15 - more than one DLC file
 
+
 benefits of tracking the body instead of head for initial analysis of where the rat is in space
 
 filtered out based on likelihood first, because i assume the jumps shouldn't include coords with low likelihood
 
 do framerates for occupancy again
+
+i need to find a better way to do the gridding when generating lines
+
+BP13 - day1, day 7, day 14, day 15, day 16, day 18, day 19, day 24, day 29
+TH605 - day1, day 3, day 5, day 6, day 7, day 9, day 10, day 19, day 29
+BP15 - day 1, day 4, day 8, day 9, day 11, day 13, day 14, day 21, day 27
+BP16 - day 1, day 5, day 9, day 10, day 11, day 12, day 13, day 16, day 19
+BP22 - day 1, day 4, day 7, day 8, day 9, day 10, day 11, day 21, day 50
+BP21 - day 1, day 6, day 11, day 12, day 19, day 26, day 27, day, day 53
+BP19
+
+remember how many rats in my data set

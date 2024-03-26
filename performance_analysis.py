@@ -1,14 +1,42 @@
+import os
 import re
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
+# SAVING & LOADING -----------
 def save_rat_performance(rat_performance, save_path):
     # save in folder
     pickle_path = save_path + '/rat_performance.pkl'
     with open(pickle_path, 'wb') as fp:
         pickle.dump(rat_performance, fp)
 
+def load_rat_performance(save_path):
+    all_rats_performances = {}
+        
+    for rat_folder in os.listdir(save_path): # loop for each rat
+        rat_path = os.path.join(save_path, rat_folder)
+        
+        # skip over .DS_Store
+        if not os.path.isdir(rat_path):
+            print(f"Skipping over non-directory folder: {rat_path}")
+            continue
+            
+        pickle_path = rat_path + '/rat_performance.pkl'
+        
+        with open(pickle_path, 'rb') as fp:
+            rat_performance = pickle.load(fp)
+        
+        all_rats_performances[rat_folder] = rat_performance
+    
+    return all_rats_performances
+
+def create_all_rats_performance(data_structure, save_path):
+    for ratID in data_structure:
+        rat_performance_over_sessions(data_structure, ratID, should_save = True, save_path = save_path)
+
+
+# DATA ANALYSIS -------------
 def trial_analysis(content):
     lines = content.splitlines()
     
@@ -111,6 +139,113 @@ def trial_accuracy(content):
     
     return trial_types, total_trials, correct_trials
 
+def create_all_perf_dictionary(all_rat_performances):
+    all_performances = {}
+    totals = [[] for _ in range(9)] # currently assuming ABCDE
+    
+    # loop over rats - creating dictionary of all_performances
+    for ratID, rat_performance in all_rat_performances.items():
+        # loop over days
+        sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
+        rats_performance = []
+        num_days = 0
+        
+        for day in sorted_days:
+            performance_for_day = rat_performance[day] # get performance for day
+            
+            # loop over each trial type - right now just taking sum w/o caring about trial type
+            total_trials_in_day = 0
+            correct_trials_in_day = 0
+            
+            for trial_type, total_trials, correct_trials in performance_for_day:
+                total_trials_in_day += total_trials
+                correct_trials_in_day += correct_trials
+            
+            performance = correct_trials_in_day / total_trials_in_day # calculate sum perf in day
+            rats_performance.append(performance)
+            
+            # get totals for calculating avg
+            totals[num_days].append(performance)
+            num_days += 1
+        
+        all_performances[ratID] = rats_performance
+
+    # calculating avg
+    avg = [np.mean(day_totals) if day_totals else 0 for day_totals in totals]
+    std = [np.std(day_totals) if day_totals else 0 for day_totals in totals]
+    
+    return all_performances, avg, std
+
+def create_trial_type_dictionary(all_rat_performances):
+    all_performances = {}
+    totals = [[] for _ in range(12)] # currently assuming ABCDE
+    
+    # loop over rats - creating dictionary of all_performances
+    for ratID, rat_performance in all_rat_performances.items():
+        # loop over days
+        sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
+        rats_performance = []
+        alt_rats_performance = [] # for BC
+        num_bins = 0 # for trial type, this is more of a representative of bin number
+        num_days = 0
+        
+        for day in sorted_days:
+            performance_for_day = rat_performance[day] # get performance for day
+            
+            # loop over each trial type - right now just taking sum w/o caring about trial type
+            total_trials_in_day = 0
+            correct_trials_in_day = 0
+            alt_total_trials_in_day = 0 # just bc AB & BC both collected during first 3 days
+            alt_correct_trials_in_day = 0 # bc AB & BC
+            
+            # add if it is the correct trial type for the day it is
+            for trial_type, total_trials, correct_trials in performance_for_day:
+                if 'AB' in trial_type and num_days < 3:
+                    total_trials_in_day += total_trials
+                    correct_trials_in_day += correct_trials
+                elif 'BC' in trial_type and num_days < 3:
+                    alt_total_trials_in_day += total_trials
+                    alt_correct_trials_in_day += correct_trials
+                elif 'CD' in trial_type and num_days < 6 and num_days > 2:
+                    total_trials_in_day += total_trials
+                    correct_trials_in_day += correct_trials
+                elif 'DE' in trial_type and num_days < 9 and num_days > 5:
+                    total_trials_in_day += total_trials
+                    correct_trials_in_day += correct_trials
+                else:
+                    'trial types not found'
+            
+            performance = correct_trials_in_day / total_trials_in_day # calculate sum perf in day
+            rats_performance.append(performance)
+            
+            # get totals for calculating avg
+            totals[num_bins].append(performance)
+            num_bins += 1
+            
+            # for BC
+            if num_bins == 3:
+                performance = alt_correct_trials_in_day / alt_total_trials_in_day
+                alt_rats_performance.append(performance)
+                totals[num_bins + 2].append(performance)
+                rats_performance.extend(alt_rats_performance)
+                num_bins += 3
+            elif alt_total_trials_in_day != 0:
+                performance = alt_correct_trials_in_day / alt_total_trials_in_day
+                alt_rats_performance.append(performance)
+                totals[num_bins + 2].append(performance)
+            
+            num_days += 1
+        
+        all_performances[ratID] = rats_performance
+
+    # calculating avg
+    avg = [np.mean(day_totals) if day_totals else 0 for day_totals in totals]
+    std = [np.std(day_totals) if day_totals else 0 for day_totals in totals]
+    
+    return all_performances, avg, std
+
+
+# PLOTTING --------------
 def plot_rat_performance(rat_performance):
     performance_by_type = {}
     
@@ -166,6 +301,125 @@ def plot_trial_accuracy(total_trials, correct_trials, trial_types):
     plt.xticks(trial_types)
     plt.show()
 
+def plot_all_rat_performances(all_rat_performances, plot_trial_types = False): # currently only works with ABCDE
+    # check what type of plot this is
+    if plot_trial_types: # this still assumes ABCDE
+        bins = 12
+        all_performances, averages, std = create_trial_type_dictionary(all_rat_performances)
+    else:
+        bins = 9
+        all_performances, averages, std = create_all_perf_dictionary(all_rat_performances) # store with {ratID:performance array}- should have 9 arrays per rat for each day
+    
+    # x bins
+    time = np.arange(1, bins + 1, 1) # for each day
+    
+    # figure
+    fig = plt.figure(figsize=(14, 5))
+    ax1 = fig.add_subplot(1, 1, 1)
+    
+    # Setup for colors
+    colormap = plt.cm.get_cmap('Set1')
+    colormap_background = plt.cm.get_cmap('Pastel2')
+    
+    # plot pairs
+    num_rat = 0
+    
+    for rat, performances in all_performances.items():
+        # check that it is 9/12 items
+        if len(performances) != bins:
+            continue
+        
+        # create triplets for ABC/D/E or AB/BC/CD/DE
+        three_days_perf = [] # depending on whether trial type or not, this can also be three_bin_perf technically
+        count = 0
+        
+        for index, performance in enumerate(performances):
+            if count < 2:
+                three_days_perf.append(performance)
+                count += 1
+            else:
+                three_days_perf.append(performance)
+                print('inside else statement in all-perfor')
+                print(time[(index - 2):(index + 1)])
+                
+                # plot
+                ax1.plot(time[(index - 2):(index + 1)], three_days_perf,
+                        label=rat, linestyle='-', marker=None, markersize=5,
+                        color=colormap(num_rat % colormap.N), alpha=0.3)
+                
+                # reset
+                count = 0
+                three_days_perf = []
+        
+        num_rat += 1 # this is just for consistent coloring
+        
+    # plot average + std
+    count = 0
+    three_day_avg = []
+    
+    for index, average in enumerate(averages):
+        if count < 2:
+            three_day_avg.append(average)
+            count += 1
+        else:
+            three_day_avg.append(average)
+            
+            ax1.errorbar(time[(index - 2):(index + 1)], three_day_avg,
+                        yerr=std[(index - 2):(index + 1)], linestyle='-', marker='o', markersize=5, color='black', alpha=1,
+                        capsize=5, ecolor='gray', elinewidth=2)
+
+            # reset
+            count = 0
+            three_day_avg = []
+
+    # Setup x ticks
+    x_ticks = time
+    x_labels = ["Day 1", "Middle", "Criteria"]
+    x_labels_ABCDE = x_labels * int(bins / 3)
+
+    ax1.set_xticks(x_ticks)
+    ax1.set_xticklabels(x_labels_ABCDE)
+    ax1.tick_params(axis='x', labelsize=12)
+
+    ax1.set_xlim(0.5, bins + 0.5)
+    
+    # Setup bins
+    ax2 = ax1.twiny()
+
+    if plot_trial_types:
+        bin_ticks = [2, 5, 8, 11]
+        bin_labels = ["AB", "BC", "CD", "DE"]
+    else:
+        bin_ticks = [2, 5, 8]
+        bin_labels = ["ABC", "ABCD", "ABCDE"]
+
+    ax2.set_xticks(bin_ticks)
+    ax2.set_xticklabels(bin_labels)
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.tick_params(axis='x', labelsize=12)
+
+    #chance level line
+    plt.axhline(y = 0.5, color='blue', linestyle='dotted')
+    
+    # ylim
+    plt.ylim(0, 1)
+
+    #setup for colours
+    for i in range(bins):
+        plt.axvspan(i*3 + 0.5, (i*3)+3.5, facecolor = colormap_background(i % colormap_background.N), alpha = 0.3)
+
+    #labels
+    ax1.set_title("Performance in Transitive Inference (TI) Task", fontsize=15, weight='bold')
+    ax1.set_ylabel("Proportion of Correct Trials", fontsize=15)
+    plt.tick_params(axis='y', labelsize=12)
+
+    #show figure
+    plt.tight_layout()
+    plt.savefig('PerformanceFigure.png', dpi=300)
+    plt.show()
+    
+
+# TRAVERSAL FUNCTIONS ----------
 def rat_performance_one_session(data_structure, ratID, day):
     ss_data = data_structure[ratID][day]['stateScriptLog']
     trial_types, total_trials, correct_trials = trial_accuracy(ss_data)
@@ -205,10 +459,3 @@ def rat_performance_over_sessions(data_structure, ratID, should_save = False, sa
         save_rat_performance(rat_performance, file_path)
     
     return rat_performance
-
-def create_all_rats_performance(data_structure, save_path):
-    for ratID in data_structure:
-        rat_performance_over_sessions(data_structure, ratID, should_save = True, save_path = save_path)
-
-    
-    

@@ -1147,7 +1147,7 @@ day = 'Day7'
 #speed(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 3 ---------
-performance_analysis.rat_performance_one_session(loaded_data_structure, ratID, day)
+#performance_analysis.rat_performance_one_session(loaded_data_structure, ratID, day)
 
 # ASSIGNMENT 4 ---------
 #time_until_first_choice(loaded_data_structure, ratID, day)
@@ -1162,8 +1162,6 @@ performance_analysis.rat_performance_one_session(loaded_data_structure, ratID, d
 
 # LEARNING RATES --------
 #rat_performance = performance_analysis.rat_performance_over_sessions(loaded_data_structure, ratID)
-performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
-    
-# for loading
-'''with open(pickle_path, 'rb') as fp:
-    rat_performance = pickle.load(fp)'''
+#performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
+all_rats_performance = performance_analysis.load_rat_performance(save_path)
+performance_analysis.plot_all_rat_performances(all_rats_performance, plot_trial_types=True)
