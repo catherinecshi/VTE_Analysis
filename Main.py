@@ -825,9 +825,12 @@ def create_occupancy_map(x, y, framerate, bin_size = 15):
 
     custom_cmap = LinearSegmentedColormap('custom_hot', segmentdata=cdict, N=256)
     
+    # rotating so it looks like scatter plot
+    rotated_occupancy_grid = np.rot90(occupancy_grid)
+    
     # plotting
     plt.figure(figsize=(10, 6))
-    plt.imshow(occupancy_grid, cmap=custom_cmap, interpolation='nearest')
+    plt.imshow(rotated_occupancy_grid, cmap=custom_cmap, interpolation='nearest')
     plt.colorbar(label='Time spent in seconds')
     plt.title('Occupancy Map')
     plt.xlabel('X Bins')
@@ -1122,11 +1125,12 @@ def rat_VTE_over_sessions(data_structure, ratID):
 
 # ASSIGNMENT 1 --------
 # creating the main data structure
-#base_path = '/Users/catpillow/Downloads/Data 2'
+#base_path = '/Users/catpillow/Documents/VTE Analysis/Data_draft'
 #main_data_structure = data_structure.create_main_data_structure(base_path)
 
 # saving
-save_path = '/Users/catpillow/Downloads/VTE_Data'
+save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS
+#save_path = '/Users/catpillow/Downloads/VTE_Data'
 #data_structure.save_data_structure(main_data_structure, save_path)
 
 # loading
@@ -1134,7 +1138,7 @@ loaded_data_structure = data_structure.load_data_structure(save_path)
 
 # ASSIGNMENT 2 ---------
 # example
-ratID = 'TH405'
+ratID = 'BP13'
 day = 'Day7'
 
 # plot positioning for greenLED
@@ -1152,7 +1156,7 @@ day = 'Day7'
 # ASSIGNMENT 4 ---------
 #time_until_first_choice(loaded_data_structure, ratID, day)
 
-# ASSIGNMENT 5 --------
+# VTEs --------
 #zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
 #print(f"zIdPhi - {zIdPhi}")
 #print(f"IdPhi - {IdPhi}")
@@ -1163,5 +1167,10 @@ day = 'Day7'
 # LEARNING RATES --------
 #rat_performance = performance_analysis.rat_performance_over_sessions(loaded_data_structure, ratID)
 #performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
-all_rats_performance = performance_analysis.load_rat_performance(save_path)
-performance_analysis.plot_all_rat_performances(all_rats_performance, plot_trial_types=True)
+all_rats_performances = performance_analysis.load_rat_performance(save_path)
+'''for rat, rat_performance in all_rats_performances.items():
+    if rat == ratID:
+        performance_analysis.plot_rat_perf_changes(rat_performance)'''
+#performance_analysis.all_rats_perf_changes(all_rats_performances)
+
+performance_analysis.days_until_criteria(all_rats_performances)

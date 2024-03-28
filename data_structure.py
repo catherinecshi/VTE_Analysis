@@ -48,6 +48,7 @@ def create_main_data_structure(base_path): # creates a nested dictionary
             dlc_data = None
             ss_data = None
             timestamps_data = None
+            track_folder_found = False # check if there are any track folders in this day folder
             
             # for checking if a videoframerate, ss log & dlc csv file has been found for each day for each rat
             ss = False
@@ -55,6 +56,11 @@ def create_main_data_structure(base_path): # creates a nested dictionary
             timestamps = False
         
             for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
+                # check if there are any track folders bc only implanted rats have it, which changes the naming conventions for folders
+                for dir_name in dirs:
+                    if fnmatch.fnmatch(dir_name.lower(), '*track*'):
+                        track_folder_found = True
+                
                 for f in files:
                     f_actual = f
                     f = f.lower() # there were some problems with cases
@@ -72,27 +78,51 @@ def create_main_data_structure(base_path): # creates a nested dictionary
                         
                         print(file_path)
                     
-                    # storing the statescript log
-                    if fnmatch.fnmatch(f, '*track*.statescriptlog'):
-                        # checks if there is a duplication
-                        if ss == True:
-                            print("More than one SS Log found")
-                        else:
-                            ss = True
+                    # handle fnmatch differently depending on whether track folder was found
+                    if track_folder_found:
+                        # storing the statescript log
+                        if fnmatch.fnmatch(f, '*track*.statescriptlog'):
+                            # checks if there is a duplication
+                            if ss == True:
+                                print("More than one SS Log found")
+                            else:
+                                ss = True
+                            
+                            file_path = os.path.join(root, f)
+                            ss_data = process_statescript_log(file_path)
+                            
+                            print(file_path)
                         
-                        file_path = os.path.join(root, f)
-                        ss_data = process_statescript_log(file_path)
-                        
-                        print(file_path)
-                    
-                    if fnmatch.fnmatch(f, '*track*.videotimestamps'):
-                        if timestamps == True:
-                            print("More than one .videotimestamps found")
-                        else:
-                            timestamps = True
+                        if fnmatch.fnmatch(f, '*track*.videotimestamps'):
+                            if timestamps == True:
+                                print("More than one .videotimestamps found")
+                            else:
+                                timestamps = True
 
-                        file_path = os.path.join(root, f_actual)
-                        timestamps_data = process_timestamps_data(file_path)
+                            file_path = os.path.join(root, f_actual)
+                            timestamps_data = process_timestamps_data(file_path)
+                    else:
+                        # storing the statescript log
+                        if fnmatch.fnmatch(f, '*.statescriptlog'):
+                            # checks if there is a duplication
+                            if ss == True:
+                                print("More than one SS Log found")
+                            else:
+                                ss = True
+                            
+                            file_path = os.path.join(root, f)
+                            ss_data = process_statescript_log(file_path)
+                            
+                            print(file_path)
+                        
+                        if fnmatch.fnmatch(f, '*.videotimestamps'):
+                            if timestamps == True:
+                                print("More than one .videotimestamps found")
+                            else:
+                                timestamps = True
+
+                            file_path = os.path.join(root, f_actual)
+                            timestamps_data = process_timestamps_data(file_path)
             
             # add to dictionary
             if ss and dlc and timestamps:
@@ -101,6 +131,11 @@ def create_main_data_structure(base_path): # creates a nested dictionary
                     "stateScriptLog": ss_data,
                     "videoTimeStamps": timestamps_data
                 }
+            elif ss and (not dlc) and (not timestamps):
+                data_structure[rat_folder][day_folder] = {
+                    "stateScriptLog": ss_data
+                }
+                print(f"only ss found for rat {rat_folder} for {day_folder}")
             elif (not ss) and (not dlc) and (not timestamps):
                 print(f"No timestamps, stateScriptLog or DLC file found for rat {rat_folder} for {day_folder}")
             elif (not ss) or (not dlc) or (not timestamps):

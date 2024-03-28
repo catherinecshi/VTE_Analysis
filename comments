@@ -22,3 +22,21 @@ BP21 - day 1, day 6, day 11, day 12, day 19, day 26, day 27, day, day 53
 BP19
 
 remember how many rats in my data set
+
+need to sort out days 42-45 for bp11
+need to sort out day 31 for TH405
+bp19 day 1 wrong on spreadsheet
+
+bp15 day 13
+th508 day31
+th508 day27
+th405 day31
+
+im using 11 rats in my data
+
+main problems
+- weird addition of tottal (sometimes correct) into all trials near the start? - not fixed
+- sometimes statescript is weird and it'll have an extra middle numbers ( should be fixed)
+- i don't think i'm dealing with it ending very well - look at TH605 day5, i get 19/25 BC but reality is 20/25 BC bc it ends on BC
+- not having starting commens (should be fixed)
+- some skipped days - print out days when they're skipped in the future
