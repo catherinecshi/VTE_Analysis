@@ -1,11 +1,11 @@
 # packages
 import os
-import pickle
 import bisect
 import pandas as pd
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Ellipse
 from sklearn.decomposition import PCA
@@ -185,7 +185,7 @@ def check_timestamps(df, timestamps):
     # first check - makes sure there is around 0.03s between each frame
     time_off = np.zeros(len(timestamps)) # records indices where time isn't ~0.03s between frames
     index_off = 0
-    print(timestamps)
+    #print(timestamps)
     
     for index, time in enumerate(timestamps): #loops through timestamps
         if index == 0:
@@ -198,20 +198,20 @@ def check_timestamps(df, timestamps):
         
         # make sure it's around the 0.03 range
         if time_diff > 0.05 or time_diff < 0.01:
-            print(time_diff)
+            #print(time_diff)
             time_off[index] = time_diff # time is off here
             
             if index_off < 5:
-                print(f"time_diff is off norm for {index}")
-                #index_off += 1
+                #print(f"time_diff is off norm for {index}")
+                index_off += 1
         else:
             continue
     
     # second check - make sure x and timestamps are the same length
     if not(len(df) == len(timestamps)):
-        print("length of x and timestamps don't match up")
+        '''print("length of x and timestamps don't match up")
         print(len(df))
-        print(len(timestamps))
+        print(len(timestamps))'''
         
         diff = len(df) - len(timestamps)
         # it seems like most of them differ by 1, where df = timestamps - 1, so i'm doing a rough subtraction here
@@ -292,10 +292,15 @@ def get_trial_start_times(timestamps, SS_df): # gets indices for x/y where trial
         if line.startswith('#'): # skip the starting comments
             continue
         
+        elif not line[0].isdigit(): # check if the first char is a number - skip if not
+            # hopefully this takes cares of the weird errors wth pressng summary after new trial showed
+            continue
+        
         elif start_of_trial and "trialType" in line: # store trial type
             parts = line.split()
             trial_type = parts[3]
-            trial_info[trial_start[-1]] = trial_type # assumes this will always come after New Trial'
+            trial_info[trial_starts[-1]] = trial_type # assumes this will always come after New Trial'
+            start_of_trial = False
                   
         elif 'New Trial' in line: # indicate start of a new trial
             start_of_trial = True
@@ -305,9 +310,6 @@ def get_trial_start_times(timestamps, SS_df): # gets indices for x/y where trial
             trial_start = parts[0]
             trial_info[trial_start] = None
             trial_starts.append(trial_start)
-        
-        else:
-            start_of_trial = False
     
     video_starts = video_trial_starts(timestamps, trial_starts) # this should be the indices for x/y where trials start
     
@@ -317,7 +319,7 @@ def get_trial_start_times(timestamps, SS_df): # gets indices for x/y where trial
     if len(video_starts) == len(trial_starts):
         for index, video_start in enumerate(video_starts):
             original_start_time = trial_starts[index]
-            trial_type = trial_info.get(original_start_time)
+            trial_type = trial_info.get(original_start_time) # get trial type for trial start time
             video_trial_info[video_start] = trial_type
     
     return video_trial_info
@@ -331,25 +333,26 @@ def video_trial_starts(timestamps, SS_times):
         
         if time in timestamps: # if there is a perfect match between MCU & ECU and the time is in timestamps
             index = timestamps.index(time)
-            trial_starts.append(timestamps[index])
+            trial_starts.append(index)
         else: # if there isn't a perfect match
-            print(f"Imperfect match between ECU and MCU at {time}")
+            #print(f"Imperfect match between ECU and MCU at {time}")
             
             # index where time is inserted into timestamps
             idx = bisect.bisect_left(timestamps, time)
             
             # check neighbours for closest time
-            if idx == 0:
-                trial_starts.append(timestamps[0])
-            elif idx == len(timestamps):
-                trial_starts.append(timestamps[-1])
+            if idx == 0: # if time < any available timestamp, so = 0
+                trial_starts.append(0)
+            elif idx == len(timestamps): # if time > any available timestamp, so = len(timestamps)
+                trial_starts.append(len(timestamps))
             else:
                 before = timestamps[idx - 1]
                 after = timestamps[idx]
                 closest_time = before if (time - before) <= (after - time) else after
-                trial_starts.append(closest_time)
+                index = np.where(timestamps == closest_time)[0][0]
+                trial_starts.append(index)
     
-    return trial_starts
+    return trial_starts # with this, each trial_start is the index of the time when trial starts in relation to timestamps
 
 def DBSCAN_window(x, y): # failed. tried to use DBSCAN to determine central choice point window
     # the centre is probably gonna be in this range
@@ -413,7 +416,7 @@ def calculate_trajectory(x, y, window_size = 100):
 
 def derivative(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
     v_est = np.zeros_like(values) # initialise slope array with zeroes / velocity estimates
-    print(values)
+    #print(values)
     
     # start from second element for differentiation
     for i in range(1, len(values)):
@@ -432,7 +435,7 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
             slope = (values[i] - values[i - window_len]) / (window_len * sr)
             
             if window_len > 1:
-                print("window_len > 1")
+                #print("window_len > 1")
                 # y = mx + c where c -> y-intercept, values[i] -> y, slope -> m, i * sr -> x (time at point i)
                 c = values[i] - slope * i * sr
 
@@ -446,7 +449,7 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
                         can_increase_window = False
                         window_len -= 1
                         slope = slope_
-                        print("model too far from actual results")
+                        #print("model too far from actual results")
                         break
             
             if not can_increase_window:
@@ -464,20 +467,20 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     
     # derivatives
     dx = derivative(trajectory_x, sr, d, m)
-    print("got derivative for x")
+    #print("got derivative for x")
     dy = derivative(trajectory_y, sr, d, m)
-    print("got derivative for y")
+    #print("got derivative for y")
     
     # calculate + unwrap angular velocity
     Phi = np.arctan2(dy, dx)
     Phi = np.unwrap(Phi)
     dPhi = derivative(Phi, sr, d, m)
-    print("got derivative for Phi")
+    #print("got derivative for Phi")
     
     # integrate change in angular velocity
     IdPhi = np.trapz(np.abs(dPhi))
     
-    print("returning IdPhi")
+    #print("returning IdPhi")
     return IdPhi
    
             
@@ -749,7 +752,7 @@ def find_intersections(lines):
                 
     return intersections
 
-def make_ellipse(points, ax = None, scale_factor = 3):
+def make_ellipse(points, ax = None, scale_factor = 1.5):
     # Fit the DBSCAN clusterer to the points
     clustering = DBSCAN(eps=30, min_samples=10).fit(points)  # Adjust eps and min_samples as needed
     core_samples_mask = np.zeros_like(clustering.labels_, dtype=bool)
@@ -837,6 +840,39 @@ def create_occupancy_map(x, y, framerate, bin_size = 15):
     plt.ylabel('Y Bins')
     plt.show()
 
+def plot_animation(x, y, trajectory_x = None, trajectory_y = None, interval = 20):
+    if not trajectory_x: # this is for when you want to plot the entire trajectory throughout the trial
+        trajectory_x = x
+    
+    if not trajectory_y:
+        trajectory_y = y
+    
+    fig, ax = plt.subplots()
+    ax.scatter(x, y, alpha = 0.2) # plot the totality first
+    line, = ax.plot([], [], 'bo-', linewidth = 2) # line plot
+    
+    ax.set_xlim(np.min(x), np.max(x))
+    ax.set_ylim(np.min(y), np.max(y))
+    
+    def init():
+        # initialises animation with empty line plot
+        line.set_data([], [])
+        return line,
+    
+    def update(frame):
+        # updates line plot for each frame
+        # frame -> the current frame number
+        
+        x_val = trajectory_x[:frame] # get x up to the current frame
+        y_val = trajectory_y[:frame]
+        line.set_data(x_val, y_val)
+        return line,
+
+    # create animation
+    ani = FuncAnimation(fig, update, frames = len(x), init_func = init, blit = True, interval = interval)
+    
+    plt.show()
+    
 def plot_hull(x, y, filtered_points, hull, centre_x, centre_y, radius_x, radius_y):
     plt.plot(x, y, 'o', markersize=5, label='Outside')
     plt.plot(filtered_points[:, 0], filtered_points[:, 1], 'ro', label='inside')
@@ -943,6 +979,29 @@ def plot_zIdPhi(zIdPhi_values):
     plt.tight_layout()
     plt.show()
 
+def plot_trajectory(x, y, zIdPhi, trajectories, highest):
+    
+    # get trajectory points
+    trajectory_x, trajectory_y = trajectories
+    
+    # plot the normal points
+    plt.figure(figsize = (10, 6))
+    plt.plot(x, y, color='green', alpha=0.4)
+    
+    # plot the trajectory
+    plt.plot(trajectory_x, trajectory_y, color = 'red', alpha = 0.8, label = zIdPhi)
+    
+    # display plot
+    if highest:
+        plt.title('VTE Trial trajectory')
+    else:
+        plt.title('Non-VTE Trial Trajectory')
+        
+    plt.xlabel('X coordinate')
+    plt.ylabel('Y coordinate')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
 
 # CENTRAL METHODS (traversing) -----------
@@ -994,11 +1053,11 @@ def quantify_VTE(data_structure, ratID, day, save = False):
     SS_df = data_structure[ratID][day]['stateScriptLog']
     timestamps = data_structure[ratID][day]['videoTimeStamps']
     
-    # check timestamps
-    check_timestamps(DLC_df, timestamps)
-    
     # get x and y coordinates
     x, y = filter_dataframe(DLC_df)
+    
+    # check timestamps
+    check_timestamps(DLC_df, timestamps)
     
     # define zones
     #home_hull = define_zones(x, y, x_min = 850, x_max = 1050, y_min = 0, y_max = 250, will_plot = True)
@@ -1014,7 +1073,10 @@ def quantify_VTE(data_structure, ratID, day, save = False):
     # calculate IdPhi for each trial
     IdPhi_values = {}
     
-    for trial_start, trial_type in trial_starts.items():
+    # store trajectories for plotting later
+    trajectories = {}
+    
+    for trial_start, trial_type in trial_starts.items(): # where trial type is a string of a number corresponding to trial type
         # cut out the trajectory for each trial
         # look through points starting at trial start time to see when it goes into different hulls
         past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
@@ -1023,9 +1085,11 @@ def quantify_VTE(data_structure, ratID, day, save = False):
         
         trial_start = math.floor(trial_start) # round down so it can be used as an index
         
-        for index in range(trial_start, len(x)):
-            x_val = x.iloc[index]
-            y_val = y.iloc[index]
+        for index in range(trial_start, len(timestamps)): # x has been filtered so is not an appropriate length now
+            # getting x and y
+            if index in x.index and index in y.index:
+                x_val = x.loc[index] # loc is based on actual index, iloc is based on position
+                y_val = y.loc[index]
             
             # skip loop of x or y is NaN
             if math.isnan(x_val) or math.isnan(y_val):
@@ -1042,22 +1106,60 @@ def quantify_VTE(data_structure, ratID, day, save = False):
             else:
                 if past_inside:
                     break # ok so now it has exited the centre hull
+            
+            '''if index < trial_start + 1000:
+                trajectory_x.append(x_val)
+                trajectory_y.append(y_val)
+            else:
+                break'''
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
+        #plot_animation(x, y, trajectory_x = trajectory_x, trajectory_y= trajectory_y)
         
         # store IdPhi according to trial type
         if trial_type not in IdPhi_values:
             IdPhi_values[trial_type] = []
         IdPhi_values[trial_type].append(IdPhi)
+        
+        # store each trajectory for plotting latter
+        if trial_type in trajectories:
+            trajectories[trial_type].append((trajectory_x, trajectory_y))
+        else:
+            trajectories[trial_type] = [(trajectory_x, trajectory_y)]
     
     # calculate zIdPhi according to trial types
     zIdPhi_values = {}
-    for trial_type, IdPhis in IdPhi_values.items():
-        zIdPhi = zscore(IdPhis)
-        zIdPhi_values[trial_type] = zIdPhi
+    highest_zIdPhi = None
+    highest_trajectories = None
+    lowest_zIdPhi = None
+    lowest_trajectories = None
     
-    #plot_zIdPhi(zIdPhi_values)
+    # this z scores according to trial type
+    for trial_type, IdPhis in IdPhi_values.items():
+        zIdPhis = zscore(IdPhis)
+        zIdPhi_values[trial_type] = zIdPhis
+        
+        for i, zIdPhi in enumerate(zIdPhis): # this is to get the highest and lowest zidphi for plotting vte/non
+            if highest_zIdPhi:
+                if zIdPhi > highest_zIdPhi:
+                    highest_zIdPhi = zIdPhi
+                    highest_trajectories = trajectories[trial_type][i]
+            else:
+                highest_zIdPhi = zIdPhi
+                highest_trajectories = trajectories[trial_type][i]
+            
+            if lowest_zIdPhi:
+                if zIdPhi < lowest_zIdPhi and len(trajectories[trial_type][i]) > 2:
+                    lowest_zIdPhi = zIdPhi
+                    lowest_trajectories = trajectories[trial_type][i]
+            else:
+                lowest_zIdPhi = zIdPhi
+                lowest_trajectories = trajectories[trial_type][i]
+    
+    plot_zIdPhi(zIdPhi_values)
+    plot_trajectory(x, y, highest_zIdPhi, highest_trajectories, highest = True)
+    plot_trajectory(x, y, lowest_zIdPhi, lowest_trajectories, highest = False)
     
     return zIdPhi_values, IdPhi_values
 
@@ -1129,8 +1231,8 @@ def rat_VTE_over_sessions(data_structure, ratID):
 #main_data_structure = data_structure.create_main_data_structure(base_path)
 
 # saving
-save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS
-#save_path = '/Users/catpillow/Downloads/VTE_Data'
+#save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS
+save_path = '/Users/catpillow/Downloads/VTE_Data'
 #data_structure.save_data_structure(main_data_structure, save_path)
 
 # loading
@@ -1138,8 +1240,8 @@ loaded_data_structure = data_structure.load_data_structure(save_path)
 
 # ASSIGNMENT 2 ---------
 # example
-ratID = 'BP13'
-day = 'Day7'
+ratID = 'TH405'
+day = 'Day1'
 
 # plot positioning for greenLED
 #scatter_plot(loaded_data_structure, ratID, day)
@@ -1157,7 +1259,13 @@ day = 'Day7'
 #time_until_first_choice(loaded_data_structure, ratID, day)
 
 # VTEs --------
-#zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
+#DLC = loaded_data_structure[ratID][day]['DLC_tracking']
+    
+# get coordinates
+#x, y = filter_dataframe(DLC)
+
+#plot_animation(x, y)
+zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
 #print(f"zIdPhi - {zIdPhi}")
 #print(f"IdPhi - {IdPhi}")
 #test(loaded_data_structure, ratID, day)
@@ -1167,10 +1275,12 @@ day = 'Day7'
 # LEARNING RATES --------
 #rat_performance = performance_analysis.rat_performance_over_sessions(loaded_data_structure, ratID)
 #performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
-all_rats_performances = performance_analysis.load_rat_performance(save_path)
+#all_rats_performances = performance_analysis.load_rat_performance(save_path)
+#performance_analysis.plot_all_rat_performances(all_rats_performances)
 '''for rat, rat_performance in all_rats_performances.items():
     if rat == ratID:
         performance_analysis.plot_rat_perf_changes(rat_performance)'''
 #performance_analysis.all_rats_perf_changes(all_rats_performances)
 
-performance_analysis.days_until_criteria(all_rats_performances)
+#performance_analysis.days_until_criteria(all_rats_performances)
+#performance_analysis.perf_until_critera(all_rats_performances)

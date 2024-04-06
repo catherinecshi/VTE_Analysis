@@ -40,3 +40,9 @@ main problems
 - i don't think i'm dealing with it ending very well - look at TH605 day5, i get 19/25 BC but reality is 20/25 BC bc it ends on BC
 - not having starting commens (should be fixed)
 - some skipped days - print out days when they're skipped in the future
+
+maybe i should try to cut off the lines when they don't touch a dot in x number of segments
+
+filter such that the start of the DLC matches the start of the SS
+maybe some form of filtering such that if one point juts out (like the diff between that point and the two
+surrounding points is high, but the diff between the two points without that point is low)

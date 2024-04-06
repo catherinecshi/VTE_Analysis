@@ -6,12 +6,16 @@ import matplotlib.pyplot as plt
 
 # SAVING & LOADING -----------
 def save_rat_performance(rat_performance, save_path):
+    # this function saves rat_performance, a dictionary of {ratID: performance} into a pickle file
+    
     # save in folder
     pickle_path = save_path + '/rat_performance.pkl'
     with open(pickle_path, 'wb') as fp:
         pickle.dump(rat_performance, fp)
 
 def load_rat_performance(save_path):
+    # this function loads the pickle file for rat performance, a dictionary of {ratID: performance}
+    
     all_rats_performances = {}
         
     for rat_folder in os.listdir(save_path): # loop for each rat
@@ -32,6 +36,8 @@ def load_rat_performance(save_path):
     return all_rats_performances
 
 def create_all_rats_performance(data_structure, save_path):
+    # this function loops through all the rats to create pickle files from ss data
+    
     for ratID in data_structure:
         print(f"creating perf for rat {ratID}")
         rat_performance_over_sessions(data_structure, ratID, should_save = True, save_path = save_path)
@@ -39,6 +45,51 @@ def create_all_rats_performance(data_structure, save_path):
 
 # DATA ANALYSIS -------------
 def trial_analysis(content, printTrue):
+    """this function analyses one statescript log to retrieve performance
+    
+    This analysis is done through by getting trial starts, trial types and using the middle number of lines
+    1. The analysis starts when the first 'New Trial' is detected in a line. this signifies the start of new trial
+    2. After 'New Trial' has been detected, the code then looks for an instance of 'trialType'
+        this can be used to determine the trial type associated with the current trial
+        
+        some errors when experimenter hits summary right after 'New Trial', but should be fixed by ignoring
+        lines that don't start with numbers - since doing so brings up an error
+    3. For every line of just numbers and spaces, it splits the line into 3 parts
+        the first part is the time
+        the second part is the indication of which arm the rat is at
+        the third part is the gate configuration, and not used in this analysis
+        
+        every unique value in the second parts (parts[1]) within a trial is stored into a set, middle_numbers
+        since correct trials involve the rat going to 2 arms and incorrect trials - 1, the # of unique values in 
+        middle_numbers can be used to determine whether the rat was correct or not
+            rats will have '0' and '1' in the middle_numbers always, and so the maths come out to
+            - 4 unique values in middle numbers -> correct
+            - 3 unique values -> incorrect
+            
+        some errors prior due to rats peeing
+            - this was solved by checking which unique values in set align with pre-determined possible arm values
+        some errors with statescript log randomly registering arm when rat is not on arm
+            - right now this is solved very roughly by just taking unique values in middle numbers and checking
+            which ones align wiht possible arm values, then determining correctness based on those values that align
+    4. 'New Trial' detected again
+        previous trial ends and new trial begins. end_of_trial activated, which allows for trial analysis to see
+        whether the rat was correct in the trial
+    5. When the SS log reaches the last line, it automatically triggers end of trial
+        right now i don't think the way i'm dealing with is right - the end of trial still valuates into
+        correct or incorrect. will fix later
+    6. Since I initialise the two returned arrays with np.zero, i remove the zeroes
+    7. after removing zeros, I might've removed trials where the rat just didn't get any trials correct.
+        I check for this by seeing if the length of correct trials is lower, and if it is, something should be changed
+
+    Args:
+        content (_text file_): _state script log_
+        printTrue (_boolean_): _prints stuff that are useful when activated_
+
+    Returns:
+        final_total_trials (_numpy array_): _array of total trials for each trial type; 0 index -> 'AB' etc_
+        final_correct_trials (_numpy array_): _array of correct trials for each trial type_
+    """
+    
     lines = content.splitlines()
     
     # temporary variables
@@ -176,7 +227,7 @@ def weird_trial_analysis(content): # for BP11 day 42-45 bc it's so annoying
     current_trial = None
     last_line = len(lines) - 1 # this is for the last trial of a session bc no 'New Trial' to signal end of trial
     no_trials = 0 # count number of trials that has passed
-    past_trial
+    #past_trial
     
     # stored for graphing
     total_trials = np.zeros(10) # start out with the total number of possible trial types
@@ -269,6 +320,30 @@ def weird_trial_analysis(content): # for BP11 day 42-45 bc it's so annoying
     return final_total_trials, final_correct_trials
 
 def get_trial_types(content):
+    """get the trial types by looking at the starting comment to know which numbers correspond to which letter pairs
+    
+    1. looks for the line where iTrialType, Num, and % are in the line
+        this is the most convenient place where the trial types are stored in most starting comments
+    2. split based on before or after '%'
+        the stuff before is the number, by looking at what's after iTrialType
+        the stuff after is the letter pair, after stripping the spaces
+    3. Break when outside of starting comments
+    4. Remove None values
+    
+    Exceptions:
+        1. Some files don't have starting comments. I just hard coded in the trial types, but I'm not sure if this
+        is always correct
+        2. Some files (i think some of the blocks) have a different format for storing trial types
+            look for if (trialType == instead
+            same logic
+
+    Args:
+        content (_text file_): _Statescript log_
+
+    Returns:
+        final_trial_types (_numpy array_): _array of all trial types, should be 10 values_
+    """
+    
     trial_types = np.empty(10, dtype=object)
     lines = content.splitlines()
     normal_start = False # this is just bc the starting comments for blocks are so weird and doesn't follow normal convention
@@ -321,6 +396,8 @@ def get_trial_types(content):
     return final_trial_types  
 
 def trial_accuracy(content, print = False):
+    # just adding trial_analysis and get_trial_types together
+    
     total_trials, correct_trials = trial_analysis(content, print)
     trial_types = get_trial_types(content)
     #create_trial_accuracy(total_trials, correct_trials, trial_types)
@@ -328,6 +405,26 @@ def trial_accuracy(content, print = False):
     return trial_types, total_trials, correct_trials
 
 def create_all_perf_dictionary(all_rat_performances):
+    """gets avg and std, makes a dictionary of performance instead of total/correct trials
+        doesn't take into account trial type
+        This is for plotting showing ABC, ABCD, ABCDE
+        ONLY WORKS IF 9 DAYS
+    
+    1. loops through rats
+    2. loops through days in order
+    3. calculate performance for each trial type, stores it
+    4. gets avg & std
+
+    Args:
+        all_rat_performances (_dictionary_): _{ratID: {day: performance}} where performance is an array with
+                                            trial types, total trials, and correct trials for each trial type_
+
+    Returns:
+        all_performances (_dictionary_): _{ratID: performance} where performance is overall performance per day_
+        avg (_float array_): average for each day
+        std (_float array_): std for each day
+    """
+    
     all_performances = {}
     totals = [[] for _ in range(9)] # currently assuming ABCDE
     
@@ -365,6 +462,27 @@ def create_all_perf_dictionary(all_rat_performances):
     return all_performances, avg, std
 
 def create_trial_type_dictionary(all_rat_performances):
+    """gets avg and std, makes a dictionary of performance instead of total/correct trials
+        doesn't take into account trial type
+        This is for plotting showing AB, BC, CD, De
+        ONLY WORKS IF 9 DAYS
+    
+    1. loops through rats
+    2. loops through days in order
+    3. adds each performance of a day into the array for the trial type
+        done based on days, such that it takes AB & BC from days 1-3, CD from days 4-6 and DE from days 7-9
+    4. gets avg & std
+
+    Args:
+        all_rat_performances (_dictionary_): _{ratID: {day: performance}} where performance is an array with
+                                            trial types, total trials, and correct trials for each trial type_
+
+    Returns:
+        all_performances (_dictionary_): _{ratID: performance} where performance is overall performance per day_
+        avg (_float array_): average for each day
+        std (_float array_): std for each day
+    """
+    
     all_performances = {}
     totals = [[] for _ in range(12)] # currently assuming ABCDE
     
@@ -432,7 +550,28 @@ def create_trial_type_dictionary(all_rat_performances):
     
     return all_performances, avg, std
 
-def change_in_performance(rat_performance):
+def change_in_performance(rat_performance, criterias = None):
+    """calculates the change in performance of each consecutive day
+    
+    1. gets the trial types from the last day of each rat
+    2. loops through days, where one is the current day and one is the day prior
+        skips day 1 bc no prior days
+    3. loops through trial types for current and past day
+        checks for matches between trial types
+    4. if match, then calculate the performance of current and past day
+        then get the change in performance between the two
+        
+        if this is only done until criteria, then check the day to make sure the current day's change in performnace
+        should be kept
+
+    Args:
+        rat_performance (_dictionary_): {day: trial_type, total_trials, correct_trials}
+        criterias (_dictionary_, optional): {trial_type: criteria_day}. Defaults to None.
+
+    Returns:
+        performance_changes (_dictionary_): {trial_type: performance_changes}
+    """
+    
     sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
     past_day_perf = None
     performance_changes = {} # array for differences in performances
@@ -457,19 +596,44 @@ def change_in_performance(rat_performance):
                     continue
                 
                 #print(f'theres a match! {trial_type_i} {trial_type_j}')
-                if 'EF' in trial_type_i:
-                    print(total_trials_i, correct_trials_i)
                 #print(day)
                 
                 # if it's here there's a match between trial type
                 trial_type = trial_type_j # save the trial type
                 
-                # calculate performance change
-                past_performance = correct_trials_j / total_trials_j
-                current_performance = correct_trials_i / total_trials_i
-                change = current_performance - past_performance # change in performance
-                
-                performance_changes[trial_type].append(change) # append changes
+                if criterias: # if criterias exist
+                    # convert day into an integer
+                    match = re.search(r'\d+', day) # gets first int in the string
+                    if match:
+                        day_int = int(match.group())
+                        if 'CD' in trial_type or 'DE' in trial_type:
+                            criteria_day = criterias[trial_type] + day_int
+                        else:
+                            criteria_day = criterias[trial_type]
+                    
+                    if criteria_day == day_int:
+                        # calculate performance change
+                        past_performance = correct_trials_j / total_trials_j
+                        current_performance = correct_trials_i / total_trials_i
+                        change = current_performance - past_performance # change in performance
+                        
+                        performance_changes[trial_type].append(change) # append changes
+                    elif criteria_day < day_int:
+                        continue # skip if criteria has already been reached
+                    else: # this would be if the current day is lower than the criteria
+                        # calculate performance change
+                        past_performance = correct_trials_j / total_trials_j
+                        current_performance = correct_trials_i / total_trials_i
+                        change = current_performance - past_performance # change in performance
+                        
+                        performance_changes[trial_type].append(change) # append changes
+                else:
+                    # calculate performance change
+                    past_performance = correct_trials_j / total_trials_j
+                    current_performance = correct_trials_i / total_trials_i
+                    change = current_performance - past_performance # change in performance
+                    
+                    performance_changes[trial_type].append(change) # append changes
                 #print(f'performance change - {change} on day {day} for trial type {trial_type}')
                 #print(f"past performance - {past_performance}, current - {current_performance}")
         
@@ -477,6 +641,7 @@ def change_in_performance(rat_performance):
         
     return performance_changes # returns dictionary of {trial_type:change_in_perf} across days for one rat
     
+
 
 # PLOTTING --------------
 def plot_rat_performance(rat_performance):
@@ -665,6 +830,7 @@ def plot_rat_perf_changes(rat_performance):
     for i, trial_type in enumerate(trial_types):
         # scatter plot
         y = performance_changes[trial_type]
+        y = [item * 100 for item in y] # turn into percentage
         color = colormap(i / (len(trial_types) - 1)) if len(trial_types) > 1 else colormap(0.0)
         ax.scatter([i] * len(y), y, color=color, label=trial_type)
         
@@ -674,18 +840,22 @@ def plot_rat_perf_changes(rat_performance):
         
         ax.scatter(i, mean, color = 'black', s = 100, zorder = 5)
         ax.errorbar(i, mean, yerr = std, fmt = 'o', color = 'black', ecolor = 'black', elinewidth = 2, capsize = 1)
+        
+        # display mean value slightly above the mean
+        offset = std + 1
+        ax.text(i, mean + offset, f'{mean:.2f}', ha = 'center', va = 'bottom')
     
     # set up labels
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(trial_types)
     ax.set_xlabel('Trial Type')
-    ax.set_ylabel('Difference in Performance in Consecutive Days')
+    ax.set_ylabel('Difference in Performance in Consecutive Days (%)')
     ax.set_title('Change in Performance across trial types')
     
     ax.legend()
     plt.show()
 
-def plot_all_rat_perf_changes(all_rats_changes):
+def plot_all_rat_perf_changes(all_rats_changes, criterias = False):
     # arrays for calculating means and std later
     sum = {}
     
@@ -713,12 +883,13 @@ def plot_all_rat_perf_changes(all_rats_changes):
             # plotting
             y = perf_changes_dict[trial_type]
             if y: # check that there is data
-                #if any(y_val > 0.6 and y_val < 0.65 for y_val in y):
+                #if any(y_val > 0.6 and y_val < -0.6 for y_val in y):
                     #print(f'past 0.6 {ratID} for {trial_type}')
+                    #continue
                 y = [item * 100 for item in y] # turn into percentage
                 ax.scatter([j] * len(y), y, color=color, label=ratID if j == 0 else "")
             else:
-                print('there is no data in y')
+                print(f'there is no data in y for {ratID} for {trial_type}')
             
             # add to an array for averages and std
             #print(trial_type)
@@ -732,13 +903,23 @@ def plot_all_rat_perf_changes(all_rats_changes):
         std = np.std(sum[trial_type])
         ax.scatter(i, mean, color = 'black', s = 100, zorder = 5)
         ax.errorbar(i, mean, yerr = std, fmt = 'o', color = 'black', ecolor = 'black', elinewidth = 2, capsize = 1)
+        
+        # display mean value slightly above the mean
+        offset = std + 1
+        ax.text(i, mean + offset, f'{mean:.2f}', ha = 'center', va = 'bottom')
     
     # set up graph
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(trial_types)
     ax.set_xlabel('Trial Type')
     ax.set_ylabel('Difference in Performance of Consecutive Days (%)')
-    ax.set_title('Change in Performance Across Trial Types')
+    
+    # check for title
+    if criterias:
+        ax.set_title('Change in Performance Until Reaching Criteria')
+    else:
+        ax.set_title('Change in Performance Across Trial Types')
+    
     #ax.legend(title = 'Rat ID')
     plt.show()
     
@@ -759,7 +940,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     x_ticks = np.arange(len(trial_types))
     
     for i, (ratID, days_dict) in enumerate(all_days_until_criteria.items()):
-        print(ratID)
+        #print(ratID)
         # exclude rats that didn't make it to DE for now
         if len(days_dict) < 4:
             continue
@@ -767,10 +948,10 @@ def plot_days_until_criteria(all_days_until_criteria):
         color = colormap(i / (num_rats - 1)) if num_rats > 1 else colormap(0.0)
         
         for j, trial_type in enumerate(trial_types):
-            print(trial_type)
+            #print(trial_type)
             # plotting
             y = days_dict[trial_type]
-            print(y)
+            #print(y)
             
             ax.scatter(j, y, color=color, label=ratID if j == 0 else"")
             
@@ -795,10 +976,10 @@ def plot_days_until_criteria(all_days_until_criteria):
     ax.set_xticklabels(trial_types)
     ax.set_xlabel('Trial Type')
     ax.set_ylabel('Number of Days Until Criteria')
-    ax.set_title('Days until Criteria by Trial Type')
+    ax.set_title('Days until Criteria by Trial Type (80%)')
     ax.legend(title = 'Rat ID')
     plt.show()
-    
+
 
 # TRAVERSAL FUNCTIONS ----------
 def rat_performance_one_session(data_structure, ratID, day):
@@ -952,8 +1133,18 @@ def days_until_criteria(all_rats_performances):
         else:
             print(f'not all pairs learned - {ratID} {AB_learned} {BC_learned} {CD_learned} {DE_learned}')
 
-    print(all_days_until_criteria)
-    plot_days_until_criteria(all_days_until_criteria)
+    #plot_days_until_criteria(all_days_until_criteria)
     
     return all_days_until_criteria # returns {ratID: {trial_type:day}} where day is day it was learned
 
+def perf_until_critera(all_rats_performances):
+    all_rats_criteria_days = days_until_criteria(all_rats_performances)
+    all_rats_changes = {}
+    
+    for ratID, criteria_days in all_rats_criteria_days.items():
+        rat_performance = all_rats_performances[ratID]
+        
+        performance_changes = change_in_performance(rat_performance, criteria_days)
+        all_rats_changes[ratID] = performance_changes
+    
+    plot_all_rat_perf_changes(all_rats_changes, criterias = True)
