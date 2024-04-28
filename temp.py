@@ -10,7 +10,7 @@ fig = plt.figure(figsize=(12, 7))
 ax = fig.add_subplot(111, projection='3d')
 
 # Number of electrodes
-num_electrodes = 20
+num_electrodes = 60
 
 # Time vector from 0 to 2 seconds, sampled at 1000 Hz
 time = np.linspace(0, 2, 2000)
@@ -18,7 +18,7 @@ time = np.linspace(0, 2, 2000)
 # Simulate a spike wave across electrodes
 for i in range(num_electrodes):
     # Base spike time, with added randomness
-    base_spike_time = 0.5 + (i / float(num_electrodes)) * 1.5
+    base_spike_time = 0.5 + (i / float(num_electrodes)) * 0.1
     random_spike_time_offset = np.random.normal(0, 0.05)  # Noise in the spike timing
     spike_time = base_spike_time + random_spike_time_offset
 
@@ -26,11 +26,11 @@ for i in range(num_electrodes):
     potential = -45 * np.exp(-(time - spike_time)**2 / (2 * 0.01**2)) + 20
 
     # Introduce noise to the potential
-    noise_level = 5
+    noise_level = 2
     potential_noise = potential + np.random.normal(0, noise_level, potential.shape)
 
     # Plot each electrode's potential over time
-    ax.plot(time, [i]*len(time), potential_noise, color='gray', alpha = 0.1)
+    ax.plot(time, [i]*len(time), potential_noise, color='gray', alpha = 0.3, linewidth = 0.5)
 
 # Set labels
 ax.set_xlabel('Time (s)')
