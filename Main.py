@@ -1,6 +1,7 @@
 # packages
 import os
 import bisect
+import pickle
 import pandas as pd
 import numpy as np
 import math
@@ -8,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Ellipse
+from matplotlib.patches import Polygon
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 from sklearn.linear_model import LinearRegression
@@ -19,10 +21,14 @@ import data_structure
 import performance_analysis
 
 # DATA MANIPULATION/ANALYSIS METHODS ---------
-def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190): # currently keeps original indices
+def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
     # modify a copy instead of the original
     # also filter based on likelihood values
     likely_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
+    
+    # filter out points before the rat has started its first trial
+    if start_index:
+        likely_data = likely_data[likely_data.index >= start_index]
     
     # DBSCAN Cluster analysis
     coordinates = likely_data[[track_part]].copy()[[(track_part, 'x'), (track_part, 'y')]]
@@ -71,7 +77,7 @@ def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, 
     x = filtered_data[(track_part, 'x')]
     y = filtered_data[(track_part, 'y')]
     
-    return x, y
+    return x, y 
 
 def get_time(content, statescript_time):
     lines = content.splitlines()
@@ -482,10 +488,13 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     
     #print("returning IdPhi")
     return IdPhi
-   
+
+#def learning_rates_vs_VTEs():
+    
+
             
 # GETTING ZONES -----------
-def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 950):
+def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 950, hv_line_multiplier = 2):
     lines = []
     
     # convert degree steps into slopes where m = tan(angle in radians)
@@ -497,7 +506,8 @@ def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 
     extended_range = max(x_max - x_min, y_max - y_min) * 1.5
     
     # determine number of lines needed
-    num_lines = int(2 * extended_range / gap_between_lines) + 1
+    num_angled_lines = int(2 * extended_range / gap_between_lines) + 1
+    num_hv_lines = num_angled_lines * hv_line_multiplier
     
     for slope in slopes:
         if np.isfinite(slope) and np.abs(slope) < 1e10 and slope != 0:
@@ -558,25 +568,43 @@ def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 
                 
     # generating horizontal and vertical lines - all long enough so no need for filtering
     # horizontal lines
-    for i in range(-num_lines // 2, num_lines // 2):
-        b = y_min + (i * gap_between_lines)
+    for i in range(-num_hv_lines // 2, num_hv_lines // 2):
+        b = y_min + (i * gap_between_lines / hv_line_multiplier) # have more horizontal and vertical lines
         lines.append((0, b))
         
     #vertical lines
-    for i in range(-num_lines // 2, num_lines // 2):
-        x_position = x_min + (i * gap_between_lines)
+    for i in range(-num_hv_lines // 2, num_hv_lines // 2):
+        x_position = x_min + (i * gap_between_lines / hv_line_multiplier)
         lines.append((np.inf, x_position))
             
     return lines
 
 def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
+    """calculates how well each line is covered by points based on how many line segments have points in its vicinity
+
+    Args:
+        x (np array): x values
+        y (np array): y values
+        lines (_type_): list including slope and intercept values, making up y = mx + b
+        num_segments (int, optional): the number of segments for testing lines' fit. Defaults to 15.
+        threshold (int, optional): distance a point can be from a line before it's not considered in its vicinity. Defaults to 5.
+
+    Returns:
+        coverage_scores (np int array): how many segments on the line are covered by points
+    """
+    
     coverage_scores = []
+    starts = [] # start of the cut out line - based upon longest_streak
+    ends = [] # end of the cut out line
     points = np.array(list(zip(x, y)))
     x_min, x_max, y_min, y_max = calculate_range(x, y)
     
     for slope, b in lines:
         consecutive_coverage = 0 # what i'm looking for is consecutive coverage, much like a line
         longest_streak = 0
+        current_streak_segments = []
+        start = None
+        end = None
         
         # vertical lines are diff, so i'm just seeing how many points are near the line
         if np.isinf(slope) or np.abs(slope) > 1e10:
@@ -593,11 +621,27 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
                     
                     # add to consecutive coverage if there is something on line, no if not
                     if point_on_line:
+                        current_streak_segments.append((segment_start, segment_end))
                         consecutive_coverage += 1
                         if longest_streak < consecutive_coverage:
                             longest_streak = consecutive_coverage # keep track of longest streak of coverage
                     else:
+                        if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+                            start = current_streak_segments[0][0]
+                            end = current_streak_segments[-1][-1]
+                        current_streak_segments.clear()
                         consecutive_coverage = 0
+            
+            if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+                start = current_streak_segments[0][0]
+                end = current_streak_segments[-1][-1]
+            
+            if longest_streak > 0:
+                starts.append(start)
+                ends.append(end)
+            else:
+                starts.append(0)
+                ends.append(0)
             
             coverage = longest_streak / num_segments
             coverage_scores.append(coverage)
@@ -619,11 +663,27 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
                     
                     # add to consecutive coverage if there is something on line, no if not
                     if point_on_line:
+                        current_streak_segments.append((segment_start, segment_end))
                         consecutive_coverage += 1
                         if longest_streak < consecutive_coverage:
                             longest_streak = consecutive_coverage # keep track of longest streak of coverage
                     else:
+                        if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+                            start = current_streak_segments[0][0]
+                            end = current_streak_segments[-1][-1]
+                        current_streak_segments.clear()
                         consecutive_coverage = 0
+            
+            if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+                start = current_streak_segments[0][0]
+                end = current_streak_segments[-1][-1]
+            
+            if longest_streak > 0:
+                starts.append(start)
+                ends.append(end)
+            else:
+                starts.append(0)
+                ends.append(0)
             
             coverage = longest_streak / num_segments
             coverage_scores.append(coverage)
@@ -641,8 +701,7 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
             line_x_max = filtered_max.max()
             
         segment_length = (line_x_max - line_x_min) / num_segments
-        
-        segment_coverages = []
+
         for i in range(num_segments):
             segment_start = x_min + i * segment_length
             segment_end = segment_start + segment_length
@@ -654,16 +713,32 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
                     
                 # add to consecutive coverage if there is something on line, no if not
                 if point_on_line:
+                    current_streak_segments.append((segment_start, segment_end))
                     consecutive_coverage += 1
                     if longest_streak < consecutive_coverage:
                         longest_streak = consecutive_coverage # keep track of longest streak of coverage
                 else:
+                    if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+                        start = current_streak_segments[0][0]
+                        end = current_streak_segments[-1][-1]
+                    current_streak_segments.clear()
                     consecutive_coverage = 0
+        
+        if longest_streak == consecutive_coverage and consecutive_coverage > 0:
+            start = current_streak_segments[0][0]
+            end = current_streak_segments[-1][-1]
+        
+        if longest_streak > 0:
+            starts.append(start)
+            ends.append(end)
+        else:
+            starts.append(0)
+            ends.append(0)
         
         coverage = longest_streak / num_segments
         coverage_scores.append(coverage)
     
-    # plot distance to know what's a good threshold
+    '''# plot distance to know what's a good threshold
     # get std & mean
     std = np.std(coverage_scores)
     mean = np.mean(coverage_scores)
@@ -676,80 +751,125 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5):
     plt.axvline(mean - std, color = 'g', linestyle = 'dashed', linewidth = 2)
     
     plt.legend()
-    plt.show()
+    plt.show()'''
     
-    return coverage_scores
+    return coverage_scores, starts, ends
 
-def make_new_lines(lines, coverages, threshold):
+def make_new_lines(lines, coverages, starts, ends, threshold):
     new_lines = []
+    new_starts = []
+    new_ends = []
     
-    for index, coverage in enumerate(coverages):
-        if coverage > threshold:
-            #print(index)
-            new_lines.append(lines[index])
-    
-    return new_lines
+    if threshold:
+        for index, coverage in enumerate(coverages):
+            if coverage > threshold:
+                new_lines.append(lines[index])
+                new_starts.append(starts[index])
+                new_ends.append(ends[index])
+    else: # include lines a standard deviation above
+        mean = np.mean(coverages)
+        std = np.std(coverages)
+        cutoff = mean + std
 
-def find_intersections(lines):
+        for index, coverage in enumerate(coverages):
+            if coverage > cutoff:
+                new_lines.append(lines[index])
+                new_starts.append(starts[index])
+                new_ends.append(ends[index])
+    
+    return new_lines, new_starts, new_ends
+
+def calculate_intersection(line1, line2):    
+    # Check if both lines are vertical
+    if np.isinf(line1[0]) and np.isinf(line2[0]):
+        return None  # No intersection if both are vertical
+    
+    # Check if both lines are horizontal
+    elif np.abs(line1[0]) < 1e-10 and np.abs(line2[0]) < 1e-10:
+        return None  # No intersection if both are horizontal
+    
+    # Check if one of the lines is vertical and the other is horizontal
+    elif np.isinf(line1[0]) and np.abs(line2[0]) < 1e-10: # line1 vertical, line2 horizontal
+        x = line1[1]
+        y = line2[1]
+        return (x, y)
+    elif np.isinf(line2[0]) and np.abs(line1[0]) < 1e-10: # line2 vertical, line1 horizontal
+        x = line2[1]
+        y = line1[1]
+        return (x, y)
+    
+    # Line1 is vertical and Line2 is neither
+    elif np.isinf(line1[0]):
+        x = line1[1]
+        y = line2[0] * x + line2[1]
+        return (x, y)
+    
+    # Line2 is vertical and Line1 is neither
+    elif np.isinf(line2[0]):
+        x = line2[1]
+        y = line1[0] * x + line1[1]
+        return (x, y)
+    
+    # Line1 is horizontal and Line2 is neither
+    elif np.abs(line1[0]) < 1e-10:
+        y = line1[1]
+        if np.abs(line2[0]) > 1e-10:  # Ensure Line2 is not vertical
+            x = (y - line2[1]) / line2[0]
+            return (x, y)
+    
+    # Line2 is horizontal and Line1 is neither
+    elif np.abs(line2[0]) < 1e-10:
+        y = line2[1]
+        if np.abs(line1[0]) > 1e-10:  # Ensure Line1 is not vertical
+            x = (y - line1[1]) / line1[0]
+            return (x, y)
+    
+    # Neither line is vertical or horizontal
+    else:
+        denom = (line1[0] - line2[0])
+        if np.abs(denom) > 1e-10:  # Ensure lines are not parallel
+            x = (line2[1] - line1[1]) / denom
+            y = line1[0] * x + line1[1]
+            return (x, y)
+                
+    return None
+
+def is_point_in_segment(point, start, end, vertical = False):
+    x, y = point
+    
+    if vertical:
+        point_inside = start <= y <= end
+    else:
+        point_inside = start <= x <= end
+    
+    return point_inside
+
+def find_intersections(lines, starts, ends):
     intersections = []
     
     for i in range(len(lines)):
         for j in range(i + 1, len(lines)):
-            line1 = lines[i]
-            line2 = lines[j]
+            intersection = calculate_intersection(lines[i], lines[j])
             
-            # Check if both lines are vertical
-            if np.isinf(line1[0]) and np.isinf(line2[0]):
-                continue  # No intersection if both are vertical
-            
-            # Check if both lines are horizontal
-            elif np.abs(line1[0]) < 1e-10 and np.abs(line2[0]) < 1e-10:
-                continue  # No intersection if both are horizontal
-            
-            # Check if one of the lines is vertical and the other is horizontal
-            elif np.isinf(line1[0]) and np.abs(line2[0]) < 1e-10: # line1 vertical, line2 horizontal
-                x = line1[1]
-                y = line2[1]
-                intersections.append((x, y))
-            elif np.isinf(line2[0]) and np.abs(line1[0]) < 1e-10: # line2 vertical, line1 horizontal
-                x = line2[1]
-                y = line1[1]
-                intersections.append((x, y))
-            
-            # Line1 is vertical and Line2 is neither
-            elif np.isinf(line1[0]):
-                x = line1[1]
-                y = line2[0] * x + line2[1]
-                intersections.append((x, y))
-            
-            # Line2 is vertical and Line1 is neither
-            elif np.isinf(line2[0]):
-                x = line2[1]
-                y = line1[0] * x + line1[1]
-                intersections.append((x, y))
-            
-            # Line1 is horizontal and Line2 is neither
-            elif np.abs(line1[0]) < 1e-10:
-                y = line1[1]
-                if np.abs(line2[0]) > 1e-10:  # Ensure Line2 is not vertical
-                    x = (y - line2[1]) / line2[0]
-                    intersections.append((x, y))
-            
-            # Line2 is horizontal and Line1 is neither
-            elif np.abs(line2[0]) < 1e-10:
-                y = line2[1]
-                if np.abs(line1[0]) > 1e-10:  # Ensure Line1 is not vertical
-                    x = (y - line1[1]) / line1[0]
-                    intersections.append((x, y))
-            
-            # Neither line is vertical or horizontal
-            else:
-                denom = (line1[0] - line2[0])
-                if np.abs(denom) > 1e-10:  # Ensure lines are not parallel
-                    x = (line2[1] - line1[1]) / denom
-                    y = line1[0] * x + line1[1]
-                    intersections.append((x, y))
-                
+            if intersection:
+                # check if it is vertical, because start and end values are in y if so
+                if np.isinf(lines[i][0]) and np.isinf(lines[j][0]):
+                    if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
+                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                            intersections.append(intersection)
+                elif np.isinf(lines[i][0]):
+                    if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
+                        is_point_in_segment(intersection, starts[j], ends[j]):
+                            intersections.append(intersection)
+                elif np.isinf(lines[j][0]):
+                    if is_point_in_segment(intersection, starts[i], ends[i]) and \
+                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                            intersections.append(intersection)
+                # no vertical lines
+                elif is_point_in_segment(intersection, starts[i], ends[i]) and \
+                    is_point_in_segment(intersection, starts[j], ends[j]):
+                        intersections.append(intersection)
+    
     return intersections
 
 def make_ellipse(points, ax = None, scale_factor = 1.5):
@@ -782,15 +902,46 @@ def make_ellipse(points, ax = None, scale_factor = 1.5):
     else:
         return None
 
+def make_convex_hull(intersection_points, x, y, day = None):
+    #Perform DBSCAN clustering
+    dbscan = DBSCAN(eps=10, min_samples=5)  # Adjust these parameters as necessary
+    clusters = dbscan.fit_predict(intersection_points)
+
+    # Find the cluster with the most points (highest concentration)
+    cluster_indices, counts = np.unique(clusters, return_counts=True)
+    densest_cluster_index = cluster_indices[np.argmax(counts)]
+    densest_cluster_points = intersection_points[clusters == densest_cluster_index]
+
+    # Create a convex hull around the densest cluster
+    hull = ConvexHull(densest_cluster_points)
+    
+    plt.scatter(x, y)
+
+    # Plotting (optional, for visualization)
+    plt.scatter(intersection_points[:,0], intersection_points[:,1], alpha=0.5, color = 'green')
+    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color='red')
+    for simplex in hull.simplices:
+        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], 'k-')
+
+    # Create a Polygon patch for the convex hull
+    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor='k', fill=False)
+    plt.gca().add_patch(hull_polygon)
+    #plt.show()
+    
+    if day:
+        plt.savefig(f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13/{day}')
+    
+    return hull, densest_cluster_points
+
 
 # PLOTTING METHODS --------
 def create_scatter_plot(x, y):
     plt.figure(figsize = (10, 6))
     #plt.scatter(x, y, c = 'green', alpha = 0.6)
-    plt.plot(x, y, color='green', alpha=0.4)
-    plt.title('Tracking Data')
-    plt.xlabel('X coordinate')
-    plt.ylabel('Y coordinate')
+    plt.scatter(x, y, color='green', alpha=0.4)
+    plt.title('VTEs vs Learning Rate')
+    plt.xlabel('Number of VTEs in a Session')
+    plt.ylabel('Change in Performance')
     plt.grid(True)
     plt.show()
 
@@ -840,7 +991,7 @@ def create_occupancy_map(x, y, framerate, bin_size = 15):
     plt.ylabel('Y Bins')
     plt.show()
 
-def plot_animation(x, y, trajectory_x = None, trajectory_y = None, interval = 20):
+def plot_animation(x, y, trajectory_x = None, trajectory_y = None, interval = 20, highest = 0, zIdPhi = None):
     if not trajectory_x: # this is for when you want to plot the entire trajectory throughout the trial
         trajectory_x = x
     
@@ -871,7 +1022,14 @@ def plot_animation(x, y, trajectory_x = None, trajectory_y = None, interval = 20
     # create animation
     ani = FuncAnimation(fig, update, frames = len(x), init_func = init, blit = True, interval = interval)
     
-    plt.show()
+    # set title accordingly
+    if highest == 1: # is highest
+        plt.title('VTE Trial')
+    elif highest == 2: # is lowest
+        plt.title('Non-VTE Trial')
+    
+    #plt.show()
+    ani.save('/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13')
     
 def plot_hull(x, y, filtered_points, hull, centre_x, centre_y, radius_x, radius_y):
     plt.plot(x, y, 'o', markersize=5, label='Outside')
@@ -945,7 +1103,7 @@ def plot_ellipse(ellipse_params, x, y):
     
     plt.show()
 
-def plot_zIdPhi(zIdPhi_values):
+def plot_zIdPhi(zIdPhi_values, day = None):
     # Collect all zIdPhi values from all trial types
     all_zIdPhis = []
     for zIdPhis in zIdPhi_values.values():
@@ -977,7 +1135,9 @@ def plot_zIdPhi(zIdPhi_values):
     plt.legend()
     
     plt.tight_layout()
-    plt.show()
+    #plt.show()
+    if day:
+        plt.savefig(f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13/{day}')
 
 def plot_trajectory(x, y, zIdPhi, trajectories, highest):
     
@@ -1002,6 +1162,43 @@ def plot_trajectory(x, y, zIdPhi, trajectories, highest):
     plt.grid(True)
     plt.legend()
     plt.show()
+
+def plot_segments(x, y, lines, starts, ends, day = None):
+    plt.scatter(x, y)
+    
+    for i, (slope, b) in enumerate(lines):
+        if np.isinf(slope) or np.abs(slope) > 1e10: # for vertical lines, their starts and ends are y coords
+            start_y = starts[i]
+            end_y = ends[i]
+            
+            if start_y == 0 and end_y == 0:
+                continue
+            else:
+                start_x = b
+                end_x = b
+
+                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+            
+        else: # horizontal & diagonal lines
+            start_x = starts[i]
+            end_x = ends[i]
+        
+            if start_x == 0 and end_x == 0:
+                continue
+            else:
+                start_y = slope * start_x + b
+                end_y = slope * end_x + b
+
+                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+    
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid(True)
+    #plt.show()
+    
+    # save the figure
+    if day:
+        plt.savefig(f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13/{day}')
 
 
 # CENTRAL METHODS (traversing) -----------
@@ -1049,26 +1246,32 @@ def time_until_first_choice(data_structure, ratID, day):
     print(time)
 
 def quantify_VTE(data_structure, ratID, day, save = False):
-    DLC_df = data_structure[ratID][day]['DLC_tracking']
+    """DLC_df = data_structure[ratID][day]['DLC_tracking']
     SS_df = data_structure[ratID][day]['stateScriptLog']
-    timestamps = data_structure[ratID][day]['videoTimeStamps']
+    timestamps = data_structure[ratID][day]['videoTimeStamps']"""
     
-    # get x and y coordinates
-    x, y = filter_dataframe(DLC_df)
+    DLC_df = data_structure[day]['DLC_tracking']
+    SS_df = data_structure[day]['stateScriptLog']
+    timestamps = data_structure[day]['videoTimeStamps']
     
     # check timestamps
     check_timestamps(DLC_df, timestamps)
+    
+    # do a time delay before something counts as outside the hull / set upper and lower bound for  Idphi
+    # get trial start times + trial type
+    trial_starts = get_trial_start_times(timestamps, SS_df)
+    
+    # get x and y coordinates
+    # get the first trial start time to pass into filtering
+    first_trial_start = next(iter(trial_starts))
+    x, y = filter_dataframe(DLC_df, start_index=first_trial_start)
     
     # define zones
     #home_hull = define_zones(x, y, x_min = 850, x_max = 1050, y_min = 0, y_max = 250, will_plot = True)
     #arm_3_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 0, y_max = 250)
     #arm_5_hull = define_zones(x, y, x_min = 150, x_max = 370, y_min = 700, y_max = 930)
     #arm_7_hull = define_zones(x, y, x_min = 850, x_max = 1100, y_min = 700, y_max = 960)
-    ellipse_params = get_centre_zone(x, y, ratID, day, save)
-    
-    # do a time delay before something counts as outside the hull / set upper and lower bound for  Idphi
-    # get trial start times + trial type
-    trial_starts = get_trial_start_times(timestamps, SS_df)
+    centre_hull = get_centre_zone(x, y, ratID, day, save)
     
     # calculate IdPhi for each trial
     IdPhi_values = {}
@@ -1087,17 +1290,20 @@ def quantify_VTE(data_structure, ratID, day, save = False):
         
         for index in range(trial_start, len(timestamps)): # x has been filtered so is not an appropriate length now
             # getting x and y
+            if index == trial_start:
+                print(index)
+            
             if index in x.index and index in y.index:
                 x_val = x.loc[index] # loc is based on actual index, iloc is based on position
                 y_val = y.loc[index]
-            
-            # skip loop of x or y is NaN
-            if math.isnan(x_val) or math.isnan(y_val):
+            elif index == trial_start:
+                print(f'trial started and cannot find x and y values - {trial_start}')
+                continue
+            else:
                 continue
             
-            #point = (x_val, y_val)
-            #inside = check_if_inside(point, centre_hull)
-            inside = is_point_in_ellipse(x_val, y_val, ellipse_params)
+            """point = (x_val, y_val)
+            inside = check_if_inside(point, centre_hull)
             
             if inside:
                 past_inside = True
@@ -1105,13 +1311,13 @@ def quantify_VTE(data_structure, ratID, day, save = False):
                 trajectory_y.append(y_val)
             else:
                 if past_inside:
-                    break # ok so now it has exited the centre hull
+                    break # ok so now it has exited the centre hull"""
             
-            '''if index < trial_start + 1000:
+            if index < trial_start + 1000:
                 trajectory_x.append(x_val)
                 trajectory_y.append(y_val)
             else:
-                break'''
+                break
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
@@ -1157,49 +1363,81 @@ def quantify_VTE(data_structure, ratID, day, save = False):
                 lowest_zIdPhi = zIdPhi
                 lowest_trajectories = trajectories[trial_type][i]
     
+    highest_trajectory_x, highest_trajectory_y = highest_trajectories
+    lowest_trajectory_x, lowest_trajectory_y = lowest_trajectories
+    
     plot_zIdPhi(zIdPhi_values)
-    plot_trajectory(x, y, highest_zIdPhi, highest_trajectories, highest = True)
-    plot_trajectory(x, y, lowest_zIdPhi, lowest_trajectories, highest = False)
+    plot_animation(x, y, highest_trajectory_x, highest_trajectory_y, highest = 2, zIdPhi=highest_zIdPhi)
+    plot_animation(x, y, lowest_trajectory_x, lowest_trajectory_y, highest = 1, zIdPhi=lowest_zIdPhi)
     
-    return zIdPhi_values, IdPhi_values
+    return zIdPhi_values, IdPhi_values, trajectories
 
-def get_centre_zone(x, y, ratID, day, save = False): #currently highly experimental, ask cat for an exp if needed
-    lines = generate_lines(x, y)
-    
+def get_centre_zone(x, y, ratID, day, save = False, threshold = None): #currently highly experimental, ask cat for an exp if needed
     # determine whether saving is necessary
-    file_path = f'/Users/catpillow/Downloads/VTE_Data/{ratID}/{day}/coverage_scores.csv'
+    file_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}/{day}'
+    coverage_path = file_path + '/coverage_scores.csv'
+    covered_path = file_path + '/covered_lines.csv'
+    intersections_path = file_path + '/intersections.csv'
+    hull_path = file_path + '/hull_vertices.npy'
     
-    if save or not os.path.exists(file_path): # saves regardless if file doesn't exist
-        coverages = calculate_line_coverages(x, y, lines)
+    if save or not os.path.exists(coverage_path) or not os.path.exists(hull_path): # saves regardless if file doesn't exist
+        lines = generate_lines(x, y)
+        coverages, starts, ends = calculate_line_coverages(x, y, lines)
+        
+        # filter out lines that don't pass the threshold
+        updated_lines, updated_starts, updated_ends = make_new_lines(lines, coverages, starts, ends, threshold)
+        
+        #plot_lines(x, y, lines)
+        plot_segments(x, y, updated_lines, updated_starts, updated_ends, day = day)
+        #print(updated_lines)
+        
+        # intersection points
+        intersections = find_intersections(updated_lines, updated_starts, updated_ends)
+        intersection_points = np.array(intersections) # np array for DBSCAN to work
+        
+        # create convex hull
+        hull, densest_cluster_points = make_convex_hull(intersection_points, x, y, day = day)
+        
+        # separate lines into individual arrays
+        slopes, b = zip(*lines)
+        covered_slopes, covered_intercepts = zip(*updated_lines)
+        
+        # data frame
         df = pd.DataFrame(coverages, columns=['Coverages'])
-        df.to_csv(file_path)
+        df['Slope'] = slopes # should be indexed the same as coverages
+        df['Intercept'] = b
+        df['Starts'] = starts
+        df['Ends'] = ends
+        
+        # for the filtered processed data
+        df2 = pd.DataFrame(covered_slopes, columns=['Covered Slopes'])
+        df2['Covered Intercepts'] = covered_intercepts
+        df3 = pd.DataFrame(intersections, columns=['Intersections X', 'Intersections Y'])
+
+        # save
+        df.to_csv(coverage_path)
+        df2.to_csv(covered_path)
+        df3.to_csv(intersections_path)
+        
+        # save convex hull
+        np.save(hull_path, densest_cluster_points[hull.vertices])
     else:
-        df = pd.read_csv(file_path)
+        # probably not necessary right now?
+        """df = pd.read_csv(file_path)
+        slopes = df['Slope'].tolist()
+        b = df['Intercept'].tolist()
         coverages = df['Coverages'].tolist()
+        starts = df['Starts'].tolist()
+        ends = df['Ends'].tolist()"""
+        
+        # load hull
+        densest_cluster_points = np.load(hull_path)
+        hull = ConvexHull(densest_cluster_points)
+        
+        # remake lines if needed
+        #lines = list(zip(slopes, b))
     
-    # filter out lines that don't pass the threshold
-    threshold = 0.4
-    updated_lines = make_new_lines(lines, coverages, threshold)
-    
-    #print(updated_lines)
-    #plot_lines(x, y, updated_lines)
-    
-    # intersection points
-    intersections = find_intersections(updated_lines)
-    
-    # create convex hull
-    if intersections:
-        points = np.array(intersections)
-        points = points[~np.isinf(points).any(axis = 1)]
-        unique_points = np.unique(points, axis = 0)
-        ellipse_params = make_ellipse(unique_points)
-    else:
-        print('no intersections')
-    
-    plot_ellipse(ellipse_params, x, y)
-    plot_lines(x, y, lines)
-    
-    return ellipse_params
+    return hull
 
 def test(data_structure, ratID, day):
     DLC_df = data_structure[ratID][day]['DLC_tracking']
@@ -1210,19 +1448,127 @@ def test(data_structure, ratID, day):
     get_centre_zone(x, y)
 
 def rat_VTE_over_sessions(data_structure, ratID):
-    rat_path = f'/Users/catpillow/Downloads/VTE_Data/{ratID}'
+    rat_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}'
     
-    sum_zIdPhi = []
+    for day in data_structure:
+        try:
+            zIdPhi, IdPhi, trajectories = quantify_VTE(data_structure, ratID, day, save = False)
+            zIdPhi_path = os.path.join(rat_path, day, 'zIdPhi.npy')
+            IdPhi_path = os.path.join(rat_path, day, 'IdPhi.npy')
+            trajectories_path = os.path.join(rat_path, day, 'trajectories.npy')
+            # save 
+            with open(zIdPhi_path, 'wb') as fp:
+                pickle.dump(zIdPhi, fp)
+            
+            with open(IdPhi_path, 'wb') as fp:
+                pickle.dump(IdPhi, fp)
+            
+            with open(trajectories_path, 'wb') as fp:
+                pickle.dump(trajectories, fp)
+        except Exception as error:
+            print(f'error - {error} on day {day}')
+            
+
+
+### VTE ANALYSIS --------
+def compare_zIdPhis(base_path):
+    IdPhis_across_days = [] # this is so it can be zscored altogether
     
-    for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
-        zIdPhi_values = quantify_VTE(data_structure, ratID, day_folder, save = True)
+    days = []
+    zIdPhi_means = []
+    zIdPhi_stds = []
+    IdPhi_means = []
+    IdPhi_stds = []
+    vte_trials = []
+    
+    for day_folder in os.listdir(base_path):
+        day_path = os.path.join(base_path, day_folder)
+        if os.path.isdir(day_path):
+            days.append(day_folder)
         
-        for zIdPhi in zIdPhi_values:
-            sum_zIdPhi.append(zIdPhi)
+        for root, dirs, files in os.walk(day_path):
+            for f in files:
+                file_path = os.path.join(root, f)
+                if 'zIdPhi' in f:
+                    with open(file_path, 'rb') as fp:
+                        zIdPhis = pickle.load(fp)
+                    
+                    # flatten from dict to array
+                    all_zIdPhis = [zIdPhi for zIdPhi_vals in zIdPhis.values() for zIdPhi in zIdPhi_vals]
+                    
+                    # mean & std stored across days
+                    zIdPhis_mean = np.mean(all_zIdPhis)
+                    zIdPhis_std = np.std(all_zIdPhis)
+                    
+                    # append into array
+                    zIdPhi_means.append(zIdPhis_mean)
+                    zIdPhi_stds.append(zIdPhis_std)
+                    
+                    # check how many vte trials
+                    cutoff = zIdPhis_mean + zIdPhis_std
+                    vte_trials.append(sum(zIdPhi > cutoff for zIdPhi in all_zIdPhis))
+                
+                if 'IdPhi' in f and 'z' not in f:
+                    with open(file_path, 'rb') as fp:
+                        IdPhis = pickle.load(fp)
+                    
+                    # flatten
+                    all_IdPhis = [IdPhi for IdPhi_vals in IdPhis.values() for IdPhi in IdPhi_vals]
+                
+                    IdPhis_mean = np.mean(all_IdPhis)
+                    IdPhis_std = np.std(all_IdPhis)
+                    
+                    IdPhi_means.append(IdPhis_mean)
+                    IdPhi_stds.append(IdPhis_std)
+                    
+                    # zscore later perhaps
+                    # IdPhis_across_days.append(all_IdPhis)
     
-    plot_zIdPhi(sum_zIdPhi)
+    """print(len(zIdPhi_means))
+    print(len(vte_trials))
+    print(len(IdPhi_means))
+    print(len(days))"""
     
-    return
+    df = pd.DataFrame({
+        'Day': day,
+        'zIdPhi Mean': zIdPhi_means,
+        'zIdPhi Std': zIdPhi_stds,
+        'IdPhi Mean': IdPhi_means,
+        'IdPhi Std': IdPhi_stds,
+        'VTE Trials': vte_trials
+    })
+    
+    # sort according to day number
+    df['sort_key'] = df['Day'].apply(lambda x: int(x[3:])) 
+    df_sorted = df.sort_values(by = 'sort_key')
+    df_sorted = df_sorted.drop(columns = ['sort_key']) # drop now that it's sorted
+    
+    """# calculate difference between values for consecutive days
+    comparison_cols = df.columns.drop('Day')
+    diffs = df[comparison_cols].diff()
+    # diffs['Day'] = df['Day'] # add days back in if desired"""
+    
+    # save dataframe
+    dataframe_path = os.path.join(base_path, 'zIdPhis_and_IdPhis')
+    df.to_csv(dataframe_path)
+    
+    """# save differences in a separate numpy file
+    IdPhi_mean_diffs = diffs['IdPhi Mean'].to_numpy()
+    zIdPhi_mean_diffs = diffs['zIdPhi Mean'].to_numpy()
+    
+    idphi_diffs_path = os.path.join(base_path, 'IdPhi_Mean_Diffs')
+    zidphi_diffs_path = os.path.join(base_path, 'zIdPhi_Mean_Diffs')
+    
+    np.save(idphi_diffs_path, IdPhi_mean_diffs)
+    np.save(zidphi_diffs_path, zIdPhi_mean_diffs)
+    
+    print(f'idphi - {IdPhi_mean_diffs}')
+    print(f'zidphi - {zIdPhi_mean_diffs}')"""
+    
+    # return sorted vte trials according to day
+    vte_trials_sorted = df_sorted['VTE Trials']
+    
+    return vte_trials_sorted
     
 
 # ASSIGNMENT 1 --------
@@ -1231,17 +1577,22 @@ def rat_VTE_over_sessions(data_structure, ratID):
 #main_data_structure = data_structure.create_main_data_structure(base_path)
 
 # saving
-#save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS
-save_path = '/Users/catpillow/Downloads/VTE_Data'
+#base_path = '/Users/catpillow/Downloads/BP13_timestamps'
+#save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS (added BP13 DLC & timestamps)
+save_path_BP = '/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13'
+#save_path = '/Users/catpillow/Downloads/VTE_Data'
 #data_structure.save_data_structure(main_data_structure, save_path)
+#data_structure.save_DLC(base_path, save_path)
+#data_structure.save_timestamps(base_path, save_path)
 
 # loading
-loaded_data_structure = data_structure.load_data_structure(save_path)
+#loaded_data_structure = data_structure.load_data_structure(save_path)
+BP13_data = data_structure.load_one_rat(save_path_BP)
 
 # ASSIGNMENT 2 ---------
 # example
-ratID = 'TH405'
-day = 'Day1'
+ratID = 'BP13'
+day = 'Day8'
 
 # plot positioning for greenLED
 #scatter_plot(loaded_data_structure, ratID, day)
@@ -1265,7 +1616,8 @@ day = 'Day1'
 #x, y = filter_dataframe(DLC)
 
 #plot_animation(x, y)
-zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
+zIdPhi, IdPhi, trajectories = quantify_VTE(BP13_data, ratID, day, save = False)
+#rat_VTE_over_sessions(BP13_data, ratID)
 #print(f"zIdPhi - {zIdPhi}")
 #print(f"IdPhi - {IdPhi}")
 #test(loaded_data_structure, ratID, day)
@@ -1277,10 +1629,20 @@ zIdPhi, IdPhi = quantify_VTE(loaded_data_structure, ratID, day, True)
 #performance_analysis.create_all_rats_performance(loaded_data_structure, save_path = save_path)
 #all_rats_performances = performance_analysis.load_rat_performance(save_path)
 #performance_analysis.plot_all_rat_performances(all_rats_performances)
-'''for rat, rat_performance in all_rats_performances.items():
+#perf_changes = None
+"""for rat, rat_performance in all_rats_performances.items():
     if rat == ratID:
-        performance_analysis.plot_rat_perf_changes(rat_performance)'''
+        performance_analysis.plot_rat_perf_changes(rat_performance)"""
+        #perf_changes, avg_changes = performance_analysis.change_in_performance(rat_performance)
 #performance_analysis.all_rats_perf_changes(all_rats_performances)
 
 #performance_analysis.days_until_criteria(all_rats_performances)
 #performance_analysis.perf_until_critera(all_rats_performances)
+
+
+# COMPARISON ---------------
+"""vte_trials = compare_zIdPhis(save_path_BP)
+
+print(len(vte_trials))
+print(len(avg_changes))
+create_scatter_plot(vte_trials, avg_changes)"""

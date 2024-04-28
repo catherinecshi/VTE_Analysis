@@ -46,3 +46,11 @@ maybe i should try to cut off the lines when they don't touch a dot in x number 
 filter such that the start of the DLC matches the start of the SS
 maybe some form of filtering such that if one point juts out (like the diff between that point and the two
 surrounding points is high, but the diff between the two points without that point is low)
+
+do something about when not enough lines for intersection, rn threshold is being hard set
+
+next - make lines better at the start -> i think this will help with the ocnvex hull creation
+
+right now i'm just averaging zIdPhi & IdPhi values regardless of trial type, should probs do according to tiral type at some point
+
+cdf plot for the std

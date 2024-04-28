@@ -3,6 +3,7 @@ import re
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats
 
 # SAVING & LOADING -----------
 def save_rat_performance(rat_performance, save_path):
@@ -434,6 +435,7 @@ def create_all_perf_dictionary(all_rat_performances):
         sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
         rats_performance = []
         num_days = 0
+        print(f'rat - {ratID}')
         
         for day in sorted_days:
             performance_for_day = rat_performance[day] # get performance for day
@@ -454,12 +456,14 @@ def create_all_perf_dictionary(all_rat_performances):
             num_days += 1
         
         all_performances[ratID] = rats_performance
+        
+        print(f'num days - {num_days}')
 
     # calculating avg
     avg = [np.mean(day_totals) if day_totals else 0 for day_totals in totals]
-    std = [np.std(day_totals) if day_totals else 0 for day_totals in totals]
+    sem = [scipy.stats.sem(day_totals) if day_totals else 0 for day_totals in totals]
     
-    return all_performances, avg, std
+    return all_performances, avg, sem
 
 def create_trial_type_dictionary(all_rat_performances):
     """gets avg and std, makes a dictionary of performance instead of total/correct trials
@@ -569,12 +573,13 @@ def change_in_performance(rat_performance, criterias = None):
         criterias (_dictionary_, optional): {trial_type: criteria_day}. Defaults to None.
 
     Returns:
-        performance_changes (_dictionary_): {trial_type: performance_changes}
+        performance_changes (_dictionary_): {trial_type: performance_changes} for each day
     """
     
     sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
     past_day_perf = None
     performance_changes = {} # array for differences in performances
+    avg_changes = []
     
     # get the last day to look at number of trials
     last_day = sorted_days[-1]
@@ -583,6 +588,7 @@ def change_in_performance(rat_performance, criterias = None):
     
     # loop through days
     for day in sorted_days:
+        all_performances_changes_for_day = []
         performance_for_day = rat_performance[day]
         
         # first day doesn't count as a change in performance
@@ -634,13 +640,16 @@ def change_in_performance(rat_performance, criterias = None):
                     change = current_performance - past_performance # change in performance
                     
                     performance_changes[trial_type].append(change) # append changes
+                    all_performances_changes_for_day.append(change)
                 #print(f'performance change - {change} on day {day} for trial type {trial_type}')
                 #print(f"past performance - {past_performance}, current - {current_performance}")
         
+        avg_change = np.mean(all_performances_changes_for_day)
+        avg_changes.append(avg_change)
         past_day_perf = performance_for_day # update past day
         
-    return performance_changes # returns dictionary of {trial_type:change_in_perf} across days for one rat
-    
+    return performance_changes, avg_changes # returns dictionary of {trial_type:change_in_perf} across days for one rat
+
 
 
 # PLOTTING --------------
@@ -815,7 +824,7 @@ def plot_all_rat_performances(all_rat_performances, plot_trial_types = False): #
     plt.show()
  
 def plot_rat_perf_changes(rat_performance):
-    performance_changes = change_in_performance(rat_performance)
+    performance_changes, _ = change_in_performance(rat_performance)
     #print(performance_changes)
     
     # extract trial_types
@@ -836,13 +845,13 @@ def plot_rat_perf_changes(rat_performance):
         
         # plot mean & std
         mean = np.mean(y)
-        std = np.std(y)
+        sem = scipy.stats.sem(y)
         
         ax.scatter(i, mean, color = 'black', s = 100, zorder = 5)
-        ax.errorbar(i, mean, yerr = std, fmt = 'o', color = 'black', ecolor = 'black', elinewidth = 2, capsize = 1)
+        ax.errorbar(i, mean, yerr = sem, fmt = 'o', color = 'black', ecolor = 'black', elinewidth = 2, capsize = 1)
         
         # display mean value slightly above the mean
-        offset = std + 1
+        offset = sem + 1
         ax.text(i, mean + offset, f'{mean:.2f}', ha = 'center', va = 'bottom')
     
     # set up labels

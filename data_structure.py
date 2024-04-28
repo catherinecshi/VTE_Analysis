@@ -1,4 +1,5 @@
 import os
+import re
 import fnmatch
 import pandas as pd
 import numpy as np
@@ -214,5 +215,104 @@ def load_data_structure(save_path): # this function assumes no errors bc they wo
                 "stateScriptLog": ss_data,
                 "videoTimeStamps": timestamps_data
             }
+
+    return data_structure
+
+
+### For rats where all DLC files are in one folder ------------
+def save_DLC(base_path, save_path):
+    rat = 'BP13'
+    save_path = os.path.join(save_path, rat)
+    
+    for root, dirs, files in os.walk(base_path):
+        for f in files:
+            f = f.lower() # there were some problems with cases
+            day = None
+            
+            # storing the DLC csv
+            if fnmatch.fnmatch(f, '*dlc*.csv'): 
+                file_path = os.path.join(root, f)
+                dlc_data = process_dlc_data(file_path)
+                
+                # get the day
+                match = re.search(r'Day(\d+)(?:_)?', f, re.IGNORECASE)
+                if match:
+                    day_number = match.group(1)
+                    day = 'Day' + day_number
+                
+                # save
+                dlc_path = os.path.join(save_path, day, f"{day}_DLC_tracking.csv")
+                if fnmatch.fnmatch(f, '*_2.*'):
+                    # this is when there are two files for the same day for whatever reason
+                    dlc_path = os.path.join(save_path, day, f"{day}_DLC_tracking_2.csv")
+                    dlc_data.to_csv(dlc_path, header = True, index = False)
+                elif os.path.exists(dlc_path): # when the file already exists
+                    continue
+                else:
+                    dlc_data.to_csv(dlc_path, header = True, index = False)
+
+def save_timestamps(base_path, save_path):
+    rat = 'BP13'
+    save_path = os.path.join(save_path, rat)
+    
+    for root, dirs, files in os.walk(base_path):
+        for f in files:
+            f = f.lower() # there were some problems with cases
+            day = None
+            
+            # storing the DLC csv
+            if fnmatch.fnmatch(f, '*.videotimestamps'): 
+                file_path = os.path.join(root, f)
+                timestamps_data = process_timestamps_data(file_path)
+                
+                # get the day
+                match = re.search(r'Day(\d+)(?:_)?', f, re.IGNORECASE)
+                if match:
+                    day_number = match.group(1)
+                    day = 'Day' + day_number
+                
+                # save
+                timestamps_path = os.path.join(save_path, day, f"{day}_videoTimeStamps.npy")
+                if fnmatch.fnmatch(f, '*_2.*'):
+                    timestamps_path = os.path.join(save_path, day, f"{day}_videoTimeStamps_2.npy")
+                    np.save(timestamps_path, timestamps_data)
+                elif os.path.exists(timestamps_path):
+                    continue
+                else:
+                    np.save(timestamps_path, timestamps_data)
+                    
+def load_one_rat(save_path):
+    data_structure = {}
+        
+    for day_folder in os.listdir(save_path): # loop for each day (in each rat folder)
+        day_path = os.path.join(save_path, day_folder)
+        dlc_data = None
+        ss_data = None
+        timestamps_data = None
+    
+        for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
+            for f in files:
+                f = f.lower()
+                
+                # storing the DLC csv
+                if fnmatch.fnmatch(f, '*dlc*.csv'): 
+                    file_path = os.path.join(root, f)
+                    dlc_data = process_loaded_dlc_data(file_path)
+                
+                # storing the statescript log
+                if fnmatch.fnmatch(f, '*statescriptlog*'):
+                    file_path = os.path.join(root, f)
+                    ss_data = process_statescript_log(file_path)
+                
+                if fnmatch.fnmatch(f, "*videotimestamps*"):
+                    file_path = os.path.join(root, f)
+                    timestamps_data = np.load(file_path)
+        
+        # add to dictionary
+        data_structure[day_folder] = {
+            "DLC_tracking": dlc_data,
+            "stateScriptLog": ss_data,
+            "videoTimeStamps": timestamps_data
+        }
 
     return data_structure
