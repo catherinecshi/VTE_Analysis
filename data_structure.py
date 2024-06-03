@@ -178,11 +178,11 @@ def create_main_data_structure(base_path):
     return data_structure
 
 def save_data_structure(data_structure, save_path):
-    """_summary_
+    """saves the dictionary data structure created by create_main_data_structure to a directory
 
-    Args:waef wef
-        data_structure (_type_): _description_
-        save_path (_type_): _description_
+    Args:
+        data_structure (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
+        save_path (str): path to directory the data structure would be saved as a folder. if it doesn't exist yet, it'll be created
     """
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -212,6 +212,15 @@ def save_data_structure(data_structure, save_path):
                 np.save(timestamps_path, data["videoTimeStamps"])
 
 def load_data_structure(save_path): # this function assumes no errors bc they would've been caught before saving
+    """loads the dictionary data structure created by create_main_data_structure from a directory it was saved in
+
+    Args:
+        save_path (str): path to directory the data structure would be saved as a folder. if it doesn't exist yet, it'll be created
+    
+    Returns:
+        (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
+    """
+    
     data_structure = {}
 
     for rat_folder in os.listdir(save_path): # loop for each rat
@@ -260,6 +269,15 @@ def load_data_structure(save_path): # this function assumes no errors bc they wo
 
 ### For rats where all DLC files are in one folder ------------
 def save_DLC(base_path, save_path):
+    """ 
+    this is a function for that folder full of BP13's DLC files, where it wasn't sorted at all
+    saves it according to day
+
+    Args:
+        base_path (str): the folder all the DLC files are in
+        save_path (str): the folder to save into
+    """
+    
     rat = 'BP13'
     save_path = os.path.join(save_path, rat)
     
@@ -291,6 +309,14 @@ def save_DLC(base_path, save_path):
                     dlc_data.to_csv(dlc_path, header = True, index = False)
 
 def save_timestamps(base_path, save_path):
+    """this is also for BP13 where all the files are in one folder
+    same as above but for timestmaps instead of DLC
+
+    Args:
+        base_path (_type_): _description_
+        save_path (_type_): _description_
+    """
+    
     rat = 'BP13'
     save_path = os.path.join(save_path, rat)
     
@@ -320,11 +346,20 @@ def save_timestamps(base_path, save_path):
                 else:
                     np.save(timestamps_path, timestamps_data)
                     
-def load_one_rat(save_path):
+def load_one_rat(base_path):
+    """loads dictionary for just one rat
+
+    Args:
+        base_path (str): where the raw data is
+
+    Returns:
+        dict: {day: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}
+    """
+    
     data_structure = {}
         
-    for day_folder in os.listdir(save_path): # loop for each day (in each rat folder)
-        day_path = os.path.join(save_path, day_folder)
+    for day_folder in os.listdir(base_path): # loop for each day (in each rat folder)
+        day_path = os.path.join(base_path, day_folder)
         dlc_data = None
         ss_data = None
         timestamps_data = None
