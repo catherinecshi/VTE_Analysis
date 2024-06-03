@@ -7,25 +7,58 @@ import numpy as np
 import readCameraModuleTimeStamps
 
 def process_dlc_data(file_path):
+    """
+    USE WHEN COMPLETELY UNPROCESSED, like when main df hasn't been created yet
+    reads csv files where first and second row and headers and should be ignored in the data processing
+    index of df is the column corresponding to bodyparts & coords in header - inplace means df is modified, and not that a new one is created
+    """
     df = pd.read_csv(file_path, header=[1, 2])
     df.set_index(('bodyparts', 'coords'), inplace=True)
     return df
 
 def process_loaded_dlc_data(file_path):
+    """
+    USE WHEN PROCESSED ALREADY, like when it has already been processed by the function above
+    """
     df = pd.read_csv(file_path, header=[0, 1])
     return df
 
 def process_timestamps_data(file_path):
+    """
+    uses script provided by statescript to figure out timestamps of each dlc coordinate
+    """
     timestamps = readCameraModuleTimeStamps.read_timestamps(file_path)
     return timestamps
 
 def process_statescript_log(file_path):
+    """
+    returns a string type containing all of the ss logs
+    """
     with open(file_path) as file:
         content = file.read()
     
     return content
 
-def create_main_data_structure(base_path): # creates a nested dictionary
+def create_main_data_structure(base_path): 
+    """ creates a nested dictionary with parsed ss logs, dlc data & timestamps
+    uses the folder structure during the original winter assignments, so does not work for every folder structure
+    also, anticipates not every day
+
+    Args:
+        base_path (str): folder path containing all the rat folders
+
+    Returns:
+        dict: {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
+        
+    Procedure
+    1. iterates over rat and day folders
+        - initializes an entry in the dict for each rat
+        - skips empty or non-folders
+    2. checks for DLC, statescript logs, and video timestamps
+        - processes & storeseach accordingly
+    3. organises all into a nested dictionary
+    4. logs messages for missing or duplicate files
+    """
     data_structure = {}
 
     for rat_folder in os.listdir(base_path): # loop for each rat
@@ -145,6 +178,12 @@ def create_main_data_structure(base_path): # creates a nested dictionary
     return data_structure
 
 def save_data_structure(data_structure, save_path):
+    """_summary_
+
+    Args:waef wef
+        data_structure (_type_): _description_
+        save_path (_type_): _description_
+    """
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     
