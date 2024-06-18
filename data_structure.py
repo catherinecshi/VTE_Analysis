@@ -3,6 +3,7 @@ import re
 import fnmatch
 import pandas as pd
 import numpy as np
+from sklearn.cluster import DBSCAN
 
 import readCameraModuleTimeStamps
 
@@ -265,6 +266,89 @@ def load_data_structure(save_path): # this function assumes no errors bc they wo
             }
 
     return data_structure
+
+def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
+    """
+    Filters dataframes. Check to make sure it's working properly. Generally, more than 100 filtered out points is bad
+    Keeps the original indices of the DataFrame
+
+    Args:
+        df (pandas.DataFrame): the data frame to be filtered
+        track_part (str, optional): part of rat to be used for their position. Defaults to 'greenLED'.
+        std_multiplier (int, optional): multiplier for std to define threshold beyond which jumps are excluded. Defaults to 7.
+        eps (int, optional): maximum distance between two samples for one to be considered as in the neighbourhood of another for DBCSCAN. Defaults to 70.
+        min_samples (int, optional): number of samples in a neighbourhood for a point to be considered a core point for DBSCAN. Defaults to 40.
+        distance_threshold (int, optional): distance threshold for identifying jumps in tracking data. Defaults to 190.
+        start_index (int, optional): index from which to start filtering. Defaults to None.
+
+    Returns:
+        x & y : panda.Series : filtered and interpolated coordinates for x and y
+    
+    Procedure:
+    1. filters based on the likelihood values
+    2. filters out points before start_index if provided
+    3. DBSCAN
+    4. filters out based on std thresholds
+    5. filters based on jumps
+    6. interpolate
+    """
+    
+    # modify a copy instead of the original
+    # also filter based on likelihood values
+    likely_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
+    
+    # filter out points before the rat has started its first trial
+    if start_index:
+        likely_data = likely_data[likely_data.index >= start_index]
+    
+    # DBSCAN Cluster analysis
+    coordinates = likely_data[[track_part]].copy()[[(track_part, 'x'), (track_part, 'y')]]
+    coordinates.dropna(inplace = True) # don't drop nan for dbscan
+    
+    clustering = DBSCAN(eps = eps, min_samples = min_samples).fit(coordinates)
+    labels = clustering.labels_
+    #noise_points_count = (labels == -1).sum() # so ik how many points were filtered out
+    #print(f"DBSCAN Filtered out {noise_points_count}")
+
+    filtered_indices = labels != -1 # filter out noise
+    filtered_data = likely_data[filtered_indices].copy()
+    
+    # calculate thresholds
+    diff_x = df[(track_part, 'x')].diff().abs()
+    diff_y = df[(track_part, 'y')].diff().abs()
+    threshold_x = diff_x.std() * std_multiplier
+    threshold_y = diff_y.std() * std_multiplier
+    
+    # calculate diff between current point and last non-jump point
+    last_valid_index = 0
+    jump_indices = [] # just to see how many points are jumped over
+    
+    for i in range(1, len(filtered_data)):
+        diff_x = abs(filtered_data.iloc[i][(track_part, 'x')] - filtered_data.iloc[last_valid_index][(track_part, 'x')])
+        diff_y = abs(filtered_data.iloc[i][(track_part, 'y')] - filtered_data.iloc[last_valid_index][(track_part, 'y')])
+        #distance = np.sqrt(diff_x**2 + diff_y**2) # euclidean distance
+        
+        # check for jumps
+        if diff_x > threshold_x or diff_y > threshold_y:
+            # mark as NaN
+            filtered_data.at[filtered_data.index[i], (track_part, 'x')] = np.nan
+            filtered_data.at[filtered_data.index[i], (track_part, 'y')] = np.nan
+            jump_indices.append(i)
+        else:
+            # udpate last valid index
+            last_valid_index = i
+    
+    # interpolating
+    filtered_data[(track_part, 'x')].interpolate(inplace = True)
+    filtered_data[(track_part, 'y')].interpolate(inplace = True)
+    
+    print(f"number of points filtered out - {len(jump_indices)}")
+    
+    # final coordinate points
+    x = filtered_data[(track_part, 'x')]
+    y = filtered_data[(track_part, 'y')]
+    
+    return x, y 
 
 
 ### For rats where all DLC files are in one folder ------------
