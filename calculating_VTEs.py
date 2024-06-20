@@ -1,135 +1,95 @@
-import math
-import bisect
+"""
+calculates the VTE zIdPhi values for one day for one rat
+main function to call is quantify_VTE()
+"""
+
+import os
+import pickle
 import numpy as np
+from scipy.stats import zscore
 
 import plotting
 import creating_zones
 import helper_functions
+import performance_analysis
 
-### GET INFORMATION -----------
-def get_ss_trial_starts(SS_df):
+### AUXILIARY FUNCTIONS ------
+def type_to_choice(trial_type, correct, ratID, day):
     """
-    gets the time associated with each of the trial start times from a statescript log
-    trial start times being when the time associated with "New Trial" appearing
+    gets the arm the rat went down when given trial_type and whether the rat got the choice correct
 
     Args:
-        SS_df (str): statescript log
+        trial_type (int): the number corresponding to the trial type, as shown at the start of statescript comments
+        correct (str): either "correct" for correct choice, or "Wrong" for incorrect choice. Note the capitalisation
+        ratID (str): the current rat
+        day (str): the current day being analysed
+
+    Raises:
+        helper_functions.ExpectationError: if trial_type is a number it shouldn't be
+        helper_functions.ExpectationError: if trial_type is a number it shouldn't be
+        helper_functions.ExpectationError: if correct doesn't correspond to either "correct" or "Wrong"
 
     Returns:
-        dict: {trial_starts: trial_type}
+        (str): the letter corresponding to which arm the rat went down
     """
     
-    lines = SS_df.splitlines()
+    choice = None
     
-    # storage variables
-    start_of_trial = False # know when the last line was the start of new trial
-    trial_starts = []
-    trial_info = {} # store trial start times and trial types
-    
-    # get the trial start times from SS
-    for line in lines:
-        if line.startswith('#'): # skip the starting comments
-            continue
-        
-        elif not line[0].isdigit(): # check if the first char is a number - skip if not
-            # hopefully this takes cares of the weird errors wth pressng summary after new trial showed
-            continue
-        
-        elif start_of_trial and "trialType" in line: # store trial type
-            parts = line.split()
-            trial_type = parts[3]
-            trial_info[trial_starts[-1]] = trial_type # assumes this will always come after New Trial'
-            start_of_trial = False
-                  
-        elif 'New Trial' in line: # indicate start of a new trial
-            start_of_trial = True
-            
-            # store the time during this event
-            parts = line.split()
-            trial_start = parts[0]
-            trial_info[trial_start] = None
-            trial_starts.append(trial_start)
-    
-    return trial_info
+    if "correct" in correct:
+        match trial_type:
+            case 1:
+                choice = "A"
+            case 2:
+                choice = "B"
+            case 3:
+                choice = "C"
+            case 4:
+                choice = "D"
+            case 5:
+                choice = "E"
+            case 6:
+                choice = "B"
+            case 7:
+                choice = "C"
+            case 8:
+                choice = "B"
+            case 9:
+                choice = "A"
+            case 10:
+                choice = "D"
+            case _:
+                print(f"Error for {ratID} on {day}")
+                raise helper_functions.ExpectationError("number from 1 - 10", trial_type)
+    elif "Wrong" in correct:
+        match trial_type:
+            case 1:
+                choice = "B"
+            case 2:
+                choice = "C"
+            case 3:
+                choice = "D"
+            case 4:
+                choice = "E"
+            case 5:
+                choice = "F"
+            case 6:
+                choice = "D"
+            case 7:
+                choice = "E"
+            case 8:
+                choice = "E"
+            case 9:
+                choice = "C"
+            case 10:
+                choice = "F"
+            case _:
+                print(f"Error for {ratID} on {day}")
+                raise helper_functions.ExpectationError("number from 1 - 10", trial_type)
+    else:
+        print(f"Error for {ratID} on {day}")
+        raise helper_functions.ExpectationError("correct or Wrong", correct)
 
-def ss_trial_starts_to_video(timestamps, SS_times):
-    """
-    converts statescript trial starts to dlc video trial starts
-
-    Args:
-        timestamps (np int array): the timestamps associated with each dlc frame
-        SS_times (str): the list of times from statescript of when trials start
-
-    Returns:
-        int array: the indices corresponding to where in the filtered dataframe will have trial starts
-        
-    Procedure:
-        1. Loop through each trial start time in SS_times
-            - trial start times being when "New Trial" appears
-        2. Check if the trial start time matches with a number in timestamps
-            - doesn't always happen because mismatch between ECU and MCU time
-            - if there is a match, add that time to trial_starts
-        3. If there isn't a perfect match
-            - check for the closest number, then add that to trial_starts
-            - skip 0
-    """
-    
-    trial_starts = []
-    
-    for time in SS_times:
-        # ensure consistent data types
-        time = float(int(time) / 1000)
-        
-        if time in timestamps: # if there is a perfect match between MCU & ECU and the time is in timestamps
-            index = timestamps.index(time)
-            trial_starts.append(index)
-        else: # if there isn't a perfect match
-            #print(f"Imperfect match between ECU and MCU at {time}")
-            
-            # index where time is inserted into timestamps
-            idx = bisect.bisect_left(timestamps, time)
-            
-            # check neighbours for closest time
-            if idx == 0: # if time < any available timestamp, so = 0
-                trial_starts.append(0)
-            elif idx == len(timestamps): # if time > any available timestamp, so = len(timestamps)
-                trial_starts.append(len(timestamps))
-            else:
-                before = timestamps[idx - 1]
-                after = timestamps[idx]
-                closest_time = before if (time - before) <= (after - time) else after
-                index = np.where(timestamps == closest_time)[0][0]
-                trial_starts.append(index)
-    
-    return trial_starts # with this, each trial_start is the index of the time when trial starts in relation to timestamps
-
-def get_trial_start_times(timestamps, SS_df): # gets indices for x/y where trials start & corresponding trial type
-    """
-    gets the trial start times according to the corresponding index for dlc dataframe
-
-    Args:
-        timestamps (np int array): the times for each dlc frame
-        SS_df (str): the statescript log
-
-    Returns:
-        dict: {trial type: trial starts}
-    """
-    
-    trial_info = get_ss_trial_starts(SS_df) # where trial_info is {trial_starts: trial_type}
-    trial_starts = list(trial_info.keys())
-    
-    video_starts = ss_trial_starts_to_video(timestamps, trial_starts) # this should be the indices for x/y where trials start
-    
-    # change trial_info such that the key is video_starts instead of trial_starts
-    video_trial_info = {}
-    
-    if len(video_starts) == len(trial_starts):
-        for index, video_start in enumerate(video_starts):
-            original_start_time = trial_starts[index]
-            trial_type = trial_info.get(original_start_time) # get trial type for trial start time
-            video_trial_info[video_start] = trial_type
-    
-    return video_trial_info
+    return choice
 
 
 
@@ -237,148 +197,18 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     
     return IdPhi
 
-
-
-### TRAJECTORY ANALYSIS ------------
-def get_trajectory(x, y, start, timestamps, hull):
+def calculate_zIdPhi(IdPhi_values, trajectories = None, x = None, y = None):
     """
-    gets all the x and y points within a trajectory given the start point and hull within which the trajectory is
-    
+    calculates the zIdPhi values when given the IdPhi values, and zscores according to which arm the rat went down
+    takes trajectories as well for visualising purposes
+
     Args:
-        x (int array): x coordinates from which to cut trajectory out of
-        y (int array): y coordinates from which to cut trajectory out of
-        start (int): index of dataframe corresponding to start of trajectory
-        timestamps (int array): the times for each frame of the dataframe
-        hull (scipy.spatial ConvexHull): hull within which trajectory is
-    
+        IdPhi_values (dict): {choice: IdPhi} where choice is where the rat went down, and IdPhi is the head velocity value
+        trajectories (dict): {choice: (trajectory_x, trajectory_y)}
+
     Returns:
-        (int array): all x points for trajectory
-        (int array): all y points for trajectory
+        (dict): {choice: zIdPhi}
     """
-    
-    # cut out the trajectory for each trial
-    # look through points starting at trial start time to see when it goes into different hulls
-    past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
-    trajectory_x = []
-    trajectory_y = []
-    
-    for index in range(start, len(timestamps)): # x has been filtered so is not an appropriate length now
-        # getting x and y
-        if index == start:
-            print(index)
-        
-        if index in x.index and index in y.index:
-            x_val = x.loc[index] # loc is based on actual index, iloc is based on position
-            y_val = y.loc[index]
-        elif index == start: # elif instead of else so it doesn't spam this message
-            print(f'trial started and cannot find x and y values - {start}')
-            continue
-        else:
-            continue
-        
-        point = (x_val, y_val)
-        inside = helper_functions.is_point_in_hull(point, hull) # check if still inside desired hull
-        
-        if inside:
-            past_inside = True
-            trajectory_x.append(x_val)
-            trajectory_y.append(y_val)
-        else:
-            if past_inside:
-                break # ok so now it has exited the centre hull
-        
-        """if index < trial_start + 1000:
-            trajectory_x.append(x_val)
-            trajectory_y.append(y_val)
-        else:
-            break"""
-    
-    return trajectory_x, trajectory_y
-
-
-
-def quantify_VTE(data_structure, ratID, day, save = False):
-    """DLC_df = data_structure[ratID][day]['DLC_tracking']
-    SS_df = data_structure[ratID][day]['stateScriptLog']
-    timestamps = data_structure[ratID][day]['videoTimeStamps']"""
-    
-    DLC_df = data_structure[day]['DLC_tracking']
-    SS_df = data_structure[day]['stateScriptLog']
-    timestamps = data_structure[day]['videoTimeStamps']
-    
-    # check timestamps
-    helper_functions.check_timestamps(DLC_df, timestamps)
-
-    # get trial start times + trial type
-    trial_starts = get_trial_start_times(timestamps, SS_df)
-    
-    # get x and y coordinates
-    first_trial_start = next(iter(trial_starts)) # get the first trial start time to pass into filtering
-    x, y = data_structure.filter_dataframe(DLC_df, start_index=first_trial_start)
-    
-    # define zones
-    centre_hull = creating_zones.get_centre_zone(x, y, ratID, day, save)
-    
-    # calculate IdPhi for each trial
-    IdPhi_values = {}
-    
-    # store trajectories for plotting later
-    trajectories = {}
-    
-    for trial_start, trial_type in trial_starts.items(): # where trial type is a string of a number corresponding to trial type
-        # cut out the trajectory for each trial
-        # look through points starting at trial start time to see when it goes into different hulls
-        past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
-        trajectory_x = []
-        trajectory_y = []
-        
-        trial_start = math.floor(trial_start) # round down so it can be used as an index
-        
-        for index in range(trial_start, len(timestamps)): # x has been filtered so is not an appropriate length now
-            # getting x and y
-            if index == trial_start:
-                print(index)
-            
-            if index in x.index and index in y.index:
-                x_val = x.loc[index] # loc is based on actual index, iloc is based on position
-                y_val = y.loc[index]
-            elif index == trial_start:
-                print(f'trial started and cannot find x and y values - {trial_start}')
-                continue
-            else:
-                continue
-            
-            """point = (x_val, y_val)
-            inside = check_if_inside(point, centre_hull)
-            
-            if inside:
-                past_inside = True
-                trajectory_x.append(x_val)
-                trajectory_y.append(y_val)
-            else:
-                if past_inside:
-                    break # ok so now it has exited the centre hull"""
-            
-            if index < trial_start + 1000:
-                trajectory_x.append(x_val)
-                trajectory_y.append(y_val)
-            else:
-                break
-        
-        # calculate Idphi of this trajectory
-        IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
-        #plot_animation(x, y, trajectory_x = trajectory_x, trajectory_y= trajectory_y)
-        
-        # store IdPhi according to trial type
-        if trial_type not in IdPhi_values:
-            IdPhi_values[trial_type] = []
-        IdPhi_values[trial_type].append(IdPhi)
-        
-        # store each trajectory for plotting latter
-        if trial_type in trajectories:
-            trajectories[trial_type].append((trajectory_x, trajectory_y))
-        else:
-            trajectories[trial_type] = [(trajectory_x, trajectory_y)]
     
     # calculate zIdPhi according to trial types
     zIdPhi_values = {}
@@ -387,33 +217,193 @@ def quantify_VTE(data_structure, ratID, day, save = False):
     lowest_zIdPhi = None
     lowest_trajectories = None
     
-    # this z scores according to trial type
-    for trial_type, IdPhis in IdPhi_values.items():
-        zIdPhis = zscore(IdPhis)
-        zIdPhi_values[trial_type] = zIdPhis
+    # this z scores according to choice arm
+    for choice, IdPhis in IdPhi_values.items():
+        zIdPhis = zscore(IdPhis) # zscored within the sample of same choices within a session
+        zIdPhi_values[choice] = zIdPhis
         
-        for i, zIdPhi in enumerate(zIdPhis): # this is to get the highest and lowest zidphi for plotting vte/non
-            if highest_zIdPhi:
-                if zIdPhi > highest_zIdPhi:
+        if trajectories:
+            for i, zIdPhi in enumerate(zIdPhis): # this is to get the highest and lowest zidphi for plotting vte/non
+                if highest_zIdPhi:
+                    if zIdPhi > highest_zIdPhi:
+                        highest_zIdPhi = zIdPhi
+                        highest_trajectories = trajectories[choice][i]
+                else:
                     highest_zIdPhi = zIdPhi
-                    highest_trajectories = trajectories[trial_type][i]
-            else:
-                highest_zIdPhi = zIdPhi
-                highest_trajectories = trajectories[trial_type][i]
-            
-            if lowest_zIdPhi:
-                if zIdPhi < lowest_zIdPhi and len(trajectories[trial_type][i]) > 2:
+                    highest_trajectories = trajectories[choice][i]
+                
+                if lowest_zIdPhi:
+                    if zIdPhi < lowest_zIdPhi and len(trajectories[choice][i]) > 2:
+                        lowest_zIdPhi = zIdPhi
+                        lowest_trajectories = trajectories[choice][i]
+                else:
                     lowest_zIdPhi = zIdPhi
-                    lowest_trajectories = trajectories[trial_type][i]
-            else:
-                lowest_zIdPhi = zIdPhi
-                lowest_trajectories = trajectories[trial_type][i]
+                    lowest_trajectories = trajectories[choice][i]
     
-    highest_trajectory_x, highest_trajectory_y = highest_trajectories
-    lowest_trajectory_x, lowest_trajectory_y = lowest_trajectories
+    if trajectories and x and y:
+        plotting.plot_zIdPhi(zIdPhi_values)
+        
+        highest_trajectory_x, highest_trajectory_y = highest_trajectories
+        lowest_trajectory_x, lowest_trajectory_y = lowest_trajectories
+        
+        plotting.plot_trajectory_animation(x, y, highest_trajectory_x, highest_trajectory_y, title = "Highest zIdPhi Trajectory", label = highest_zIdPhi)
+        plotting.plot_trajectory_animation(x, y, lowest_trajectory_x, lowest_trajectory_y, title = "Lowest zIdPhi Trajectory", label = lowest_zIdPhi)
     
-    plot_zIdPhi(zIdPhi_values)
-    plot_animation(x, y, highest_trajectory_x, highest_trajectory_y, highest = 2, zIdPhi=highest_zIdPhi)
-    plot_animation(x, y, lowest_trajectory_x, lowest_trajectory_y, highest = 1, zIdPhi=lowest_zIdPhi)
+    return zIdPhi_values
+
+
+
+### MAIN FUNCTIONS -----------
+def quantify_VTE(data_structure, ratID, day, save = False):
+    """
+    gets relevant VTE values for one rat for a specific day
+
+    Args:
+        data_structure (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
+        ratID (str): current rat being processed
+        day (str): current day being processed
+        save (bool, optional): whether plots should be saved. Defaults to False.
+
+    Raises:
+        helper_functions.LengthMismatchError: if the number of trials are different in statescript vs dlc
+
+    Returns:
+        zIdPhi_values (dict): {choice: zIdPhi}
+        IdPhi_values (dict): {choice: IdPhi}
+        trajectories (dict): {choice: (trajectory_x, trajectory_y)}
+        
+    Procedure:
+        1. get necessary components like coords, trial start times, and performance for session
+            - check if trial_starts and performance have the same number of trials
+        2. cut out the trajectory from the coordinates
+            - do so by using the start of the trial, and including the coordinates that are part of the first consecutive string in centre zone
+        3. calculate the IdPhi value of that trajectory
+        4. determine where the rat ended up going by looking at trial type and whether it got it correct
+            - sort all values according to where the rat ended up going
+        5. calculate zIdPhi values by zscoring across choice arm
+    """
+    
+    x, y, _, SS_log, timestamps, trial_starts = helper_functions.initial_processing(data_structure, ratID, day)
+    
+    # define zones
+    centre_hull = creating_zones.get_centre_zone(x, y, ratID, day, save)
+    
+    # store IdPhi and trajectory values
+    IdPhi_values = {}
+    trajectories = {}
+    
+    performance = performance_analysis.trial_perf_for_session(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
+    same_len = helper_functions(performance, trial_starts) # check if there are the same number of trials for perf and trial_starts
+    
+    # raise error if there isn't the same number of trials for performance and trial_starts
+    if not same_len:
+        print(f"Mismatch for {ratID} on {day} for performance vs trial_starts")
+        raise helper_functions.LengthMismatchError(performance.count, trial_starts.count)
+    
+    for i, (trial_start, trial_type) in enumerate(trial_starts.items()): # where trial type is a string of a number corresponding to trial type
+        # cut out the trajectory for each trial
+        trajectory_x, trajectory_y = helper_functions.get_trajectory(x, y, trial_start, timestamps, centre_hull)
+        
+        # calculate Idphi of this trajectory
+        IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
+        #plot_animation(x, y, trajectory_x = trajectory_x, trajectory_y= trajectory_y)
+        
+        # get the choice arm from the trial type and performance
+        choice = type_to_choice(trial_type, performance[i])
+        
+        # store IdPhi according to which arm the rat went down
+        if choice not in IdPhi_values:
+            IdPhi_values[choice] = []
+            
+        IdPhi_values[choice].append(IdPhi)
+        
+        # store each trajectory for plotting later
+        if choice in trajectories:
+            trajectories[choice].append((trajectory_x, trajectory_y))
+        else:
+            trajectories[choice] = [(trajectory_x, trajectory_y)]
+    
+    zIdPhi_values = calculate_zIdPhi(IdPhi_values, trajectories)
     
     return zIdPhi_values, IdPhi_values, trajectories
+
+def rat_VTE_over_sessions(data_structure, ratID):
+    """
+    iterates over each day for one rat, then save zIdPhi, IdPhi and trajectories using pickle
+    saves three file per day (zIdPhi values, IdPhi values, trajectories)
+
+    Args:
+        data_structure (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
+        ratID (str): rat
+    
+    Raises:
+        Exception: if something bad happens for a day
+    """
+    
+    rat_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}'
+    
+    for day in data_structure:
+        try:
+            zIdPhi, IdPhi, trajectories = quantify_VTE(data_structure, ratID, day, save = False)
+            zIdPhi_path = os.path.join(rat_path, day, 'zIdPhi.npy')
+            IdPhi_path = os.path.join(rat_path, day, 'IdPhi.npy')
+            trajectories_path = os.path.join(rat_path, day, 'trajectories.npy')
+            # save 
+            with open(zIdPhi_path, 'wb') as fp:
+                pickle.dump(zIdPhi, fp)
+            
+            with open(IdPhi_path, 'wb') as fp:
+                pickle.dump(IdPhi, fp)
+            
+            with open(trajectories_path, 'wb') as fp:
+                pickle.dump(trajectories, fp)
+        except Exception as error:
+            print(f'error in rat_VTE_over_session - {error} on day {day}')
+            
+def zIdPhis_across_sessions(base_path):
+    """
+    zscores the zIdPhis across an multiple sessions instead of just one session
+    increases sample such that what counts as a VTE should be more accurate, given camera is constant
+
+    Args:
+        base_path (str): file path where IdPhi values were saved, presumably from rat_VTE_over_sessions
+
+    Raises:
+        helper_functions.ExpectationError: if more than 1 IdPhi values file is found in a day
+
+    Returns:
+        (dict): {choice: zIdPhi_values}
+    """
+    
+    IdPhis_across_days = {} # this is so it can be zscored altogether
+    days = []
+    IdPhis_in_a_day = 0
+    
+    for day_folder in os.listdir(base_path):
+        day_path = os.path.join(base_path, day_folder)
+        if os.path.isdir(day_path):
+            days.append(day_folder)
+        
+        for root, dirs, files in os.walk(day_path):
+            for f in files:
+                file_path = os.path.join(root, f)
+                if 'IdPhi' in f and 'z' not in f:
+                    with open(file_path, 'rb') as fp:
+                        IdPhi_values = pickle.load(fp)
+                    
+                    for (choice, IdPhis) in IdPhi_values:
+                        if not IdPhis_across_days[choice]:
+                            IdPhis_across_days[choice] = []
+                        
+                        IdPhis_across_days[choice].append(IdPhis)
+                        IdPhis_in_a_day += 1
+
+                    if IdPhis_in_a_day > 1:
+                        print(f"Error on day {day_folder}")
+                        raise helper_functions.ExpectationError("only 1 IdPhi file in a day", "more than 1")
+        
+        IdPhis_in_a_day = 0
+    
+    zIdPhi_values = calculate_zIdPhi(IdPhis_across_days)
+    
+    return zIdPhi_values

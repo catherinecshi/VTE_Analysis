@@ -44,8 +44,35 @@ def create_all_rats_performance(data_structure, save_path):
         rat_performance_over_sessions(data_structure, ratID, should_save = True, save_path = save_path)
 
 
+
 # DATA ANALYSIS -------------
-def trial_analysis(content, printTrue):
+def trial_perf_for_session(content):
+    """
+    generates an ordered list of whether each trial resulted in a correct or incorrect choice
+
+    Args:
+        content (str): statescript log
+
+    Returns:
+        str array: either 'wrong' for incorrect choices or 'correct' for correct choices. should be in order
+    """
+    
+    lines = content.splitlines()
+    
+    performance = [] # storing whether the trial resulted in a correct or incorrect choice
+    
+    for line in lines:
+        if '#' in line: # skip initial comments
+            continue
+        
+        if 'Wrong' in line:
+            performance.append('wrong')
+        elif 'correct' in line:
+            performance.append('correct')
+    
+    return performance
+        
+def session_performance(content, printTrue):
     """this function analyses one statescript log to retrieve performance
     
     This analysis is done through by getting trial starts, trial types and using the middle number of lines
@@ -218,7 +245,7 @@ def trial_analysis(content, printTrue):
     #print(final_total_trials, final_correct_trials)
     return final_total_trials, final_correct_trials
 
-def weird_trial_analysis(content): # for BP11 day 42-45 bc it's so annoying
+def weird_session_performance(content): # for BP11 day 42-45 bc it's so annoying
     """this is just a different version of trial_analysis with worse functions and different last_line
 
     Args:
@@ -406,9 +433,9 @@ def get_trial_types(content):
     return final_trial_types  
 
 def trial_accuracy(content, print = False):
-    # just adding trial_analysis and get_trial_types together
+    # just adding session_performance and get_trial_types together
     
-    total_trials, correct_trials = trial_analysis(content, print)
+    total_trials, correct_trials = session_performance(content, print)
     trial_types = get_trial_types(content)
     #create_trial_accuracy(total_trials, correct_trials, trial_types)
     
@@ -1064,6 +1091,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     ax.set_title('Days until Criteria by Trial Type (80%)')
     ax.legend(title = 'Rat ID')
     plt.show()
+
 
 
 # TRAVERSAL FUNCTIONS ----------

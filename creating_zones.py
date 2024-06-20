@@ -1,14 +1,3 @@
-import os
-import math
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.cluster import DBSCAN
-from scipy.spatial import ConvexHull
-from matplotlib.patches import Polygon
-
-
 """
 Experimental method for how to define zones on a radial maze when the camera isn't consistent across sessions
 Currently Includes
@@ -20,20 +9,36 @@ The basic idea/presuppositions:
         - such that on a radial arm maze, there are 4 straight lines/paths that all intersect somewhat in the middle
     - If you define the clusters at the ends of the lines & at the intersection, you should have the centre & arm zones
 
-Procedure
+Procedure:
+
     1. Generate lines that cover most of the plot
         - does so by incrementing the x or y intercept for each slope
+
     2. Check how well each line is covered by points from the dataframe
         - divide each line into segments
-        - check if there are any points within the distance threshold to the segment * maybe checkf ro more points than one?
+        - check if there are any points within the distance threshold to the segment (maybe check for more points than one?)
         - count the number of consecutive segments that have coverage
         - if over a threshold, consider the line to correspond to covering a path that the rat has taken
+        
     3. Make a new set of lines that only include that have enough coverage
+    
     4. Check for the part that has the densest concentration of intersections
         - presumably this will be in the start
+        
     5. Create a convex hull that encapsulates the cluster surrounding that zone
 
 """
+
+
+import os
+import math
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.cluster import DBSCAN
+from scipy.spatial import ConvexHull
+from matplotlib.patches import Polygon
 
 
 def calculate_range(x, y):

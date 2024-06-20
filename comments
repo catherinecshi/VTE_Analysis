@@ -73,3 +73,14 @@ Keep in mind that using print() a lot will slow down your code. It's great for d
 I honestly don't know what is best practice for the process of parsing the statescript. When I do it, I get everything out in the same function, that way I only loop through the SS log one time. You have trial_analysis, get_trial_types, and time_until_choice that are all looping through the whole SS log. It's at least faster if you looped through the log once and called three different functions inside the big loop to get out the needed data.
 Line 373 and others: Home may not always be arm 1, best to make 1 a variable
 You call filter_dataframe 4 times, but it's all on the same DLC data. Isn't it a lot better to just save the output once instead of calling it 4 times? On that note, and im plenty guilty of this too, but do check your variable naming over time. You call the same data from DLC, "DLC" "DLC_df" and "DLC_data"
+
+
+
+
+
+remember to cut everything down to 3sf or no decimal places
+
+next on agenda:
+- make sure zIdPhi values get corresponded with trajectories
+- determine what are VTEs and what aren't
+- fix based on comments above

@@ -1,3 +1,7 @@
+"""
+converting things from computer to be able to be processed by the rest of the code
+"""
+
 import os
 import re
 import fnmatch
