@@ -8,6 +8,7 @@ from matplotlib.patches import Polygon, Ellipse
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
+from PIL import Image
 
 import helper_functions
 
@@ -35,7 +36,8 @@ def create_scatter_plot(x, y, title = '', xlabel = '', ylabel = '', save = None)
     plt.grid(True)
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/scatter_plot.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()
     
@@ -97,7 +99,8 @@ def create_occupancy_map(x, y, framerate = 0.03, bin_size = 15, title = '', save
     plt.ylabel('Y Bins')
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/occupancy_map.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()
 
@@ -133,7 +136,8 @@ def plot_hull(x, y, hull_points, densest_cluster_points, hull, save = None, titl
     plt.title(title) # add title
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/convex_hull.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()
         
@@ -168,7 +172,8 @@ def plot_ellipse(ellipse_params, x, y, save = None, title = ""):
     plt.title(title) # add title 
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/ellipse.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()
     
@@ -208,7 +213,8 @@ def plot_trajectory(x, y, trajectories, title = "", save = None, label = None):
     plt.legend()
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/trajectory.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()
     
@@ -227,10 +233,10 @@ def plot_trajectory_animation(x, y, trajectory_x = None, trajectory_y = None, in
         save (str, optional): file path if saving is desired. Defaults to None.
     """
     
-    if not trajectory_x: # this is for when you want to plot the entire trajectory throughout the trial
+    if trajectory_x is None: # this is for when you want to plot the entire trajectory throughout the trial
         trajectory_x = x
     
-    if not trajectory_y:
+    if trajectory_y is None:
         trajectory_y = y
     
     fig, ax = plt.subplots()
@@ -265,8 +271,10 @@ def plot_trajectory_animation(x, y, trajectory_x = None, trajectory_y = None, in
         legend_elements = [Line2D([0], [0], color = 'blue', lw = 2, label = rounded_label)]
         ax.legend(handles = legend_elements, loc = 'upper right', bbox_to_anchor = (1.15, 1))
     
+    # save or display
     if save:
-        ani.save(save)
+        save_path = f"{save}/trajectory_animation.gif"
+        ani.save(save_path, writer = 'pillow')
     else:
         plt.show()
         
@@ -314,6 +322,7 @@ def plot_zIdPhi(zIdPhi_values, save = None):
     plt.tight_layout()
     
     if save:
-        plt.savefig(save)
+        save_path = f"{save}/zIdPhi_Distribution.jpg"
+        plt.savefig(save_path)
     else:
         plt.show()

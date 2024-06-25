@@ -581,7 +581,7 @@ def make_convex_hull(intersection_points):
 
 
 ### PLOTTING METHODS -----------
-def plot_lines(x, y, lines, title):
+def plot_lines(x, y, lines, title, save):
     fig, ax = plt.subplots()
     
     # plot data points
@@ -643,7 +643,7 @@ def plot_coverage_lines(x, y, lines, coverages, threshold = 0.8):
     # plot
     plot_lines(x, y, new_lines, title = "New Lines")
 
-def plot_segments(x, y, lines, starts, ends, ratID = 'Misc', day = None):
+def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
     plt.scatter(x, y)
     
     for i, (slope, b) in enumerate(lines):
@@ -678,10 +678,13 @@ def plot_segments(x, y, lines, starts, ends, ratID = 'Misc', day = None):
     plt.show()
     
     # save the figure
-    if day:
-        plt.savefig(f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}/{day}')
+    if plot:
+        plt.show()
+        plt.savefig(f'{save}/segments.jpg')
+    elif save:
+        plt.savefig(f'{save}/segments.jpg')
 
-def plot_hull(x, y, intersection_points, densest_cluster_points, hull, day = None):
+def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = None, plot = False):
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
@@ -694,62 +697,83 @@ def plot_hull(x, y, intersection_points, densest_cluster_points, hull, day = Non
     hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor='k', fill=False)
     plt.gca().add_patch(hull_polygon)
     
-    if day:
-        plt.savefig(f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13/{day}')
-    else:
+    if plot:
         plt.show()
+        plt.savefig(f'{save}/convex_hull.jpg')
+    elif save:
+        plt.savefig(f'{save}/convex_hull.jpg')
 
 
 ## GET ZONES ------------------
-def get_centre_zone(x, y, ratID, day, save = False, threshold = None, plot = False): #currently highly experimental, ask cat for an exp if needed
-    # determine whether saving is necessary
-    file_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}/{day}'
-    coverage_path = file_path + '/coverage_scores.csv'
-    covered_path = file_path + '/covered_lines.csv'
-    intersections_path = file_path + '/intersections.csv'
-    hull_path = file_path + '/hull_vertices.npy'
+def get_centre_zone(x, y, save = None, threshold = None, plot = False): #currently highly experimental, ask cat for an exp if needed
+    """
+    Creates the convex hull for centre zone of the maze for any given recording
+    Methodology described above
     
-    if save or not os.path.exists(coverage_path) or not os.path.exists(hull_path): # saves regardless if file doesn't exist
+    Args:
+        x (int array): x coordinates for entire session
+        y (int array): y coordinates for entire session
+        save (str, optional): file path is saving is desired. Defaults to None
+        threshold (int, optional): number of segments in a row needed to cross threshold when makign new lines. Defaults to None
+        plot (bool, optional): whether to display plots
+        
+    Returns:
+        (scipy.spatial.ConvexHull): convex hull corresponding to the centre zone
+    """
+    
+    # file paths for saves    
+    raw_path = save + '/raw_data.csv'
+    covered_path = save + '/covered_lines.csv'
+    intersections_path = save + '/intersections.csv'
+    hull_path = save + '/hull_vertices.npy'
+    
+    if save or not os.path.exists(raw_path) or not os.path.exists(hull_path): # saves regardless if file doesn't exist
         # step 1 - generate lines that cover the entire plot
         lines = generate_lines(x, y, plot = plot)
         
         # step 2 - calculate the coverage of how well the points cover the lines
-        coverages, starts, ends = calculate_line_coverages(x, y, lines)
+        coverages, starts, ends = calculate_line_coverages(x, y, lines, plot = plot)
         
         # step 3 - only keep the lines that are past the threshold
         updated_lines, updated_starts, updated_ends = make_new_lines(lines, coverages, starts, ends, threshold)
         if plot:
-            plot_segments(x, y, updated_lines, updated_starts, updated_ends, ratID = ratID, day = day) # plot the new lines if desired
+            plot_segments(x, y, updated_lines, updated_starts, updated_ends, save = save) # plot the new lines if desired
         
         # step 4 - find the intersection points between lines that still exist
         intersections = find_intersections(updated_lines, updated_starts, updated_ends)
         intersection_points = np.array(intersections) # np array for DBSCAN to work
         
         # step 5 - create convex hull
-        hull, densest_cluster_points = make_convex_hull(intersection_points, x, y, day = day)
+        hull, densest_cluster_points = make_convex_hull(intersection_points)
         if plot:
-            plot_hull(x, y, intersection_points, densest_cluster_points, hull, day)
+            plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = save)
         
         # separate lines into individual arrays
         slopes, b = zip(*lines)
         covered_slopes, covered_intercepts = zip(*updated_lines)
         
         # data frame
-        df = pd.DataFrame(coverages, columns=['Coverages'])
-        df['Slope'] = slopes # should be indexed the same as coverages
-        df['Intercept'] = b
-        df['Starts'] = starts
-        df['Ends'] = ends
+        raw_data = { # complete raw data
+            'Coverages': coverages,
+            'Slopes': slopes,
+            'Intercepts': b,
+            'Starts': starts,
+            'Ends': ends
+        }
+        raw_df = pd.DataFrame(raw_data)
         
-        # for the filtered processed data
-        df2 = pd.DataFrame(covered_slopes, columns=['Covered Slopes'])
-        df2['Covered Intercepts'] = covered_intercepts
-        df3 = pd.DataFrame(intersections, columns=['Intersections X', 'Intersections Y'])
-
+        covered_lines = {
+            'Covered Slopes': covered_slopes,
+            'Covered Intercepts': covered_intercepts
+        }
+        covered_df = pd.DataFrame(covered_lines)
+        
+        intersections_df = pd.DataFrame(intersections, columns = ['Intersections X', 'Intersections Y'])
+        
         # save
-        df.to_csv(coverage_path)
-        df2.to_csv(covered_path)
-        df3.to_csv(intersections_path)
+        raw_df.to_csv(raw_path)
+        covered_df.to_csv(covered_path)
+        intersections_df.to_csv(intersections_path)
         
         # save convex hull
         np.save(hull_path, densest_cluster_points[hull.vertices])

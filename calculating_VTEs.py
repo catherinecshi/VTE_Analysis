@@ -6,6 +6,7 @@ main function to call is quantify_VTE()
 import os
 import pickle
 import numpy as np
+import pandas as pd
 from scipy.stats import zscore
 
 import plotting
@@ -254,7 +255,7 @@ def calculate_zIdPhi(IdPhi_values, trajectories = None, x = None, y = None):
 
 
 ### MAIN FUNCTIONS -----------
-def quantify_VTE(data_structure, ratID, day, save = False):
+def quantify_VTE(data_structure, ratID, day, save = None):
     """
     gets relevant VTE values for one rat for a specific day
 
@@ -262,7 +263,7 @@ def quantify_VTE(data_structure, ratID, day, save = False):
         data_structure (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
         ratID (str): current rat being processed
         day (str): current day being processed
-        save (bool, optional): whether plots should be saved. Defaults to False.
+        save (str, optional): filepath if saving is desired. Defaults to None.
 
     Raises:
         helper_functions.LengthMismatchError: if the number of trials are different in statescript vs dlc
@@ -286,11 +287,13 @@ def quantify_VTE(data_structure, ratID, day, save = False):
     x, y, _, SS_log, timestamps, trial_starts = helper_functions.initial_processing(data_structure, ratID, day)
     
     # define zones
-    centre_hull = creating_zones.get_centre_zone(x, y, ratID, day, save)
+    centre_hull = creating_zones.get_centre_zone(x, y, save = save)
     
     # store IdPhi and trajectory values
     IdPhi_values = {}
     trajectories = {}
+    store_data = []
+    id = 0
     
     performance = performance_analysis.trial_perf_for_session(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
     same_len = helper_functions(performance, trial_starts) # check if there are the same number of trials for perf and trial_starts
@@ -322,6 +325,16 @@ def quantify_VTE(data_structure, ratID, day, save = False):
             trajectories[choice].append((trajectory_x, trajectory_y))
         else:
             trajectories[choice] = [(trajectory_x, trajectory_y)]
+        
+        # store each trajectory for later
+        id += 1
+        traj_id = ratID + "_" + str(id)
+        new_row = {'ID': traj_id, 'Rat': ratID, 'Day': day, 'X Values': trajectory_x, 'Y Values': trajectory_y, 'Choice': choice, 'Trial Type': trial_type}
+        store_data.append(new_row)
+    
+    df = pd.DataFrame(store_data)
+    file_path = f"{save}/trajectories.csv"
+    df.to_csv(file_path)
     
     zIdPhi_values = calculate_zIdPhi(IdPhi_values, trajectories)
     
@@ -348,6 +361,7 @@ def rat_VTE_over_sessions(data_structure, ratID):
             zIdPhi_path = os.path.join(rat_path, day, 'zIdPhi.npy')
             IdPhi_path = os.path.join(rat_path, day, 'IdPhi.npy')
             trajectories_path = os.path.join(rat_path, day, 'trajectories.npy')
+            
             # save 
             with open(zIdPhi_path, 'wb') as fp:
                 pickle.dump(zIdPhi, fp)

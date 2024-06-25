@@ -13,18 +13,18 @@ import performance_analysis
 
 # saving
 #save_path = '/Users/catpillow/Documents/VTE Analysis/VTE_Data' # this is just SS (added BP13 DLC & timestamps)
-save_path_BP = '/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13'
+#save_path_BP = '/Users/catpillow/Documents/VTE Analysis/VTE_Data/BP13'
 #save_path = '/Users/catpillow/Downloads/VTE_Data'
 
 # loading
 #loaded_data_structure = data_structure.load_data_structure(save_path)
-BP13_data = data_processing.load_one_rat(save_path_BP)
+#BP13_data = data_processing.load_one_rat(save_path_BP)
 
 # example
 ratID = 'BP13'
 day = 'Day8'
 
-zIdPhi, IdPhi, trajectories = calculating_VTEs.quantify_VTE(BP13_data, ratID, day, save = False)
+#zIdPhi, IdPhi, trajectories = calculating_VTEs.quantify_VTE(BP13_data, ratID, day, save = False)
 #rat_VTE_over_sessions(BP13_data, ratID)
 
 #rat_VTE_over_sessions(loaded_data_structure, ratID)

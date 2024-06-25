@@ -292,3 +292,9 @@
 - how to estimate true position x(t) given noisy measurements y(t)?
     - use past measurements
 
+
+### PYTHON SUBPROCESS
+- allows you to run other programs or command from python code
+    - allows for automation
+- enables users to handle inputs outputs and errors
+
