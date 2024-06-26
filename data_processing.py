@@ -5,6 +5,7 @@ converting things from computer to be able to be processed by the rest of the co
 import os
 import re
 import fnmatch
+import logging
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -44,13 +45,107 @@ def process_statescript_log(file_path):
     
     return content
 
-def create_main_data_structure(base_path): 
+def check_and_process_file(file_path, process_function, data_type, found_flag):
+    """
+    processes file and checks if there's a duplicate
+
+    Args:
+        file_path (str): file path of dlc file
+        process_function (func): function corresponding to the type of data it is
+        data_type (str): a string corresponding to the tyep of data it is
+        found_flag (bool): whether there were previously a file of the same data type for the same day and rat already
+
+    Returns:
+        Any: the processed data - types depend on the type of data
+        (bool): same as found_flag, but now returns True so indicate there's already been a file corresponding to data type for day and rat
+    """
+    
+    if found_flag: # duplicate found
+        logging.warning(f"More than one {data_type} file found: {file_path}")
+        return None, found_flag
+    else:
+        found_flag = True
+        data = process_function(file_path)
+        return data, found_flag
+
+def create_dictionary_for_rat(rat_path, rat_folder):
+    """
+    makes a dictionary containing the SS log, dlc file & timestamps
+
+    Args:
+        rat_path (str): file path for where the day folders can be found
+        rat_folder (str): rat id essentially
+
+    Returns:
+        (dict): dictionary with form {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}
+    """
+    
+    day_structure = {}
+    
+    for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
+        day_path = os.path.join(rat_path, day_folder)
+        dlc_data = None
+        ss_data = None
+        timestamps_data = None
+        track_folder_found = False # check if there are any track folders in this day folder
+        
+        # for checking if a videoframerate, ss log & dlc csv file has been found for each day for each rat
+        ss = False
+        dlc = False
+        timestamps = False
+    
+        for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
+            # check if there are any track folders bc only implanted rats have it, which changes the naming conventions for folders
+            for dir_name in dirs:
+                if fnmatch.fnmatch(dir_name.lower(), '*track*'):
+                    track_folder_found = True
+            
+            for f in files:
+                f_actual = f
+                f = f.lower() # there were some problems with cases
+                
+                # storing the DLC csv
+                if fnmatch.fnmatch(f, '*dlc*.csv'): 
+                    dlc_data, dlc = check_and_process_file(os.path.join(root, f), process_dlc_data, "DLC", dlc)
+                
+                # handle fnmatch differently depending on whether track folder was found
+                if track_folder_found:
+                    # storing the statescript log
+                    if fnmatch.fnmatch(f, '*track*.statescriptlog'):
+                        ss_data, ss = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                    
+                    if fnmatch.fnmatch(f, '*track*.videotimestamps'):
+                        timestamps_data, timestamps = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+                else:
+                    # storing the statescript log
+                    if fnmatch.fnmatch(f, '*.statescriptlog'):
+                        ss_data, ss = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                    
+                    if fnmatch.fnmatch(f, '*.videotimestamps'):
+                        timestamps_data, timestamps = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+        
+        # add to dictionary
+        if ss and dlc and timestamps:
+            day_structure = {
+                "DLC_tracking": dlc_data,
+                "stateScriptLog": ss_data,
+                "videoTimeStamps": timestamps_data
+            }
+        elif (not ss) and (not dlc) and (not timestamps):
+            logging.warning(f"No timestamps, stateScriptLog or DLC file found for rat {rat_folder} for {day_folder}")
+        elif (not ss) or (not dlc) or (not timestamps):
+            logging.warning(f"File missing for rat {rat_folder} for {day_folder} - statescript: {ss}; dlc: {dlc}; timestamps: {timestamps}")
+
+    return day_structure
+
+
+def create_main_data_structure(base_path, module): 
     """ creates a nested dictionary with parsed ss logs, dlc data & timestamps
-    uses the folder structure during the original winter assignments, so does not work for every folder structure
-    also, anticipates not every day
+    currently skips pre/post sleep
 
     Args:
         base_path (str): folder path containing all the rat folders
+        module (str): task type. things like 'inferenceTraining' or 'moveHome'
 
     Returns:
         dict: {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
@@ -67,119 +162,39 @@ def create_main_data_structure(base_path):
     data_structure = {}
 
     for rat_folder in os.listdir(base_path): # loop for each rat
-        rat_path = os.path.join(base_path, rat_folder, 'inferenceTraining')
+        rat_path = os.path.join(base_path, rat_folder, module)
+        
+        # check if implanted rat since folder system is a little different
+        implant = False
+        
+        if any('Sleep' in folder for folder in os.listdir(rat_path)):
+            implant = True
         
         # skip over .DS_Store
         if not os.path.isdir(rat_path):
-            print(f"Skipping over non-directory folder: {rat_path}")
+            logging.info(f"Skipping over non-directory folder: {rat_path}")
             continue
         
         # skip over empty folders
         day_folders = os.listdir(rat_path)
         if not day_folders: # if folder is empty
-            print(f"{rat_path} is empty")
+            logging.warning(f"{rat_path} is empty")
             continue
-            
-        data_structure[rat_folder] = {} # first nest in dictionary
         
-        for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
-            day_path = os.path.join(rat_path, day_folder)
-            dlc_data = None
-            ss_data = None
-            timestamps_data = None
-            track_folder_found = False # check if there are any track folders in this day folder
+        if implant:
+            track_folder = None
             
-            # for checking if a videoframerate, ss log & dlc csv file has been found for each day for each rat
-            ss = False
-            dlc = False
-            timestamps = False
+            for folder in day_folders:
+                if "track" in folder:
+                    track_folder = folder
+                    break
+            
+            rat_path = os.path.join(base_path, rat_folder, module, track_folder) # so only the track folder & not the post/pre sleep is taken
+
+        day_structure = create_dictionary_for_rat(rat_path, rat_folder)
+            
+        data_structure[rat_folder] = day_structure # first nest in dictionary
         
-            for root, dirs, files in os.walk(day_path): # look at all the files in the day folder
-                # check if there are any track folders bc only implanted rats have it, which changes the naming conventions for folders
-                for dir_name in dirs:
-                    if fnmatch.fnmatch(dir_name.lower(), '*track*'):
-                        track_folder_found = True
-                
-                for f in files:
-                    f_actual = f
-                    f = f.lower() # there were some problems with cases
-                    
-                    # storing the DLC csv
-                    if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                        # checks if there is a duplication
-                        if dlc == True:
-                            print("More than one DLC file found")
-                        else:
-                            dlc = True
-                        
-                        file_path = os.path.join(root, f)
-                        dlc_data = process_dlc_data(file_path)
-                        
-                        print(file_path)
-                    
-                    # handle fnmatch differently depending on whether track folder was found
-                    if track_folder_found:
-                        # storing the statescript log
-                        if fnmatch.fnmatch(f, '*track*.statescriptlog'):
-                            # checks if there is a duplication
-                            if ss == True:
-                                print("More than one SS Log found")
-                            else:
-                                ss = True
-                            
-                            file_path = os.path.join(root, f)
-                            ss_data = process_statescript_log(file_path)
-                            
-                            print(file_path)
-                        
-                        if fnmatch.fnmatch(f, '*track*.videotimestamps'):
-                            if timestamps == True:
-                                print("More than one .videotimestamps found")
-                            else:
-                                timestamps = True
-
-                            file_path = os.path.join(root, f_actual)
-                            timestamps_data = process_timestamps_data(file_path)
-                    else:
-                        # storing the statescript log
-                        if fnmatch.fnmatch(f, '*.statescriptlog'):
-                            # checks if there is a duplication
-                            if ss == True:
-                                print("More than one SS Log found")
-                            else:
-                                ss = True
-                            
-                            file_path = os.path.join(root, f)
-                            ss_data = process_statescript_log(file_path)
-                            
-                            print(file_path)
-                        
-                        if fnmatch.fnmatch(f, '*.videotimestamps'):
-                            if timestamps == True:
-                                print("More than one .videotimestamps found")
-                            else:
-                                timestamps = True
-
-                            file_path = os.path.join(root, f_actual)
-                            timestamps_data = process_timestamps_data(file_path)
-            
-            # add to dictionary
-            if ss and dlc and timestamps:
-                data_structure[rat_folder][day_folder] = {
-                    "DLC_tracking": dlc_data,
-                    "stateScriptLog": ss_data,
-                    "videoTimeStamps": timestamps_data
-                }
-            elif ss and (not dlc) and (not timestamps):
-                data_structure[rat_folder][day_folder] = {
-                    "stateScriptLog": ss_data
-                }
-                print(f"only ss found for rat {rat_folder} for {day_folder}")
-            elif (not ss) and (not dlc) and (not timestamps):
-                print(f"No timestamps, stateScriptLog or DLC file found for rat {rat_folder} for {day_folder}")
-            elif (not ss) or (not dlc) or (not timestamps):
-                print(f"File missing for rat {rat_folder} for {day_folder}")
-
     return data_structure
 
 def save_data_structure(data_structure, save_path):

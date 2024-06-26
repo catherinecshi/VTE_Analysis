@@ -686,6 +686,15 @@ def change_in_performance(rat_performance, criterias = None):
         
     return performance_changes, avg_changes # returns dictionary of {trial_type:change_in_perf} across days for one rat
 
+def get_trials_for_session(content):
+    lines = content.splitlines()
+    
+    for line in lines:
+        if '#' in line or '~' in line: # skip starting comments and cuts
+            continue
+        
+        if 'trialType = ' in line:
+            re.findall('trialType = ')
 
 
 # PLOTTING --------------
