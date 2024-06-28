@@ -12,6 +12,16 @@ from sklearn.cluster import DBSCAN
 
 import readCameraModuleTimeStamps
 
+### LOGGING
+logging.basicConfig(filename='data_processing_log.txt',
+                    format='%(asctime)s %(message)s',
+                    filemode='w')
+
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
+
+
+
 def process_dlc_data(file_path):
     """
     USE WHEN COMPLETELY UNPROCESSED, like when main df hasn't been created yet
@@ -62,10 +72,16 @@ def check_and_process_file(file_path, process_function, data_type, found_flag):
     
     if found_flag: # duplicate found
         logging.warning(f"More than one {data_type} file found: {file_path}")
-        return None, found_flag
+        data = process_function(file_path)
+        return data, found_flag
     else:
         found_flag = True
-        data = process_function(file_path)
+        try:
+            data = process_function(file_path)
+        except Exception as e:
+            logging.error(f"error {e} for {file_path} data {data_type}")
+            return None
+            
         return data, found_flag
 
 def create_dictionary_for_rat(rat_path, rat_folder):
@@ -77,10 +93,10 @@ def create_dictionary_for_rat(rat_path, rat_folder):
         rat_folder (str): rat id essentially
 
     Returns:
-        (dict): dictionary with form {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}
+        (dict): {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}
     """
     
-    day_structure = {}
+    rat_structure = {}
     
     for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
         day_path = os.path.join(rat_path, day_folder)
@@ -106,27 +122,89 @@ def create_dictionary_for_rat(rat_path, rat_folder):
                 
                 # storing the DLC csv
                 if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                    dlc_data, dlc = check_and_process_file(os.path.join(root, f), process_dlc_data, "DLC", dlc)
+                    result = check_and_process_file(os.path.join(root, f), process_dlc_data, "DLC", dlc)
+                    if result: # to make sure there aren't unpacking errors if none type is returned
+                        temp_dlc_data, dlc = result
+                        
+                        if dlc_data is None: # if dlc_data is currently empty
+                            dlc_data = temp_dlc_data
+                        elif isinstance(dlc_data, list): # if dlc_data is already a list with two files
+                            dlc_data.append(temp_dlc_data)
+                        else: # dlc_data isn't empty, but there aren't multiple items in the list yet
+                            dlc_data = [dlc_data, temp_dlc_data]
+                    else:
+                        dlc = False
                 
                 # handle fnmatch differently depending on whether track folder was found
                 if track_folder_found:
                     # storing the statescript log
                     if fnmatch.fnmatch(f, '*track*.statescriptlog'):
-                        ss_data, ss = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                        result = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                        if result:
+                            temp_ss_data, ss = result
+                            
+                            if ss_data is None:
+                                ss_data = temp_ss_data
+                            elif isinstance(ss_data, list):
+                                ss_data.append(temp_ss_data)
+                            else:
+                                ss_data = [ss_data, temp_ss_data]
+                                
+                        else:
+                            ss = False
                     
                     if fnmatch.fnmatch(f, '*track*.videotimestamps'):
-                        timestamps_data, timestamps = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+                        result = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+                        if result:
+                            temp_timestamps_data, timestamps = result
+                            
+                            if timestamps_data is None:
+                                timestamps_data = temp_timestamps_data
+                            elif isinstance(timestamps_data, list):
+                                timestamps_data.append(temp_timestamps_data)
+                            else:
+                                timestamps_data = [timestamps_data, temp_timestamps_data]
+                                
+                        else:
+                            timestamps = False
+                        
                 else:
                     # storing the statescript log
                     if fnmatch.fnmatch(f, '*.statescriptlog'):
-                        ss_data, ss = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                        result = check_and_process_file(os.path.join(root, f), process_statescript_log, "SS", ss)
+                        if result:
+                            temp_ss_data, ss = result
+                            
+                            if ss_data is None:
+                                ss_data = temp_ss_data
+                            elif isinstance(ss_data, list):
+                                ss_data.append(temp_ss_data)
+                            else:
+                                ss_data = [ss_data, temp_ss_data]
+                                
+                        else:
+                            ss = False
                     
                     if fnmatch.fnmatch(f, '*.videotimestamps'):
-                        timestamps_data, timestamps = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+                        result = check_and_process_file(os.path.join(root, f_actual), process_timestamps_data, "timestamps", timestamps)
+                        if result:
+                            temp_timestamps_data, timestamps = result
+                            
+                            if timestamps_data is None:
+                                timestamps_data = temp_timestamps_data
+                            elif isinstance(timestamps_data, list):
+                                timestamps_data.append(temp_timestamps_data)
+                            else:
+                                timestamps_data = [timestamps_data, temp_timestamps_data]
+                                
+                        else:
+                            timestamps = False
         
         # add to dictionary
-        if ss and dlc and timestamps:
-            day_structure = {
+        if dlc_data is None or ss_data is None or timestamps_data is None: # check for NoneTypes
+            logging.warning(f"File missing for rat {rat_folder} for {day_folder} - statescript: {ss}; dlc: {dlc}; timestamps: {timestamps}")
+        elif ss and dlc and timestamps: # dict
+            rat_structure[day_folder] = {
                 "DLC_tracking": dlc_data,
                 "stateScriptLog": ss_data,
                 "videoTimeStamps": timestamps_data
@@ -136,7 +214,7 @@ def create_dictionary_for_rat(rat_path, rat_folder):
         elif (not ss) or (not dlc) or (not timestamps):
             logging.warning(f"File missing for rat {rat_folder} for {day_folder} - statescript: {ss}; dlc: {dlc}; timestamps: {timestamps}")
 
-    return day_structure
+    return rat_structure
 
 
 def create_main_data_structure(base_path, module): 
@@ -164,16 +242,16 @@ def create_main_data_structure(base_path, module):
     for rat_folder in os.listdir(base_path): # loop for each rat
         rat_path = os.path.join(base_path, rat_folder, module)
         
+        # skip over .DS_Store
+        if not os.path.isdir(rat_path):
+            logging.info(f"Skipping over non-directory folder: {rat_path}")
+            continue
+        
         # check if implanted rat since folder system is a little different
         implant = False
         
         if any('Sleep' in folder for folder in os.listdir(rat_path)):
             implant = True
-        
-        # skip over .DS_Store
-        if not os.path.isdir(rat_path):
-            logging.info(f"Skipping over non-directory folder: {rat_path}")
-            continue
         
         # skip over empty folders
         day_folders = os.listdir(rat_path)
@@ -191,9 +269,9 @@ def create_main_data_structure(base_path, module):
             
             rat_path = os.path.join(base_path, rat_folder, module, track_folder) # so only the track folder & not the post/pre sleep is taken
 
-        day_structure = create_dictionary_for_rat(rat_path, rat_folder)
+        rat_structure = create_dictionary_for_rat(rat_path, rat_folder)
             
-        data_structure[rat_folder] = day_structure # first nest in dictionary
+        data_structure[rat_folder] = rat_structure # first nest in dictionary
         
     return data_structure
 
@@ -218,18 +296,36 @@ def save_data_structure(data_structure, save_path):
             if not os.path.exists(day_path):
                 os.makedirs(day_path)
 
-            if "DLC_tracking" in data:
-                dlc_path = os.path.join(day_path, f"{day}_DLC_tracking.csv")
-                data["DLC_tracking"].to_csv(dlc_path, header = True, index = False)
+            if "DLC_tracking" in data and data["DLC_tracking"] is not None:
+                if isinstance(data["DLC_tracking"], list):
+                    # if data is list, iterate over each dlc file and make new csv file for each
+                    for i, dlc_data in enumerate(data["DLC_tracking"]):
+                        dlc_path = os.path.join(day_path, f"{day}_DLC_tracking_{i}.csv")
+                        dlc_data.to_csv(dlc_path, header = True, index = False)
+                else: # if data is not list, just save as csv file
+                    dlc_path = os.path.join(day_path, f"{day}_DLC_tracking.csv")
+                    data["DLC_tracking"].to_csv(dlc_path, header = True, index = False)
             
-            if "stateScriptLog" in data:
-                ss_path = os.path.join(day_path, f"{day}_stateScriptLog.txt")
-                with open(ss_path, 'w') as file:
-                    file.write(data["stateScriptLog"])
+            if "stateScriptLog" in data and data["stateScriptLog"] is not None:
+                if isinstance(data["stateScriptLog"], list):
+                    for i, ss_data in enumerate(data["stateScriptLog"]):
+                        ss_path = os.path.join(day_path, f"{day}_stateScriptLog_{i}.txt")
+                        
+                        with open(ss_path, 'w') as file:
+                            file.write(ss_data)
+                else:
+                    ss_path = os.path.join(day_path, f"{day}_stateScriptLog.txt")
+                    with open(ss_path, 'w') as file:
+                        file.write(data["stateScriptLog"])
             
-            if "videoTimeStamps" in data:
-                timestamps_path = os.path.join(day_path, f"{day}_videoTimeStamps.npy")
-                np.save(timestamps_path, data["videoTimeStamps"])
+            if "videoTimeStamps" in data and data["videoTimeStamps"] is not None:
+                if isinstance(data["videoTimeStamps"], list):
+                    for i, timestamps_data in enumerate(data["videoTimeStamps"]):
+                        timestamps_path = os.path.join(day_path, f"{day}_videoTimeStamps_{i}.npy")
+                        np.save(timestamps_path, timestamps_data)
+                else:
+                    timestamps_path = os.path.join(day_path, f"{day}_videoTimeStamps.npy")
+                    np.save(timestamps_path, data["videoTimeStamps"])
 
 def load_data_structure(save_path): # this function assumes no errors bc they would've been caught before saving
     """loads the dictionary data structure created by create_main_data_structure from a directory it was saved in

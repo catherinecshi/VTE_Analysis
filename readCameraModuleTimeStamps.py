@@ -10,10 +10,10 @@ import numpy as np
 
 
 def read_timestamps(filename):
-    fid = open(filename, "rb")
+    fid = open(filename, "rb") # opens file in binary read mode
 
     headerText = np.fromfile(fid, dtype=np.int8, count=50)
-    headerChar = headerText.tobytes().decode("utf-8")
+    headerChar = headerText.tobytes().decode("utf-8", errors="ignore")
     clockRate = int(headerChar.splitlines()[1][12:])
 
     fid.seek(0)

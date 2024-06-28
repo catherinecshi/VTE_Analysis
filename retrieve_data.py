@@ -24,8 +24,8 @@ def sync_files(remote_folder, local_folder, include_patterns):
     only copies files approved by INCLUDE_PATTERNS
 
     Args:
-        remote_folder (str arr): folders that are approved 
-        local_folder (str): should be the same as remote_folders, but for making instead
+        remote_folder (str arr): folders that are approved to copy files from
+        local_folder (str): folders that will be made in the new location
     """
     
     try:
