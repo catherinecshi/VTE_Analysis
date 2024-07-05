@@ -55,7 +55,6 @@ class ExpectationError(Exception):
         super().__init__(self.message)
 
 class CorruptionError(Exception):
-    
     def __init__(self, ratID, day, file):
         self.ratID = ratID
         self.day = day

@@ -691,14 +691,22 @@ def change_in_performance(rat_performance, criterias = None):
     return performance_changes, avg_changes # returns dictionary of {trial_type:change_in_perf} across days for one rat
 
 def get_trials_for_session(content):
+    numbers = set()
     lines = content.splitlines()
     
+    # trial type found
     for line in lines:
-        if '#' in line or '~' in line: # skip starting comments and cuts
+        if '#' in line:
             continue
         
-        if 'trialType = ' in line:
-            re.findall('trialType = ')
+        match = re.search(r'trialType = ([0-9]+)', line) # look for the number after trial types
+        
+        if match: # if trialType is found
+            number = match.group(1)
+            numbers.add(number)
+    
+    return numbers # where this only contains the numbers corresponding to trial types that are available
+    
 
 
 # PLOTTING --------------

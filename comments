@@ -84,3 +84,15 @@ next on agenda:
 - make sure zIdPhi values get corresponded with trajectories
 - determine what are VTEs and what aren't
 - fix based on comments above
+
+- print something if there are less than 10 trials and run an error or warning
+- BP07 got retrained, so nothing above day 28 reaaally
+- BP13 day 19 analyse as two separate session essentially
+    - not for learning rates tho
+- BP22 Day47 check if timestamps reset between 1 and 2
+    - if it reset, find the offset and add it
+    - also bp15 day12 13
+    - bp 19 day 28 as well
+- BP21 jenya put the wrong rat on, so check the ss and cut out when new rat is put on
+    - take last timestamp of first dlc and cut ss there
+- make ss logs dataframes instead
