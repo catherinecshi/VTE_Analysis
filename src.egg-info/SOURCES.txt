@@ -1,0 +1,17 @@
+README.md
+setup.py
+scripts/Main.py
+scripts/__init__.py
+src/__init__.py
+src/calculating_VTEs.py
+src/creating_zones.py
+src/data_processing.py
+src/helper_functions.py
+src/performance_analysis.py
+src/plotting.py
+src/readCameraModuleTimeStamps.py
+src/retrieve_data.py
+src.egg-info/PKG-INFO
+src.egg-info/SOURCES.txt
+src.egg-info/dependency_links.txt
+src.egg-info/top_level.txt

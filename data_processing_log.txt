@@ -1,0 +1,6 @@
+2024-07-08 11:24:29,289 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-08 11:24:29,294 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-08 11:24:29,295 interactive is False
+2024-07-08 11:24:29,295 platform is darwin
+2024-07-08 11:24:29,335 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-08 11:24:29,336 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
