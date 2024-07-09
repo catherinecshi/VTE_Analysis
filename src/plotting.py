@@ -3,6 +3,7 @@ General plotting functions
 """
 
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon, Ellipse
 from matplotlib.colors import LinearSegmentedColormap
@@ -14,7 +15,7 @@ from src import helper_functions
 
 
 ### GENERIC PLOTS ------------
-def create_scatter_plot(x, y, title = '', xlabel = '', ylabel = '', save = None):
+def create_scatter_plot(x, y, title='', xlabel='', ylabel='', save=None):
     """
     create scatter plot
 
@@ -27,7 +28,7 @@ def create_scatter_plot(x, y, title = '', xlabel = '', ylabel = '', save = None)
         save (str, optional): file path if saving is desired. Defaults to None.
     """
     
-    plt.figure(figsize = (10, 6))
+    plt.figure(figsize=(10, 6))
     plt.scatter(x, y, color='green', alpha=0.4)
     
     plt.title(title)
@@ -41,10 +42,27 @@ def create_scatter_plot(x, y, title = '', xlabel = '', ylabel = '', save = None)
     else:
         plt.show()
 
-def box_and_whisker_plot():
+def create_histogram(df, x, y, title='', xlabel='', ylabel=''):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=df, x=x, hue=y, multiple='stack', kde=True, legend=False, binwidth=1)
     
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    
+    plt.show()
 
-def create_occupancy_map(x, y, framerate = 0.03, bin_size = 15, title = '', save = None):
+def create_box_and_whisker_plot(df, x, y, title='', xlabel='', ylabel=''):
+    plt.figure(figsize=(10, 6))
+    df.boxplot(column=y, by=x)
+    
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    
+    plt.show()
+
+def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title='', save=None):
     """
     creates occupancy map
 
@@ -110,7 +128,7 @@ def create_occupancy_map(x, y, framerate = 0.03, bin_size = 15, title = '', save
 
 
 ### PLOTTING ZONES ------------    
-def plot_hull(x, y, hull_points, densest_cluster_points, hull, save = None, title = ""):
+def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=""):
     """
     plots a convex hull on a backdrop of x and y coordinates
 
@@ -127,7 +145,7 @@ def plot_hull(x, y, hull_points, densest_cluster_points, hull, save = None, titl
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
-    plt.scatter(hull_points[:,0], hull_points[:,1], alpha=0.5, color = 'green')
+    plt.scatter(hull_points[:,0], hull_points[:,1], alpha=0.5, color='green')
     plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color='red')
     for simplex in hull.simplices:
         plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], 'k-')
@@ -144,7 +162,7 @@ def plot_hull(x, y, hull_points, densest_cluster_points, hull, save = None, titl
     else:
         plt.show()
         
-def plot_ellipse(ellipse_params, x, y, save = None, title = ""):
+def plot_ellipse(ellipse_params, x, y, save=None, title=""):
     """
     plots ellipse on a backdrop of x & y coords
 
@@ -183,7 +201,7 @@ def plot_ellipse(ellipse_params, x, y, save = None, title = ""):
 
 
 ### PLOTTING TRAJECTORIES --------  
-def plot_trajectory(x, y, trajectories, title = "", save = None, label = None):
+def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
     """
     plots a trajectory on the backdrop of x and y coordinates
 
@@ -200,11 +218,11 @@ def plot_trajectory(x, y, trajectories, title = "", save = None, label = None):
     trajectory_x, trajectory_y = trajectories
     
     # plot the normal points
-    plt.figure(figsize = (10, 6))
+    plt.figure(figsize=(10, 6))
     plt.plot(x, y, color='green', alpha=0.4)
     
     # plot the trajectory
-    plt.plot(trajectory_x, trajectory_y, color = 'red', alpha = 0.8, label = label)
+    plt.plot(trajectory_x, trajectory_y, color='red', alpha=0.8, label=label)
     
     # add title
     plt.title(title)
@@ -221,7 +239,7 @@ def plot_trajectory(x, y, trajectories, title = "", save = None, label = None):
     else:
         plt.show()
     
-def plot_trajectory_animation(x, y, trajectory_x = None, trajectory_y = None, interval = 20, title = "", label = None, save = None):
+def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interval=20, title="", label=None, save=None):
     """
     creates and displays an animation of a trajectory over the backdrop of x and y coordinates
 
@@ -243,7 +261,7 @@ def plot_trajectory_animation(x, y, trajectory_x = None, trajectory_y = None, in
         trajectory_y = y
     
     fig, ax = plt.subplots()
-    ax.scatter(x, y, alpha = 0.2) # plot the totality first
+    ax.scatter(x, y, alpha=0.2) # plot the totality first
     line, = ax.plot([], [], 'bo-', linewidth = 2) # line plot
     
     ax.set_xlim(np.min(x), np.max(x))
@@ -271,20 +289,20 @@ def plot_trajectory_animation(x, y, trajectory_x = None, trajectory_y = None, in
     
     if label:
         rounded_label = helper_functions.round_to_sig_figs(label, 3)
-        legend_elements = [Line2D([0], [0], color = 'blue', lw = 2, label = rounded_label)]
-        ax.legend(handles = legend_elements, loc = 'upper right', bbox_to_anchor = (1.15, 1))
+        legend_elements = [Line2D([0], [0], color='blue', lw=2, label=rounded_label)]
+        ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.15, 1))
     
     # save or display
     if save:
         save_path = f"{save}/trajectory_animation.gif"
-        ani.save(save_path, writer = 'pillow')
+        ani.save(save_path, writer='pillow')
     else:
         plt.show()
         
 
 
 ### SPECIALIZED PLOTS -------
-def plot_zIdPhi(zIdPhi_values, save = None):
+def plot_zIdPhi(zIdPhi_values, save=None):
     """
     plot the mean and std of zIdPhi values
 

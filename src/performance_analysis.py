@@ -7,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.stats
 
+from src import helper_functions
+
 logging.basicConfig(filename='performance_analysis_log.txt',
                     format='%(asctime)s %(message)s',
                     filemode='w')
@@ -15,10 +17,10 @@ logger = logging.getLogger() # creating logging object
 logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 
 ### PYLINT
-# pylint: disable=logging-fstring-interpolation
+# pylint: disable=logging-fstring-interpolation, consider-using-enumerate
 
 # SAVING & LOADING -----------
-def save_rat_performance(rat_performance, save_path):
+def pickle_rat_performance(rat_performance, save_path):
     # this function saves rat_performance, a dictionary of {ratID: performance} into a pickle file
     
     # save in folder
@@ -26,7 +28,7 @@ def save_rat_performance(rat_performance, save_path):
     with open(pickle_path, 'wb') as fp:
         pickle.dump(rat_performance, fp)
 
-def load_rat_performance(save_path):
+def unpickle_rat_performance(save_path):
     # this function loads the pickle file for rat performance, a dictionary of {ratID: performance}
     
     all_rats_performances = {}
@@ -144,7 +146,7 @@ def session_performance(content, printTrue):
         parts = line.split()
         
         if end_of_trial and printTrue:
-            print(f'middle number is {middle_numbers} at time {parts[0]}')
+            logging.info(f'middle number is {middle_numbers} at time {parts[0]}')
         
         if line.startswith('#'): # skip the starting comments
             continue
@@ -361,88 +363,10 @@ def weird_session_performance(content): # for BP11 day 42-45 bc it's so annoying
     
     return final_total_trials, final_correct_trials
 
-def get_trial_types(content):
-    """get the trial types by looking at the starting comment to know which numbers correspond to which letter pairs
-    
-    1. looks for the line where iTrialType, Num, and % are in the line
-        this is the most convenient place where the trial types are stored in most starting comments
-    2. split based on before or after '%'
-        the stuff before is the number, by looking at what's after iTrialType
-        the stuff after is the letter pair, after stripping the spaces
-    3. Break when outside of starting comments
-    4. Remove None values
-    
-    Exceptions:
-        1. Some files don't have starting comments. I just hard coded in the trial types, but I'm not sure if this
-        is always correct
-        2. Some files (i think some of the blocks) have a different format for storing trial types
-            look for if (trialType == instead
-            same logic
-
-    Args:
-        content (str): Statescript log
-
-    Returns:
-        final_trial_types (numpy array): array of all trial types, should be 10 values
-    """
-    
-    trial_types = np.empty(10, dtype=object)
-    lines = content.splitlines()
-    normal_start = False # this is just bc the starting comments for blocks are so weird and doesn't follow normal convention
-    
-    for line in lines:
-        if '#' not in line: # i only want to look at the starting comments
-            # there were a few files with no starting comments so i'm doing a hard code thing here to insert the trial types
-            is_none = np.vectorize(lambda x: x is None)(trial_types)
-            if is_none.all():
-                print('no trial types found')
-                trials = ['AB', 'BC', 'CD', 'DE', 'EF', 'BD', 'CE', 'BE', 'AC', 'DF']
-                for i, pair in enumerate(trials): # this is so it is a nparray instead of a python array
-                    trial_types[i] = pair
-            break # might want to handle this better in the future
-        
-        if 'iTrialType' in line and 'Num' in line and '%' in line: # select the lines I want
-            parts = line.split('%')
-            number_part = parts[0]
-            letter_pair = parts[1].strip()
-            
-            # store the trial 
-            match = re.search(r'iTrialType(\d+)', number_part)
-            if match:
-                number = int(match.group(1)) - 1 # minus one for the index
-            
-            # store into array
-            trial_types[number] = letter_pair
-            
-            # check off normal start so code knows not to do anythign with the following if statement
-            normal_start = True
-        
-        # it seems like the blocks are done differently so im adjusting
-        if 'if (trialType ==' in line and '%' in line and not normal_start:
-            parts = line.split('%')
-            number_part = parts[0]
-            letter_pair = parts[1].strip()
-            
-            # store the trial
-            match = re.search(r'trialType == (\d+)', number_part)
-            if match:
-                number = int(match.group(1)) - 1
-            
-            # store into array
-            trial_types[number] = letter_pair
-                    
-    # remove any excess pairs
-    trial_mask = trial_types != None
-    final_trial_types = trial_types[trial_mask]
-    
-    return final_trial_types  
-
 def trial_accuracy(content, print = False):
     # just adding session_performance and get_trial_types together
-    
     total_trials, correct_trials = session_performance(content, print)
-    trial_types = get_trial_types(content)
-    #create_trial_accuracy(total_trials, correct_trials, trial_types)
+    trial_types = get_trials_for_session(content)
     
     return trial_types, total_trials, correct_trials
 
@@ -564,7 +488,7 @@ def create_trial_type_dictionary(all_rat_performances):
                     total_trials_in_day += total_trials
                     correct_trials_in_day += correct_trials
                 else:
-                    'trial types not found'
+                    logging.error('trial types not found')
             
             performance = correct_trials_in_day / total_trials_in_day # calculate sum perf in day
             rats_performance.append(performance)
@@ -594,9 +518,6 @@ def create_trial_type_dictionary(all_rat_performances):
     std = [np.std(day_totals) if day_totals else 0 for day_totals in totals]
     
     return all_performances, avg, std
-
-#def change_in_performance(rat_performance):
-    
 
 def change_in_performance_trial_type(rat_performance, criterias = None):
     """
@@ -1125,7 +1046,7 @@ def rat_performance_one_session(data_structure, ratID, day):
     
     plot_trial_accuracy(total_trials, correct_trials, trial_types)
 
-def rat_performance_over_sessions(data_structure, ratID, should_save = False, save_path = None):
+def rat_performance_over_sessions(data_structure, ratID, save_path = None):
     """
     analyses performance of one rat over days
 
@@ -1136,80 +1057,134 @@ def rat_performance_over_sessions(data_structure, ratID, should_save = False, sa
         save_path (str, optional): path to be saved to if should_save is true. Defaults to None.
 
     Returns:
-        dict: {day: [trial_type, total_trials, correct_trials]}
+        pd.DataFrame: {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
     """
     
-    if ratID in data_structure:
-        rat_performance = {} # dict for all results of rats
-        
-        for day_folder, contents in data_structure[ratID].items():
-            if day_folder != '.DS_Store' and "pkl" not in day_folder: # skip .DS_Store
-                #print(day_folder)
-                ss_data = contents["stateScriptLog"]
-                
-                trial_types, total_trials, correct_trials = trial_accuracy(ss_data) # get the trial info for this day for this rat
-
-                # make sure they're the same length
-                length = len(total_trials)
-                trial_types = trial_types[:length]
-                
-                # exclude days where there were errors and didn't even have AB and BC
-                # and days i'm too lazy to decode right now
-                if length < 2 or length > 5:
-                    continue
-                
-                # add to dictionary
-                rat_performance_for_day = []
-                
-                for i in range(len(total_trials)):
-                    try:
-                        rat_performance_for_day.append([trial_types[i], total_trials[i], correct_trials[i]])
-                    except IndexError as error:
-                        print(f"Error for rat {ratID} for {day_folder}", error)
-                        print(f"trial types - {trial_types}")
-                        print(f"total trials - {total_trials}")
-                        print(f"correct trials - {correct_trials}")
-
-                rat_performance[day_folder] = rat_performance_for_day
+    if ratID not in data_structure:
+        raise helper_functions.ExpectationError('ratID', ratID)
     
-    if should_save:
-        file_path = save_path + '/' + ratID
-        save_rat_performance(rat_performance, file_path)
+    rat_performance = pd.DataFrame(columns=['rat', 'day', 'trial_type', 'total_trials', 'correct_trials'])
+    for day_folder, contents in data_structure[ratID].items():
+        if day_folder == '.DS_Store' or 'pkl' in day_folder: # skip .DS_Store
+            continue
+            
+        ss_data = contents['stateScriptLog']
+        trial_types_set, total_trials, correct_trials = trial_accuracy(ss_data)
+        trial_types = sorted(trial_types_set)
+
+        # exclude days where there were errors and didn't even have AB and BC
+        # and days i'm too lazy to decode right now
+        length = len(total_trials)
+        if length < 2 or length > 5:
+            logging.error(f'total trial length is is {length} for {ratID} on {day_folder}')
+            logging.error(f'total trials - {total_trials}')
+            logging.error(f'correct trials - {correct_trials}')
+            continue
+        
+        for i in range(len(total_trials)):
+            try:
+                rat_performance.loc[len(rat_performance)] = [ratID, day_folder, trial_types[i], total_trials[i], correct_trials[i]]
+            except IndexError as error: # happens if lengths are incongruent
+                logging.error(f'Error for rat {ratID} for {day_folder}: {error}')
+                logging.error(f'trial types - {trial_types}')
+                logging.error(f'total trials - {total_trials}')
+                logging.error(f'correct trials - {correct_trials}')
+    
+    if save_path is not None:
+        file_path = os.path.join(save_path, ratID, f'{ratID}_performance.csv')
+        rat_performance.to_csv(file_path)
     
     #plot_rat_performance(rat_performance)
     
-    return rat_performance # this returns {day: performance} for one rat
+    return rat_performance # this returns df for one rat
 
 def create_all_rats_performance(data_structure, save_path=None):
-    # this function loops through all the rats to create pickle files from ss data
-    all_rats_performances = {}
+    """
+    loops through all the rats to create pickle files from ss data
+
+    Args:
+        data_structure (dict): all the data
+        save_path (str, optional): save path if desired. Defaults to None.
+
+    Returns:
+        pd.DataFrames: {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
+                        where trial_type are the corresponding letters
+    """
+    dataframes = []
     
     for ratID in data_structure:
-        if save_path is not None:
-            rat_performance = rat_performance_over_sessions(data_structure, ratID, should_save=True, save_path=save_path)
-            all_rats_performances[ratID] = rat_performance
-        else:
-            rat_performance = rat_performance_over_sessions(data_structure, ratID, should_save=False, save_path=save_path)
-            all_rats_performances[ratID] = rat_performance
+        rat_performance = rat_performance_over_sessions(data_structure, ratID, save_path=save_path)
+        dataframes.append(rat_performance)
+    
+    all_rats_performances = pd.concat(dataframes, ignore_index=True)
     
     return all_rats_performances
 
-def create_all_rats_perf_changes(all_rats_performances, plot=False):
-    # gets the change in performance for every rat from rat_performance, and plots it
+def create_all_perf_changes(all_rats_performances):
+    """
+    calculates the change in performance across days for all rats. first day returns NaN
+
+    Args:
+        all_rats_performances (pd.DataFrame): {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
+
+    Returns:
+        pd.DataFrame: {'rat', 'day', 'perf_change'}
+    """
+    rat_data = all_rats_performances.groupby('rat')
     
-    all_rats_changes = [] # all dataframes to be concatenated together later
-    for ratID, rat_performance in all_rats_performances.items():
-        # get performances
-        perf_changes, _ = change_in_performance_trial_type(rat_performance)
-        perf_changes['rat'] = ratID
-        all_rats_changes.append(perf_changes)
-    combined_changes = pd.concat(all_rats_changes, ignore_index=True)
+    all_perf_changes = []
+    all_rat_day_pairs = []
+    for rat, rat_group in rat_data:
+        sorted_rat_data = rat_group.sort_values(by='day')
+        day_data = sorted_rat_data.groupby('day')
+        
+        rat_performance = []
+        for day, day_group in day_data:
+            day_performance = day_group['correct_trials'] / day_group['total_trials']
+            day_performance = day_performance.mean() # get mean to average across trial types
+            rat_performance.append(day_performance)
+            all_rat_day_pairs.append((rat, day))
+        
+        rat_performance_series = pd.Series(rat_performance)
+        perf_changes = rat_performance_series.diff()
+        all_perf_changes.append(perf_changes)
+    perf_changes_series = pd.concat(all_perf_changes, ignore_index=True)
     
-    if plot:
-        plot_all_rat_perf_changes(all_rats_changes)
+    # create new dataframe
+    perf_changes_df = pd.DataFrame(all_rat_day_pairs, columns=['rat', 'day'])
+    perf_changes_df['perf_change'] = perf_changes_series.reset_index(drop=True)
+    return perf_changes_df
+
+def create_all_perf_changes_by_trials(all_rats_performances):
+    """
+    calculates the change in performance across days for all rats according to trial type
+    first day returns NaN
+
+    Args:
+        all_rats_performances (pd.DataFrame): {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
+
+    Returns:
+        pd.DataFrame: {'rat', 'day', 'trial_type', 'perf_change'}
+    """
+    rat_data = all_rats_performances.groupby('rat')
     
-    return combined_changes
-    
+    all_rat_perf = []
+    for rat, rat_group in rat_data:
+        sorted_rat_data = rat_group.sort_values(by='day')
+        trial_data = sorted_rat_data.groupby('trial_type')
+        
+        for trial_type, trial_group in trial_data:
+            trial_performance = trial_group['correct_trials'] / trial_group['total_trials']
+            perf_change_in_trial = trial_performance.diff()
+            for i, day in enumerate(trial_group['day']):
+                if i == 0:
+                    all_rat_perf.append({'rat': rat, 'day':day, 'trial_type':trial_type, 'perf_change':np.nan})
+                else:
+                    all_rat_perf.append({'rat': rat, 'day':day, 'trial_type':trial_type, 'perf_change':perf_change_in_trial[i]})
+
+    perf_changes_df = pd.DataFrame(all_rat_perf)
+    return perf_changes_df
+
 def days_until_criteria(all_rats_performances):
     """counts the days until a rat hits criteria for a specific trial type
 
@@ -1340,11 +1315,18 @@ def get_trials_available(save_path, data_structure):
         
         # sort through the days so it's stored in ascending order
         days = os.listdir(rat_path)
-        sorted_days = sorted(days, key=lambda x: int(re.sub('\D', '', x)))
+        if days is not None or days != '':
+            sorted_days = sorted(days, key=lambda x: int(re.sub(r'\D', '', x)) if re.sub(r'\D', '', x) else 100)
+        else:
+            logging.debug(f'no days for {rat}, {rat_path}')
+            continue
         
         for day in sorted_days:
-            content = data_structure[rat][day]['stateScriptLog']
+            if day == 100:
+                logging.error(f'day with no number for {rat}')
+            
             try:
+                content = data_structure[rat][day]['stateScriptLog']
                 trials_in_day = get_trials_for_session(content)
                 trials_available.append({'rat': rat, 'day': day, 'trials_available': trials_in_day})
             except Exception as e:
@@ -1401,5 +1383,8 @@ def get_days_since_new_arm(save_path, data_structure):
         
     new_arms_df['arm_added'] = arm_added
     new_arms_df['days_since_new_arm'] = days_since_new_arm_list
+    
+    path = "/Users/catpillow/Documents/VTE_Analysis/results/days_since_new_arm.csv"
+    new_arms_df.to_csv(path)
     
     return new_arms_df

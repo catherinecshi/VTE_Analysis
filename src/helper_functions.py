@@ -15,6 +15,7 @@ general auxillary functions for multiple purposes:
     - conversions
         - round_to_sig_figs
         - ss_trials_to_video
+        - string_to_int_trial_type
     - if point is in zone
         - is_point_in_ellipse
         - is_point_in_hull
@@ -22,16 +23,25 @@ general auxillary functions for multiple purposes:
         - check_timestamps
         - check_equal_length
         - start_check
+        - trial_type_equivalency
     - startup
         - initial_processing
 """
 
 import math
 import bisect
+import logging
 import numpy as np
 from scipy.spatial import Delaunay
 
 from src import data_processing
+
+logging.basicConfig(filename='helper_functions_log.txt',
+                    format='%(asctime)s %(message)s',
+                    filemode='w')
+
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 
 ### ERRORS ------------
 class LengthMismatchError(Exception):
@@ -90,13 +100,13 @@ def get_speed(x, y, framerate):
 def get_speed_session(data_structure, ratID, day):
     # gets the average speed of the rat for the entire session
     DLC_data = data_structure[ratID][day]['DLC_tracking']
-    SS_data = data_structure[ratID][day]['stateScriptLog']
+    #SS_data = data_structure[ratID][day]['stateScriptLog']
     
     track_part = 'haunch' # assumed to be the best for tracking animal speed
     x, y = data_structure.filter_dataframe(DLC_data, track_part)
     
     # get framerate
-    framerate = get_framerate(SS_data, x)
+    framerate = get_framerate()
     
     # calculate speed
     diff_x = x.diff().fillna(0)
@@ -156,8 +166,8 @@ def get_time_until_choice(data_structure, ratID, day):
             break
 
     # calculating the difference between the time
-    time_arm_seconds = get_time(content, time_arm)
-    time_home_seconds = get_time(content, time_home)
+    time_arm_seconds = get_time(time_arm)
+    time_home_seconds = get_time(time_home)
     time_diff = time_arm_seconds - time_home_seconds
     
     return time_diff
@@ -361,6 +371,30 @@ def ss_trial_starts_to_video(timestamps, SS_times):
     
     return trial_starts # with this, each trial_start is the index of the time when trial starts in relation to timestamps
 
+def string_to_int_trial_types(string_trial):
+    if string_trial == 'AB':
+        return 1
+    elif string_trial == 'BC':
+        return 2
+    elif string_trial == 'CD':
+        return 3
+    elif string_trial == 'DE':
+        return 4
+    elif string_trial == 'EF':
+        return 5
+    elif string_trial == 'BD':
+        return 6
+    elif string_trial == 'CE':
+        return 7
+    elif string_trial == 'BE':
+        return 8
+    elif string_trial == 'AC':
+        return 9
+    elif string_trial == 'DF':
+        return 10
+    else:
+        logging.warning(f'no string trial - {string_trial}')
+        return None
 
 
 ### IF POINT IN SPACE --------------
@@ -447,6 +481,53 @@ def check_equal_length(a, b):
 def start_check(DLC_df, timestamps):
     check_timestamps(DLC_df, timestamps)
 
+def trial_type_equivalency(trial_type_i, trial_type_j):
+    string_trial = None
+    int_trial = None
+
+    if isinstance(trial_type_i, str):
+        string_trial = trial_type_i
+    elif isinstance(trial_type_i, int):
+        int_trial = trial_type_i
+    else:
+        logging.warning(f'trial type error with {trial_type_i}')
+        return None
+    
+    if isinstance(trial_type_j, str) and string_trial is not None:
+        string_trial = trial_type_j
+    elif isinstance(trial_type_j, str):
+        logging.info(f'two string trials - {trial_type_i}, {trial_type_j}')
+        return trial_type_i is trial_type_j
+    elif isinstance(trial_type_j, int) and int_trial is not None:
+        int_trial = trial_type_j
+    elif isinstance(trial_type_j, int):
+        logging.info(f'two int trial types - {trial_type_i}, {trial_type_j}')
+        return trial_type_i == trial_type_j
+    else:
+        logging.warning(f'trial type error with {trial_type_j}')
+    
+    if string_trial == 'AB' and int_trial == 1:
+        return True
+    elif string_trial == 'BC' and int_trial == 2:
+        return True
+    elif string_trial == 'CD' and int_trial == 3:
+        return True
+    elif string_trial == 'DE' and int_trial == 4:
+        return True
+    elif string_trial == 'EF' and int_trial == 5:
+        return True
+    elif string_trial == 'BD' and int_trial == 6:
+        return True
+    elif string_trial == 'CE' and int_trial == 7:
+        return True
+    elif string_trial == 'BE' and int_trial == 8:
+        return True
+    elif string_trial == 'AC' and int_trial == 9:
+        return True
+    elif string_trial == 'DF' and int_trial == 10:
+        return True
+    else:
+        return False
 
 
 ### STARTUP -------
