@@ -25,6 +25,8 @@ logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 ### PYLINT
 # pylint: disable=logging-fstring-interpolation, broad-exception-caught
 
+IMPLANTED_RATS = ["BP06", "BP12", "BP13", "TH405", "TH508", "BP20", "TH510", "TH605"]
+
 
 def process_dlc_data(file_path):
     """
@@ -81,6 +83,33 @@ def check_and_process_file(file_path, process_function, data_type, found_flag):
             return None
     return data, found_flag
 
+def convert_all_timestamps(base_path):
+    for rat_folder in os.listdir(base_path):
+        rat_path = os.path.join(base_path, rat_folder, "inferenceTraining")
+        if not os.path.isdir(rat_path):
+            # skip .DS_Store
+            logging.info(f"skipping {rat_folder}")
+            continue
+        
+        for day_folder in os.listdir(rat_path):
+            day_path = os.path.join(rat_path, day_folder)
+            for root, _, files in os.walk(day_path):
+                for f in files:
+                    if ".videoTimeStamps" in f and '.npy' not in f:
+                        try:
+                            original_ts_path = os.path.join(root, f)
+                            timestamps = process_timestamps_data(original_ts_path)
+                            new_ts_name = f + ".npy"
+                            new_ts_path = os.path.join(root, new_ts_name)
+                            np.save(new_ts_path, timestamps)
+                            
+                            if timestamps is None:
+                                logging.error(f"failed to process for {rat_folder} on {day_folder}")
+                        except Exception as e:
+                            logging.error(f'error {e} for {rat_folder} on {day_folder}')
+                        else:
+                            os.remove(original_ts_path)
+                        
 def create_dictionary_for_rat(rat_path, rat_folder):
     """
     makes a dictionary containing the SS log, dlc file & timestamps
@@ -477,11 +506,11 @@ def concat_timestamps(timestamps_0, timestamps_1, day, rat, time_diff=None):
 
 def concat_duplicates(save_path):
     for rat_folder in os.listdir(save_path): # loop for each rat
-        rat_path = os.path.join(save_path, rat_folder, 'inferenceTraining')
+        rat_path = os.path.join(save_path, rat_folder, "inferenceTraining")
         
         # skip over .DS_Store
         if not os.path.isdir(rat_path):
-            logging.info(f'Skipping over non-directory folder: {rat_path}')
+            logging.info(f"Skipping over non-directory folder: {rat_path}")
             continue
         
         for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
@@ -496,52 +525,65 @@ def concat_duplicates(save_path):
             timestamps_0 = None
             timestamps_1 = None
             timestamps_2 = None
+            track_folder = None
             
-            for root, _, files in os.walk(day_path):
+            for root, dirs, files in os.walk(day_path):
                 for f in files:
+                    file_path = os.path.join(root, f)
                     f = f.lower()
-                    if fnmatch.fnmatch(f, '*_0.csv'):
+                    if fnmatch.fnmatch(f, "*.csv"):
                         dlc_0 = f
-                    elif fnmatch.fnmatch(f, '*_0.txt'):
+                    elif fnmatch.fnmatch(f, "*_0.txt"):
                         ss_0 = f
-                    elif fnmatch.fnmatch(f, '*_0.npy'):
+                    elif fnmatch.fnmatch(f, "*_0.npy"):
                         ts_path = os.path.join(root, f)
                         timestamps_0 = np.load(ts_path)
                     
-                    if fnmatch.fnmatch(f, '*_1.csv'):
+                    if fnmatch.fnmatch(f, "*_1.csv"):
                         dlc_1 = f
-                    elif fnmatch.fnmatch(f, '*_1.txt'):
+                    elif fnmatch.fnmatch(f, "*_1.txt"):
                         ss_1 = f
-                    elif fnmatch.fnmatch(f, '*_1.npy'):
+                    elif fnmatch.fnmatch(f, "*_1.npy"):
                         ts_path = os.path.join(root, f)
                         timestamps_1 = np.load(ts_path)
                     
-                    if fnmatch.fnmatch(f, '*_2.csv'):
+                    if fnmatch.fnmatch(f, "*_2.csv"):
                         dlc_2 = f
-                    elif fnmatch.fnmatch(f, '*_2.txt'):
+                    elif fnmatch.fnmatch(f, "*_2.txt"):
                         ss_2 = f
-                    elif fnmatch.fnmatch(f, '*_2.npy*'):
-                        timestamps_2 = f
+                    elif fnmatch.fnmatch(f, "*_2.npy*"):
+                        ts_path = os.path.join(root, f)
+                        timestamps_2 = np.load(ts_path)
+
+                # check if there is a track folder (for implanted rats)
+                for directory in dirs:
+                    if directory is not None:
+                        track_folder = directory
                 
             # concatenate everything
             success = True
+            if track_folder is not None:
+                dlc_path = os.path.join(day_path, track_folder, f"{day_folder}_concat_DLC_tracking.csv")
+                ss_path = os.path.join(day_path, track_folder, f"{day_folder}_concat_stateScriptLog.txt")
+                timestamps_path = os.path.join(day_path, track_folder, f"{day_folder}_concat_videoTimeStamps.npy")
+            else:
+                dlc_path = os.path.join(day_path, f"{day_folder}_concat_DLC_tracking.csv")
+                ss_path = os.path.join(day_path, f"{day_folder}_concat_stateScriptLog.txt")
+                timestamps_path = os.path.join(day_path, f"{day_folder}_concat_videoTimeStamps.npy")
+            
             try:
                 if dlc_2 is not None:
                     new_dlc = concat_dlc(dlc_0, dlc_1, day_folder, rat_folder)
                     new_new_dlc = concat_dlc(new_dlc, dlc_2, day_folder, rat_folder)
-                    dlc_path = os.path.join(root, f'{day_folder}_concat_DLC_tracking.csv')
                     new_new_dlc.to_csv(dlc_path) # save to same folder
                 elif dlc_1 is not None:
                     new_dlc = concat_dlc(dlc_0, dlc_1, day_folder, rat_folder)
-                    dlc_path = os.path.join(root, f'{day_folder}_concat_DLC_tracking.csv')
                     new_dlc.to_csv(dlc_path) # save to same folder
                 
                 if ss_2 is not None: # timestamps is in this bc it requires ss time diff to work
                     new_ss = concat_ss(ss_0, ss_1)
                     new_new_ss = concat_ss(new_ss, ss_2)
-                    # save
-                    ss_path = os.path.join(root, f"{day_folder}_concat_stateScriptLog.txt")
-                    with open(ss_path, 'w', encoding='utf-8') as file:
+                    with open(ss_path, "w", encoding="utf-8") as file:
                         file.write(new_new_ss)
                         
                     # (optional) return ss time diffs
@@ -550,29 +592,27 @@ def concat_duplicates(save_path):
                     if timestamps_2 is not None:
                         new_timestamps = concat_timestamps(timestamps_0, timestamps_1, day_folder, rat_folder, time_diff_0)
                         new_new_timestamps = concat_timestamps(new_timestamps, timestamps_2, day_folder, rat_folder, time_diff_1)
-                        timestamps_path = os.path.join(root, f"{day_folder}_concat_videoTimeStamps.npy")
                         np.save(timestamps_path, new_new_timestamps)
                     elif timestamps_1 is not None:
                         new_timestamps = concat_timestamps(timestamps_0, timestamps_1, day_folder, rat_folder, time_diff_0)
+                        np.save(timestamps_path, new_timestamps)
                     else:
-                        logging.warning(f'3 statescripts but 1 or no timestamps for {rat_folder} on {day_folder}')
+                        logging.warning(f"3 statescripts but 1 or no timestamps for {rat_folder} on {day_folder}")
                 elif ss_1 is not None:
                     new_ss = concat_ss(ss_0, ss_1)
-                    # save
-                    ss_path = os.path.join(root, f"{day_folder}_concat_stateScriptLog.txt")
-                    with open(ss_path, 'w', encoding='utf-8') as file:
+                    with open(ss_path, "w", encoding="utf-8") as file:
                         file.write(new_ss)
                         
                     # (optional) return ss time diffs 
                     time_diff = get_time_diff(ss_0, ss_1)
                     if timestamps_1 is not None:
                         new_timestamps = concat_timestamps(timestamps_0, timestamps_1, day_folder, rat_folder, time_diff)
-                        timestamps_path = os.path.join(root, f"{day_folder}_concat_videoTimeStamps.npy")
                         np.save(timestamps_path, new_timestamps)
                     else:
-                        logging.warning(f'2 statescripts but 1 or no timestamps for {rat_folder} on {day_folder}')
+                        logging.warning(f"2 statescripts but 1 or no timestamps for {rat_folder} on {day_folder}")
                 else:
-                    concat_timestamps(timestamps_0, timestamps_1, day_folder, rat_folder)
+                    new_timestamps = concat_timestamps(timestamps_0, timestamps_1, day_folder, rat_folder)
+                    np.save(timestamps_path, new_timestamps)
             except Exception as e:
                 logging.error(f"concatenation failed for {rat_folder} on {day_folder} because error {e}")
                 success = False
@@ -581,14 +621,14 @@ def concat_duplicates(save_path):
                 for root, _, files in os.walk(day_path):
                     for f in files:
                         file_path = os.path.join(root, f)
-                        if fnmatch.fnmatch(f, '*_0*'):
+                        if fnmatch.fnmatch(f, "*_0*"):
                             os.remove(file_path)
-                        elif fnmatch.fnmatch(f, '*_1*'):
+                        elif fnmatch.fnmatch(f, "*_1*"):
                             os.remove(file_path)
-                        elif fnmatch.fnmatch(f, '*_2*'):
+                        elif fnmatch.fnmatch(f, "*_2*"):
                             os.remove(file_path)
 
-def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
+def filter_dataframe(df, track_part = "greenLED", std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
     """
     Filters dataframes. Check to make sure it's working properly. Generally, more than 100 filtered out points is bad
     Keeps the original indices of the DataFrame
@@ -616,14 +656,14 @@ def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, 
     
     # modify a copy instead of the original
     # also filter based on likelihood values
-    likely_data = df[df[(track_part, 'likelihood')] > 0.999].copy()
+    likely_data = df[df[(track_part, "likelihood")] > 0.999].copy()
     
     # filter out points before the rat has started its first trial
     if start_index:
         likely_data = likely_data[likely_data.index >= start_index]
     
     # DBSCAN Cluster analysis
-    coordinates = likely_data[[track_part]].copy()[[(track_part, 'x'), (track_part, 'y')]]
+    coordinates = likely_data[[track_part]].copy()[[(track_part, "x"), (track_part, "y")]]
     coordinates.dropna(inplace = True) # don't drop nan for dbscan
     
     clustering = DBSCAN(eps = eps, min_samples = min_samples).fit(coordinates)
@@ -635,8 +675,8 @@ def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, 
     filtered_data = likely_data[filtered_indices].copy()
     
     # calculate thresholds
-    diff_x = df[(track_part, 'x')].diff().abs()
-    diff_y = df[(track_part, 'y')].diff().abs()
+    diff_x = df[(track_part, "x")].diff().abs()
+    diff_y = df[(track_part, "y")].diff().abs()
     threshold_x = diff_x.std() * std_multiplier
     threshold_y = diff_y.std() * std_multiplier
     
@@ -645,153 +685,33 @@ def filter_dataframe(df, track_part = 'greenLED', std_multiplier = 7, eps = 70, 
     jump_indices = [] # just to see how many points are jumped over
     
     for i in range(1, len(filtered_data)):
-        diff_x = abs(filtered_data.iloc[i][(track_part, 'x')] - filtered_data.iloc[last_valid_index][(track_part, 'x')])
-        diff_y = abs(filtered_data.iloc[i][(track_part, 'y')] - filtered_data.iloc[last_valid_index][(track_part, 'y')])
+        diff_x = abs(filtered_data.iloc[i][(track_part, "x")] - filtered_data.iloc[last_valid_index][(track_part, "x")])
+        diff_y = abs(filtered_data.iloc[i][(track_part, "y")] - filtered_data.iloc[last_valid_index][(track_part, "y")])
         #distance = np.sqrt(diff_x**2 + diff_y**2) # euclidean distance
         
         # check for jumps
         if diff_x > threshold_x or diff_y > threshold_y:
             # mark as NaN
-            filtered_data.at[filtered_data.index[i], (track_part, 'x')] = np.nan
-            filtered_data.at[filtered_data.index[i], (track_part, 'y')] = np.nan
+            filtered_data.at[filtered_data.index[i], (track_part, "x")] = np.nan
+            filtered_data.at[filtered_data.index[i], (track_part, "y")] = np.nan
             jump_indices.append(i)
         else:
             # udpate last valid index
             last_valid_index = i
     
     # interpolating
-    filtered_data[(track_part, 'x')].interpolate(inplace = True)
-    filtered_data[(track_part, 'y')].interpolate(inplace = True)
+    filtered_data[(track_part, "x")].interpolate(inplace = True)
+    filtered_data[(track_part, "y")].interpolate(inplace = True)
     
     print(f"number of points filtered out - {len(jump_indices)}")
     
     # final coordinate points
-    x = filtered_data[(track_part, 'x')]
-    y = filtered_data[(track_part, 'y')]
+    x = filtered_data[(track_part, "x")]
+    y = filtered_data[(track_part, "y")]
     
     return x, y 
 
-
-### For rats where all DLC files are in one folder ------------
-def save_DLC(base_path, save_path):
-    """ 
-    this is a function for that folder full of BP13's DLC files, where it wasn't sorted at all
-    saves it according to day
-
-    Args:
-        base_path (str): the folder all the DLC files are in
-        save_path (str): the folder to save into
-    """
-    
-    rat = 'BP13'
-    save_path = os.path.join(save_path, rat)
-    
-    for root, _, files in os.walk(base_path):
-        for f in files:
-            f = f.lower() # there were some problems with cases
-            day = None
-            
-            # storing the DLC csv
-            if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                file_path = os.path.join(root, f)
-                dlc_data = process_dlc_data(file_path)
-                
-                # get the day
-                match = re.search(r'Day(\d+)(?:_)?', f, re.IGNORECASE)
-                if match:
-                    day_number = match.group(1)
-                    day = 'Day' + day_number
-                
-                # save
-                dlc_path = os.path.join(save_path, day, f"{day}_DLC_tracking.csv")
-                if fnmatch.fnmatch(f, '*_2.*'):
-                    # this is when there are two files for the same day for whatever reason
-                    dlc_path = os.path.join(save_path, day, f"{day}_DLC_tracking_2.csv")
-                    dlc_data.to_csv(dlc_path, header = True, index = False)
-                elif os.path.exists(dlc_path): # when the file already exists
-                    continue
-                else:
-                    dlc_data.to_csv(dlc_path, header = True, index = False)
-
-def save_timestamps(base_path, save_path):
-    """this is also for BP13 where all the files are in one folder
-    same as above but for timestmaps instead of DLC
-
-    Args:
-        base_path (_type_): _description_
-        save_path (_type_): _description_
-    """
-    
-    rat = 'BP13'
-    save_path = os.path.join(save_path, rat)
-    
-    for root, _, files in os.walk(base_path):
-        for f in files:
-            f = f.lower() # there were some problems with cases
-            day = None
-            
-            # storing the DLC csv
-            if fnmatch.fnmatch(f, '*.videotimestamps'): 
-                file_path = os.path.join(root, f)
-                timestamps_data = process_timestamps_data(file_path)
-                
-                # get the day
-                match = re.search(r'Day(\d+)(?:_)?', f, re.IGNORECASE)
-                if match:
-                    day_number = match.group(1)
-                    day = 'Day' + day_number
-                
-                # save
-                timestamps_path = os.path.join(save_path, day, f"{day}_videoTimeStamps.npy")
-                if fnmatch.fnmatch(f, '*_2.*'):
-                    timestamps_path = os.path.join(save_path, day, f"{day}_videoTimeStamps_2.npy")
-                    np.save(timestamps_path, timestamps_data)
-                elif os.path.exists(timestamps_path):
-                    continue
-                else:
-                    np.save(timestamps_path, timestamps_data)
-                    
-def load_one_rat(base_path):
-    """loads dictionary for just one rat
-
-    Args:
-        base_path (str): where the raw data is
-
-    Returns:
-        dict: {day: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}
-    """
-    
-    data_structure = {}
-        
-    for day_folder in os.listdir(base_path): # loop for each day (in each rat folder)
-        day_path = os.path.join(base_path, day_folder)
-        dlc_data = None
-        ss_data = None
-        timestamps_data = None
-    
-        for root, _, files in os.walk(day_path): # look at all the files in the day folder
-            for f in files:
-                f = f.lower()
-                
-                # storing the DLC csv
-                if fnmatch.fnmatch(f, '*dlc*.csv'): 
-                    file_path = os.path.join(root, f)
-                    dlc_data = process_loaded_dlc_data(file_path)
-                
-                # storing the statescript log
-                if fnmatch.fnmatch(f, '*statescriptlog*'):
-                    file_path = os.path.join(root, f)
-                    ss_data = process_statescript_log(file_path)
-                
-                if fnmatch.fnmatch(f, "*videotimestamps*"):
-                    file_path = os.path.join(root, f)
-                    timestamps_data = np.load(file_path)
-        
-        # add to dictionary
-        data_structure[day_folder] = {
-            "DLC_tracking": dlc_data,
-            "stateScriptLog": ss_data,
-            "videoTimeStamps": timestamps_data
-        }
-
-    return data_structure
+save_path = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data'
+#timestamps = readCameraModuleTimeStamps.read_timestamps(timestamps_path)
+#convert_all_timestamps(save_path)
+concat_duplicates(save_path)

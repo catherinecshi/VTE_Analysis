@@ -2,6 +2,7 @@
 used to retrieve data from a remote path, usually citadel, and saved locally
 modify 'if __name__...' for choosing whether to retrieve dlc or ss/timestamps data
 modify MODULE for getting data from different regimes
+BP07's training data is in initialTraining so i had to make a separate function for him
 
 currently excluding most of sleep stuff
 """
@@ -12,13 +13,13 @@ import logging
 import shutil
 import subprocess
 
-REMOTE_NAME = 'VTE'
-REMOTE_PATH = 'data/Projects/bp_inference/Transitive'
-LOCAL_PATH = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data'
+REMOTE_NAME = "VTE"
+REMOTE_PATH = "data/Projects/bp_inference/Transitive"
+LOCAL_PATH = "/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data"
 
-EXCLUDED_FOLDERS = ['preSleep', 'postSleep']
-MODULE = 'inferenceTraining'
-IMPLANTED_RATS = ['BP06', 'BP07', 'BP12', 'BP13', 'TH405', 'TH508', 'BP20', 'TH510', 'TH605']
+EXCLUDED_FOLDERS = ["preSleep", "postSleep"]
+MODULE = "inferenceTraining"
+IMPLANTED_RATS = ["BP06", "BP12", "BP13", "TH405", "TH508", "BP20", "TH510", "TH605"]
 
 # pylint
 # pylint: disable=logging-fstring-interpolation
@@ -205,7 +206,6 @@ def dlc_files_in_folder():
                 try:
                     shutil.move(dlc_path, dir_path)
                 except shutil.Error as se:
-                    continue
                     logging.debug(f'{se} for {dlc_path}')
             else:
                 logging.debug(f'path doesn\'t exist. dlc - {dlc_path}. dir - {dir_path}')
@@ -269,6 +269,11 @@ def main(include_patterns):
     for folder in day_folders:
         # extract rat ID & skip implanted rats
         animal_id = folder.split('/')[0]
+        
+        # skip BP07
+        if "BP07" in animal_id:
+            continue
+        
         if any(rat in animal_id for rat in IMPLANTED_RATS):
             day_folder_path = '/'.join(folder.split('/')[2:4])
             
@@ -289,7 +294,8 @@ def main(include_patterns):
             sync_files(folder, local_folder_path, include_patterns=include_patterns, exclude_patterns=excluded_patterns)
         
     # check and make sure everything is standardised and normal
-    excluded_patterns = ['.dat', '.mda', 'mountain', '.json', '.mat', '.txt', 'postSleep', 'preSleep', '.h264', 'geometry', 'HWSync']
+    excluded_patterns = ['.dat', '.mda', 'mountain', '.json', '.mat', '.txt', 'postSleep', 'preSleep', 
+                         '.DIO', 'log', 'msort', 'LFP', 'spikes', 'reTrain', '.h264', 'geometry', 'HWSync']
     check_for_aberrent_folders(excluded_patterns)
     
 def BP07(include_patterns):
