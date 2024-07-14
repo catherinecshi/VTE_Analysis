@@ -28,6 +28,7 @@ general auxillary functions for multiple purposes:
         - initial_processing
 """
 
+import re
 import math
 import bisect
 import logging
@@ -77,8 +78,10 @@ class CorruptionError(Exception):
 ### GET VALUE --------------
 def get_time(statescript_time):
     # converts statescript time to seconds since start of recording
-    time_passed = statescript_time / 1000 # turning it from ms to seconds
-    
+    if isinstance(statescript_time, str):
+        time_passed = int(statescript_time) / 1000
+    else:
+        time_passed = statescript_time / 1000 # turning it from ms to seconds
     return time_passed
 
 def get_framerate():
@@ -117,6 +120,27 @@ def get_speed_session(data_structure, ratID, day):
     speed = displacement_per_frame * framerate
     
     return speed
+
+def get_first_time(content):
+    for line in content.splitlines():
+        stripped_line = line.strip()
+        if stripped_line and stripped_line[0].isdigit():
+            match = re.match(r'^(\d+)\s', stripped_line)
+            if match:
+                first_line = match.group(1)
+                first_time = get_time(first_line)
+                return first_time
+
+def get_last_time(content):
+    last_line = None
+    for line in content.splitlines():
+        stripped_line = line.strip()
+        if stripped_line and stripped_line[0].isdigit():
+            match = re.match(r'^(\d+)\s', stripped_line)
+            if match:
+                last_line = match.group(1)
+    last_time = get_time(last_line)
+    return last_time
 
 def get_time_until_choice(data_structure, ratID, day):
     content = data_structure[ratID][day]['stateScriptLog']
