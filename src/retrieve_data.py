@@ -294,8 +294,8 @@ def main(include_patterns):
             sync_files(folder, local_folder_path, include_patterns=include_patterns, exclude_patterns=excluded_patterns)
         
     # check and make sure everything is standardised and normal
-    excluded_patterns = ['.dat', '.mda', 'mountain', '.json', '.mat', '.txt', 'postSleep', 'preSleep', 
-                         '.DIO', 'log', 'msort', 'LFP', 'spikes', 'reTrain', '.h264', 'geometry', 'HWSync']
+    excluded_patterns = ['.dat', '.mda', 'mountain', '.json', '.mat', '.txt', 'postSleep', 'preSleep', 'Logs', '.timestampoffset',
+                         '.DIO', 'log', 'msort', 'LFP', 'spikes', 'reTrain', '.h264', 'geometry', 'HWSync', 'midSleep']
     check_for_aberrent_folders(excluded_patterns)
     
 def BP07(include_patterns):
@@ -317,6 +317,7 @@ def BP07(include_patterns):
         if match:
             day_number = match.group(1)
             day = 'Day' + day_number
+            day_folders.add(day)
             logging.info(f'BP07 day folders added {day}')
 
     for day in day_folders:
@@ -335,8 +336,8 @@ def BP07(include_patterns):
 if __name__ == "__main__":
     # if getting stuff from the main folders
     included_patterns = ["*.stateScriptLog", "*.videoTimeStamps"]
-    #main(include_patterns=included_patterns) # for retrieving data where there is one in each day folder
-    #BP07(included_patterns)
+    main(include_patterns=included_patterns) # for retrieving data where there is one in each day folder
+    BP07(included_patterns)
     
     # if getting dlc stuff from one folder
     dlc()

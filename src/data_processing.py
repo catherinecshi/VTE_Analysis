@@ -6,6 +6,7 @@ import os
 import re
 import fnmatch
 import logging
+import shutil
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -49,7 +50,10 @@ def process_dlc_data(file_path):
 
 def process_loaded_dlc_data(file_path):
     """USE WHEN PROCESSED ALREADY, like when it has already been processed by the function above"""
-    df = pd.read_csv(file_path, header=[0, 1])
+    if "concat" in file_path:
+        df = pd.read_csv(file_path, header=[0, 1], usecols=lambda column: column != 0)
+    else:
+        df = pd.read_csv(file_path, header=[0, 1])
     return df
 
 def process_timestamps_data(file_path):
@@ -450,6 +454,8 @@ def load_data_structure(save_path): # this function assumes no errors bc they wo
 
     return data_structure
 
+
+### CONCATENATION METHODS ------------
 def get_time_diff(ss_1, ss_2):
     """
     returns time diff between two ss logs if second ss start is ahead of the end of first ss
@@ -469,15 +475,15 @@ def get_time_diff(ss_1, ss_2):
     
     if second_start > first_end:
         logging.info(f"statescript files have a gap with length {diff}")
-        return diff, ss_diff_info
+        return ss_diff_info
     elif second_start == first_end:
         logging.info("statescript files are continuous")
-        return 0, ss_diff_info
+        return ss_diff_info
     else:
         logging.info(f"first statescript file starts at {first_start}"
                      f"first statescript file ends at {first_end}"
                      f"second statescript file starts at {second_start}")
-        return None, ss_diff_info
+        return ss_diff_info
     
 def concat_ss(ss_1, ss_2):
     """concatenates two statescript logs - doesn't include comments of second ss log"""
@@ -495,23 +501,27 @@ def concat_ss(ss_1, ss_2):
     return concatenated_content
 
 def concat_dlc(dlc_1, dlc_2):
-    csv_1 = pd.read_csv(dlc_1, header=[0, 1])
-    csv_2 = pd.read_csv(dlc_2, skiprows=[0, 1]) # skip the header
+    df_1 = pd.read_csv(dlc_1, skiprows=[0], header=[0, 1])
+    df_2 = pd.read_csv(dlc_2, skiprows=[0], header=[0, 1])
+    df_1.columns = df_1.columns.to_flat_index()
+    df_2.columns = df_2.columns.to_flat_index()
     
     # get the index at which they split
-    last_index = csv_1.index[-1]
-    first_index = csv_2.index[0]
+    last_index = df_1.index[-1]
+    first_index = df_2.index[0]
     logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - DLC"
                  f"last index for first dlc at {last_index}"
                  f"first index for second dlc at {first_index}")
     
     # update dlc
-    new_dlc = pd.concat([csv_1, csv_2], ignore_index=True) # ignore index ensures the indices are continuous
+    new_dlc = pd.concat([df_1, df_2], ignore_index=True) # ignore index ensures the indices are continuous
+    new_dlc.columns = pd.MultiIndex.from_tuples(new_dlc.columns)
+    
     dlc_diff = first_index - last_index
-    dlc_diff_info = (csv_1.index[0], csv_1.index[-1], csv_2.index[0], csv_2.index[-1], dlc_diff)
+    dlc_diff_info = (df_1.index[0], df_1.index[-1], df_2.index[0], df_2.index[-1], dlc_diff)
     return new_dlc, dlc_diff_info
 
-def concat_timestamps(timestamps_1, timestamps_2, ss_time_diff=None):
+def concat_timestamps(timestamps_1, timestamps_2):
     ts_1 = np.load(timestamps_1)
     ts_2 = np.load(timestamps_2)
     timestamps_time_diff = ts_2[0] - ts_1[-1]
@@ -550,17 +560,17 @@ def make_concat_file_names(path_name):
         return None
 
 def find_duplicates(day_path):
-    duplicate_files = {"dlc_1": "", "dlc_2": "", "dlc_3": "",
-                        "ss_1": "", "ss_2": "", "ss_3": "",
-                        "timestamps_1": "", "timestamps_2": "", "timestamps_3": ""}
+    duplicate_files = {"dlc_1": "", "dlc_2": "",
+                        "ss_1": "", "ss_2": "",
+                        "timestamps_1": "", "timestamps_2": ""}
     
     for root, _, files in os.walk(day_path):
         for f in files:
-            if ".csv" in f and "_2_track" not in f and "_3_track" not in f:
+            if ".csv" in f and "_2_track" not in f:
                 duplicate_files["dlc_1"] = os.path.join(root, f)
-            elif ".stateScriptLog" in f and "_2.stateScriptLog" not in f and "_3.stateScriptLog" not in f:
+            elif ".stateScriptLog" in f and "_2.stateScriptLog" not in f:
                 duplicate_files["ss_1"] = os.path.join(root, f)
-            elif ".videoTimeStamps" in f and "_2.1.videoTimeStamps" not in f and "_3.1.videoTimeStamps" not in f:
+            elif ".videoTimeStamps" in f and "_2.1.videoTimeStamps" not in f:
                 duplicate_files["timestamps_1"] = os.path.join(root, f)
             
             if fnmatch.fnmatch(f, "*_2_track*.csv"):
@@ -569,62 +579,52 @@ def find_duplicates(day_path):
                 duplicate_files["ss_2"] = os.path.join(root, f)
             elif fnmatch.fnmatch(f, "*_2.1.videoTimeStamps*"):
                 duplicate_files["timestamps_2"] = os.path.join(root, f)
+    
+    return duplicate_files
+
+def find_duplicates_implanted(day_path):
+    duplicate_files = {"dlc_1": "", "dlc_2": "",
+                        "ss_1": "", "ss_2": "",
+                        "timestamps_1": "", "timestamps_2": ""}
+    
+    for root, _, files in os.walk(day_path):
+        for f in files:
+            if ".csv" in f and "_track_2" not in f:
+                duplicate_files["dlc_1"] = os.path.join(root, f)
+            elif ".stateScriptLog" in f and "track_2.stateScriptLog" not in f:
+                duplicate_files["ss_1"] = os.path.join(root, f)
+            elif ".videoTimeStamps" in f and "track_2.1.videoTimeStamps" not in f:
+                duplicate_files["timestamps_1"] = os.path.join(root, f)
             
-            if fnmatch.fnmatch(f, "*_3_track*.csv"):
-                duplicate_files["dlc_3"] = os.path.join(root, f)
-            elif fnmatch.fnmatch(f, "*_3.stateScriptLog*"):
-                duplicate_files["ss_3"] = os.path.join(root, f)
-            elif fnmatch.fnmatch(f, "*_3.1.videoTimeStamps*"):
-                duplicate_files["timestamps_3"] = os.path.join(root, f)
+            if fnmatch.fnmatch(f, "*_track_2*.csv") or fnmatch.fnmatch(f, "*_2_track*.csv"):
+                duplicate_files["dlc_2"] = os.path.join(root, f)
+            elif fnmatch.fnmatch(f, "*_track_2.stateScriptLog*"):
+                duplicate_files["ss_2"] = os.path.join(root, f)
+            elif fnmatch.fnmatch(f, "*_track_2.1.videoTimeStamps*") or fnmatch.fnmatch(f, "*_track_2.videoTimeStamps*"):
+                duplicate_files["timestamps_2"] = os.path.join(root, f)
     
     return duplicate_files
 
 def save_concats(duplicate_files, dlc_path, ss_path, timestamps_path):
-    dlc_diff_info_1 = None # reset so things don't accidentally get saved
-    ss_diff_info_1 = None
-    ts_diff_info_1 = None
-    dlc_diff_info_2 = None
-    ss_diff_info_2 = None
-    ts_diff_info_2 = None
+    dlc_diff_info = None # reset so things don't accidentally get saved
+    ss_diff_info = None
+    ts_diff_info = None
 
-    if duplicate_files["dlc_3"] != "":
-        new_dlc, dlc_diff_info_1 = concat_dlc(duplicate_files["dlc_1"], duplicate_files["dlc_2"])
-        new_new_dlc, dlc_diff_info_2 = concat_dlc(new_dlc, duplicate_files["dlc_3"])
-        new_new_dlc.to_csv(dlc_path)
-    elif duplicate_files["dlc_2"] != "":
-        new_dlc, dlc_diff_info_1 = concat_dlc(duplicate_files["dlc_1"], duplicate_files["dlc_2"])
+    if duplicate_files["dlc_2"] != "":
+        new_dlc, dlc_diff_info = concat_dlc(duplicate_files["dlc_1"], duplicate_files["dlc_2"])
         new_dlc.to_csv(dlc_path)
-    
-    if duplicate_files["ss_3"] != "": 
-        new_ss = concat_ss(duplicate_files["ss_1"], duplicate_files["ss_2"])
-        new_new_ss = concat_ss(new_ss, duplicate_files["ss_3"])
-        with open(ss_path, "w", encoding="utf-8") as file:
-            file.write(new_new_ss)
-        time_diff_1, ss_diff_info_1 = get_time_diff(duplicate_files["ss_1"], duplicate_files["ss_2"]) # return ss time diffs for timestamps
-        time_diff_2, ss_diff_info_2 = get_time_diff(duplicate_files["ss_2"], duplicate_files["ss_3"])
-    elif duplicate_files["ss_2"] != "":
+
+    if duplicate_files["ss_2"] != "":
         new_ss = concat_ss(duplicate_files["ss_1"], duplicate_files["ss_2"])
         with open(ss_path, "w", encoding="utf-8") as file:
             file.write(new_ss)
-        time_diff_1, ss_diff_info_1 = get_time_diff(duplicate_files["ss_1"], duplicate_files["ss_2"]) # return ss time diffs for timestamps
+        ss_diff_info = get_time_diff(duplicate_files["ss_1"], duplicate_files["ss_2"]) # return ss time diffs for timestamps
         
-    if duplicate_files["timestamps_3"] != "":
-        if time_diff_1 is not None and time_diff_2 is not None:
-            new_timestamps, ts_diff_info_1 = concat_timestamps(duplicate_files["timestamps_1"], duplicate_files["timestamps_2"], time_diff_1)
-            new_new_timestamps, ts_diff_info_2 = concat_timestamps(new_timestamps, duplicate_files["timestamps_3"], time_diff_2)
-            np.save(timestamps_path, new_new_timestamps)
-        elif time_diff_1 is not None:
-            new_timestamps, ts_diff_info_1 = concat_timestamps(duplicate_files["timestamps_1"], duplicate_files["timestamps_2"], time_diff_1)
-            new_new_timestamps, ts_diff_info_2 = concat_timestamps(new_timestamps, duplicate_files["timestamps_3"])
-            np.save(timestamps_path, new_timestamps)
-    elif duplicate_files["timestamps_2"] != "" and time_diff_1 is not None:
-        new_timestamps, ts_diff_info_1 = concat_timestamps(duplicate_files["timestamps_1"], duplicate_files["timestamps_2"], time_diff_1)
-        np.save(timestamps_path, new_timestamps)
-    elif duplicate_files["timestamps_2"] != "":
-        new_timestamps, ts_diff_info_1 = concat_timestamps(duplicate_files["timestamps_1"], duplicate_files["timestamps_2"])
+    if duplicate_files["timestamps_2"] != "":
+        new_timestamps, ts_diff_info = concat_timestamps(duplicate_files["timestamps_1"], duplicate_files["timestamps_2"])
         np.save(timestamps_path, new_timestamps)
     
-    return dlc_diff_info_1, dlc_diff_info_2, ss_diff_info_1, ss_diff_info_2, ts_diff_info_1, ts_diff_info_2
+    return dlc_diff_info, ss_diff_info, ts_diff_info
 
 def save_diff_info(dlc_diff_info, ss_diff_info, ts_diff_info):
     if dlc_diff_info is not None:
@@ -665,20 +665,26 @@ def concat_duplicates(save_path):
             day_path = os.path.join(rat_path, day_folder)
             update_day(day_folder)
             
-            duplicate_files = find_duplicates(day_path)
-            if any([duplicate_files["dlc_2"] == "",
-                      duplicate_files["ss_2"] == "",
-                      duplicate_files["timestamps_2"] == ""]):
+            if any(rat_folder in rat for rat in IMPLANTED_RATS):
+                duplicate_files = find_duplicates_implanted(day_path) # naming convention is diff for implanted rats
+            else:
+                duplicate_files = find_duplicates(day_path)
+            if duplicate_files["dlc_2"] == "" or \
+                duplicate_files["ss_2"] == "" or \
+                duplicate_files["timestamps_2"] == "":
                 continue # skip folders with no duplicates
             logging.info(f"{CURRENT_RAT} on {CURRENT_DAY} has a duplicate"
                          f"{duplicate_files}")
             
             track_folder = None
+            track_folder_2 = None
             for _, dirs, _ in os.walk(day_path):
                 # check if there is a track folder (for implanted rats)
                 for directory in dirs:
-                    if directory is not None:
+                    if directory is not None and "_track_2" not in directory:
                         track_folder = directory
+                    elif directory is not None and "_track_2" in directory:
+                        track_folder_2 = directory
                 
             # new file names
             if track_folder is not None:
@@ -708,15 +714,15 @@ def concat_duplicates(save_path):
             
             # concatenate everything
             try:
-                dlc_diff_info_1, dlc_diff_info_2, ss_diff_info_1, ss_diff_info_2, ts_diff_info_1, ts_diff_info_2 = save_concats(duplicate_files, dlc_path, ss_path, timestamps_path)
+                dlc_diff_info, ss_diff_info, ts_diff_info = save_concats(duplicate_files, dlc_path, ss_path, timestamps_path)
             except Exception as e:
                 logging.error(f"concatenation failed for {rat_folder} on {day_folder} because error {e}")
             else:
-                current_diff_info = save_diff_info(dlc_diff_info_1, ss_diff_info_1, ts_diff_info_1)
-                if current_diff_info is not None:
-                    diff_info.append(current_diff_info)
-                
-                current_diff_info = save_diff_info(dlc_diff_info_2, ss_diff_info_2, ts_diff_info_2)
+                try:
+                    current_diff_info = save_diff_info(dlc_diff_info, ss_diff_info, ts_diff_info)
+                except Exception as e:
+                    logging.critical(f"{CURRENT_RAT} problem on {CURRENT_DAY} with error {e}")
+                    raise helper_functions.ExpectationError("saving diff info", f"{e}")
                 if current_diff_info is not None:
                     diff_info.append(current_diff_info)
                 
@@ -730,13 +736,26 @@ def concat_duplicates(save_path):
                         path_parts = file_path.split("/")
                         extension = path_parts[-1].split(".")[-1]
                         new_file_name = "old_" + file_type + "." + extension
-                        new_file_path = os.path.join("/".join(path_parts[:-1]), new_file_name)
-                        os.rename(file_path, new_file_path)
+                        
+                        if track_folder_2 is not None:
+                            change_folder_path = os.path.join(day_path, track_folder_2, new_file_name)
+                            shutil.move(file_path, change_folder_path)
+                        else:
+                            new_file_path = os.path.join("/".join(path_parts[:-1]), new_file_name)
+                            os.rename(file_path, new_file_path)
+                    
+                if track_folder_2 is not None:
+                    new_track_folder = "old_folder"
+                    track_folder_path = os.path.join(day_path, track_folder_2)
+                    new_track_folder_path = os.path.join(day_path, new_track_folder)
+                    os.rename(track_folder_path, new_track_folder_path)
 
     diff_info_df = pd.DataFrame(diff_info)
     diff_info_path = os.path.join(save_path, "diff_info.csv")
     diff_info_df.to_csv(diff_info_path)
 
+
+### POST-LOADING PROCESSING ----------------
 def filter_dataframe(df, track_part = "greenLED", std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
     """
     Filters dataframes. Check to make sure it's working properly. Generally, more than 100 filtered out points is bad

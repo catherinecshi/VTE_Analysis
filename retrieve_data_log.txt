@@ -1,183 +1,163 @@
-2024-07-12 07:00:11,472 Command failed with return code 3
-2024-07-12 07:00:11,473 Output: 
-2024-07-12 07:00:11,473 remote folder - /TI_DLC_tracked_all/etc/BP06_20220420_inferenceTraining_Day3_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv, local folder - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day3
-2024-07-12 07:00:11,747 Command failed with return code 3
-2024-07-12 07:00:11,747 Output: 
-2024-07-12 07:00:11,747 remote folder - /TI_DLC_tracked_all/etc/BP06_20220421_inferenceTraining_Day4_1_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv, local folder - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day4
-2024-07-12 07:00:12,028 Command failed with return code 3
-2024-07-12 07:00:12,028 Output: 
-2024-07-12 07:00:12,028 remote folder - /TI_DLC_tracked_all/etc/BP06_20220421_inferenceTraining_Day4_2_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv, local folder - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day4
-2024-07-12 07:00:12,301 Command failed with return code 3
-2024-07-12 07:00:12,302 Output: 
-2024-07-12 07:00:12,302 remote folder - /TI_DLC_tracked_all/etc/BP06_20220425_inferenceTraining_Day5_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv, local folder - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day5
-2024-07-12 07:00:12,575 Command failed with return code 3
-2024-07-12 07:00:12,575 Output: 
-2024-07-12 07:00:12,575 remote folder - /TI_DLC_tracked_all/etc/BP06_20220426_inferenceTraining_Day6_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv, local folder - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day6
-2024-07-12 07:18:52,410 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day31/BP06_20220531_inferenceTraining_Day31_track
-2024-07-12 07:18:52,410 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day37/BP06_20220623_inferenceTraining_Day37_track
-2024-07-12 07:18:52,411 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,411 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,411 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,411 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,411 path doesn't exist. dlc - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day23/BP06_20220524_inferenceTraining_Day23_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv. dir - None
-2024-07-12 07:18:52,411 path doesn't exist. dlc - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day24/BP06_20220525_inferenceTraining_Day24_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv. dir - None
-2024-07-12 07:18:52,412 path doesn't exist. dlc - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day25/BP06_20220526_inferenceTraining_Day25_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv. dir - None
-2024-07-12 07:18:52,412 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day32/BP06_20220601_inferenceTraining_Day32_track
-2024-07-12 07:18:52,412 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day34/BP06_20220603_inferenceTraining_Day34_track_2
-2024-07-12 07:18:52,413 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,413 path doesn't exist. dlc - None. dir - None
-2024-07-12 07:18:52,417 path doesn't exist. dlc - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/Day26/BP06_20220527_inferenceTraining_Day26_track.1DLC_resnet50_implant_oldCameraJun23shuffle1_300000.csv. dir - None
-2024-07-12 07:18:52,420 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day25/TH605_20231221_inferenceTraining_Day25_track.stateScriptLog
-2024-07-12 07:18:52,420 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day25/TH605_20231221_inferenceTraining_Day25_track.1.videoTimeStamps
-2024-07-12 07:18:52,420 path doesn't exist. dlc - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day25/TH605_20231221_inferenceTraining_Day25_track.1DLC_resnet50_implant_newCamera_trackJun7shuffle1_300000.csv. dir - None
-2024-07-12 07:18:52,422 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day29/Day29.msortOut
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day29/Day29.timestampoffset
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day29/Day29.LFP
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day29/Logs
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day29/Day29.DIO
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day11/Day11.LFP
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day11/Day11.msortOut
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day11/Logs
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day11/Day11.DIO
-2024-07-12 07:18:52,423 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/Day11/Day11.timestampoffset
-2024-07-12 07:18:52,433 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day3/Day3.msortOut
-2024-07-12 07:18:52,433 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day3/Day3.DIO
-2024-07-12 07:18:52,433 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day3/Day3.timestampoffset
-2024-07-12 07:18:52,433 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day3/Logs
-2024-07-12 07:18:52,433 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day3/Day3.LFP
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day5/Day5.msortOut
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day5/Day5.DIO
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day5/Logs
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day5/Day5.timestampoffset
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day5/Day5.LFP
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day7/Day7.timestampoffset
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day7/Day7.DIO
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day7/Logs
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day7/Day7.msortOut
-2024-07-12 07:18:52,434 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day7/Day7.LFP
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day9/Day9.LFP
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day9/Day9.msortOut
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day9/Day9.timestampoffset
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day9/Logs
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day9/Day9.DIO
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day8/Day8.timestampoffset
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day8/Day8.LFP
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day8/Day8.msortOut
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day8/Logs
-2024-07-12 07:18:52,435 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day8/Day8.DIO
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day6/Day6.DIO
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day6/Day6.timestampoffset
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day6/Logs
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day6/Day6.msortOut
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day6/Day6.LFP
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day1/Day1.timestampoffset
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day1/Day1.DIO
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day1/Logs
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day1/Day1.msortOut
-2024-07-12 07:18:52,436 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/Day1/Day1.LFP
-2024-07-12 07:18:52,436 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP12/inferenceTraining/Day4/BP12_20230317_184549_inferenceTraining_Day4_track
-2024-07-12 07:18:52,436 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP12/inferenceTraining/Day3/BP12_20230316_164043_inferenceTraining_Day3_track
-2024-07-12 07:18:52,437 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP12/inferenceTraining/Day2/BP12_20230315_210449_inferenceTraining_Day1_track
-2024-07-12 07:18:52,437 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP12/inferenceTraining/Day5/BP12_20230318_212009_inferenceTraining_Day5_track
-2024-07-12 07:18:52,437 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP12/inferenceTraining/Day1/BP12_20230314_162821_inferenceTraining_Day1_track
-2024-07-12 07:18:52,437 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day38/Day38.LFP
-2024-07-12 07:18:52,437 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day38/Day38.timestampoffset
-2024-07-12 07:18:52,437 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day38/Day38.msortOut
-2024-07-12 07:18:52,437 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day38/Day38.DIO
-2024-07-12 07:18:52,437 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day38/Logs
-2024-07-12 07:18:52,438 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day30/Day30.timestampoffset
-2024-07-12 07:18:52,438 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day30/Day30.DIO
-2024-07-12 07:18:52,438 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day30/Logs
-2024-07-12 07:18:52,438 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day30/Day30.LFP
-2024-07-12 07:18:52,438 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day30/Day30.msortOut
-2024-07-12 07:18:52,443 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day22/Day22.msortOut
-2024-07-12 07:18:52,443 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day22/Day22.DIO
-2024-07-12 07:18:52,443 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day22/Logs
-2024-07-12 07:18:52,443 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day22/Day22.timestampoffset
-2024-07-12 07:18:52,443 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day22/Day22.LFP
-2024-07-12 07:18:52,445 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day1/Day1.timestampoffset
-2024-07-12 07:18:52,445 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day1/Day1.DIO
-2024-07-12 07:18:52,445 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day1/Day1.msortOut
-2024-07-12 07:18:52,446 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day1/Day1.LFP
-2024-07-12 07:18:52,447 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day16/Day16.msortOut
-2024-07-12 07:18:52,447 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day16/Day16.LFP
-2024-07-12 07:18:52,447 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day16/Logs
-2024-07-12 07:18:52,447 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day16/Day16.DIO
-2024-07-12 07:18:52,447 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day16/Day16.timestampoffset
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day10/Day10.LFP
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day10/Day10.msortOut
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day10/Day10.timestampoffset
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day10/Day10.DIO
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day17/Day17.msortOut
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day17/Day17.LFP
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day17/Logs
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day17/Day17.DIO
-2024-07-12 07:18:52,448 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day17/Day17.timestampoffset
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day21/Day21.timestampoffset
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day21/Day21.DIO
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day21/Logs
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day21/Day21.msortOut
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day21/Day21.LFP
-2024-07-12 07:18:52,449 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day26/TH508_20230623_180958_inferenceTraining_Day26_track
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day19/Day19.DIO
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day19/Logs
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day19/Day19.timestampoffset
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day19/Day19.msortOut
-2024-07-12 07:18:52,449 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/Day19/Day19.LFP
-2024-07-12 07:18:52,450 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day30/TH405_20230327_164134_inferenceTraining_Day30_midSleep_1
-2024-07-12 07:18:52,451 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day5/Day5.msortOut
-2024-07-12 07:18:52,451 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day5/Day5.DIO
-2024-07-12 07:18:52,451 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day5/Logs
-2024-07-12 07:18:52,451 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day5/Day5.timestampoffset
-2024-07-12 07:18:52,451 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day5/Day5.LFP
-2024-07-12 07:18:52,453 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day15/Day15.LFP
-2024-07-12 07:18:52,453 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day15/Day15.timestampoffset
-2024-07-12 07:18:52,453 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day15/Logs
-2024-07-12 07:18:52,453 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day15/Day15.DIO
-2024-07-12 07:18:52,453 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day15/Day15.msortOut
-2024-07-12 07:18:52,454 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day25/Day25.DIO
-2024-07-12 07:18:52,454 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day25/Day25.msortOut
-2024-07-12 07:18:52,454 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day25/Logs
-2024-07-12 07:18:52,454 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day25/Day25.timestampoffset
-2024-07-12 07:18:52,454 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day25/Day25.LFP
-2024-07-12 07:18:52,455 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day34/Day34.msortOut
-2024-07-12 07:18:52,455 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day34/Day34.DIO
-2024-07-12 07:18:52,455 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day34/Day34.timestampoffset
-2024-07-12 07:18:52,455 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day34/Day34.LFP
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day7/Day7.timestampoffset
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day7/Day7.DIO
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day7/Logs
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day7/Day7.msortOut
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day7/Day7.LFP
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day9/Day9.LFP
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day9/Day9.msortOut
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day9/Day9.timestampoffset
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day9/Logs
-2024-07-12 07:18:52,456 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day9/Day9.DIO
-2024-07-12 07:18:52,457 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day1/Day1.timestampoffset
-2024-07-12 07:18:52,457 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day1/Day1.DIO
-2024-07-12 07:18:52,457 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day1/Logs
-2024-07-12 07:18:52,457 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day1/Day1.msortOut
-2024-07-12 07:18:52,457 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day1/Day1.LFP
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/Day16.msortOut
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/Day16.LFP
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/Logs
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/TH405_20230313_171931_inferenceTraining_Day16_midSleep
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/Day16.DIO
-2024-07-12 07:18:52,458 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day16/Day16.timestampoffset
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day11/Day11.LFP
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day11/Day11.msortOut
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day11/Logs
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day11/Day11.DIO
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day11/Day11.timestampoffset
-2024-07-12 07:18:52,459 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day10/TH405_20230307_inferenceTraining_Day10_midSleep.rec
-2024-07-12 07:18:52,460 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day17/Day17.msortOut
-2024-07-12 07:18:52,460 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day17/Day17.LFP
-2024-07-12 07:18:52,460 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day17/Logs
-2024-07-12 07:18:52,460 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day17/Day17.DIO
-2024-07-12 07:18:52,460 weird non-dlc & track folder found - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/Day17/Day17.timestampoffset
-2024-07-12 07:18:52,461 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP20/inferenceTraining/Day4/BP20_20231029_131704_interefenceTraining_Day4_track
-2024-07-12 07:18:52,461 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP20/inferenceTraining/Day3/BP20_20231028_134433_inferenceTraining_Day3_track
-2024-07-12 07:18:52,461 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP20/inferenceTraining/Day2/BP20_20231027_124825_inferenceTraining_Day2_track
-2024-07-12 07:18:52,461 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP20/inferenceTraining/Day5/BP20_20231030_132448_inferenceTraining_Day5_track
-2024-07-12 07:18:52,461 path doesn't exist. dlc - None. dir - /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP20/inferenceTraining/Day1/BP20_20231026_153413_inferenceTraining_Day1_track
+2024-07-15 13:58:20,376 BP07 day folders added Day16
+2024-07-15 13:58:20,376 BP07 day folders added Day16
+2024-07-15 13:58:20,376 BP07 day folders added Day16
+2024-07-15 13:58:20,376 BP07 day folders added Day16
+2024-07-15 13:58:20,376 BP07 day folders added Day16
+2024-07-15 13:58:20,376 BP07 day folders added Day17
+2024-07-15 13:58:20,376 BP07 day folders added Day17
+2024-07-15 13:58:20,376 BP07 day folders added Day17
+2024-07-15 13:58:20,376 BP07 day folders added Day17
+2024-07-15 13:58:20,376 BP07 day folders added Day17
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,376 BP07 day folders added Day12
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day18
+2024-07-15 13:58:20,377 BP07 day folders added Day2
+2024-07-15 13:58:20,377 BP07 day folders added Day2
+2024-07-15 13:58:20,377 BP07 day folders added Day2
+2024-07-15 13:58:20,377 BP07 day folders added Day2
+2024-07-15 13:58:20,377 BP07 day folders added Day2
+2024-07-15 13:58:20,377 BP07 day folders added Day19
+2024-07-15 13:58:20,377 BP07 day folders added Day19
+2024-07-15 13:58:20,377 BP07 day folders added Day19
+2024-07-15 13:58:20,377 BP07 day folders added Day19
+2024-07-15 13:58:20,377 BP07 day folders added Day19
+2024-07-15 13:58:20,377 BP07 day folders added Day10
+2024-07-15 13:58:20,377 BP07 day folders added Day10
+2024-07-15 13:58:20,377 BP07 day folders added Day10
+2024-07-15 13:58:20,377 BP07 day folders added Day10
+2024-07-15 13:58:20,377 BP07 day folders added Day10
+2024-07-15 13:58:20,377 BP07 day folders added Day20
+2024-07-15 13:58:20,377 BP07 day folders added Day20
+2024-07-15 13:58:20,377 BP07 day folders added Day20
+2024-07-15 13:58:20,377 BP07 day folders added Day20
+2024-07-15 13:58:20,377 BP07 day folders added Day20
+2024-07-15 13:58:20,377 BP07 day folders added Day21
+2024-07-15 13:58:20,377 BP07 day folders added Day21
+2024-07-15 13:58:20,377 BP07 day folders added Day21
+2024-07-15 13:58:20,377 BP07 day folders added Day21
+2024-07-15 13:58:20,377 BP07 day folders added Day21
+2024-07-15 13:58:20,377 BP07 day folders added Day24
+2024-07-15 13:58:20,377 BP07 day folders added Day24
+2024-07-15 13:58:20,377 BP07 day folders added Day24
+2024-07-15 13:58:20,377 BP07 day folders added Day24
+2024-07-15 13:58:20,377 BP07 day folders added Day24
+2024-07-15 13:58:20,377 BP07 day folders added Day22
+2024-07-15 13:58:20,377 BP07 day folders added Day22
+2024-07-15 13:58:20,377 BP07 day folders added Day22
+2024-07-15 13:58:20,377 BP07 day folders added Day22
+2024-07-15 13:58:20,377 BP07 day folders added Day22
+2024-07-15 13:58:20,377 BP07 day folders added Day23
+2024-07-15 13:58:20,377 BP07 day folders added Day23
+2024-07-15 13:58:20,377 BP07 day folders added Day23
+2024-07-15 13:58:20,377 BP07 day folders added Day23
+2024-07-15 13:58:20,377 BP07 day folders added Day23
+2024-07-15 13:58:20,378 BP07 day folders added Day26
+2024-07-15 13:58:20,378 BP07 day folders added Day26
+2024-07-15 13:58:20,378 BP07 day folders added Day26
+2024-07-15 13:58:20,378 BP07 day folders added Day26
+2024-07-15 13:58:20,378 BP07 day folders added Day26
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day25
+2024-07-15 13:58:20,378 BP07 day folders added Day1
+2024-07-15 13:58:20,378 BP07 day folders added Day1
+2024-07-15 13:58:20,378 BP07 day folders added Day1
+2024-07-15 13:58:20,378 BP07 day folders added Day1
+2024-07-15 13:58:20,378 BP07 day folders added Day1
+2024-07-15 13:58:20,378 BP07 day folders added Day3
+2024-07-15 13:58:20,378 BP07 day folders added Day3
+2024-07-15 13:58:20,378 BP07 day folders added Day3
+2024-07-15 13:58:20,378 BP07 day folders added Day3
+2024-07-15 13:58:20,378 BP07 day folders added Day3
+2024-07-15 13:58:20,378 BP07 day folders added Day27
+2024-07-15 13:58:20,378 BP07 day folders added Day27
+2024-07-15 13:58:20,378 BP07 day folders added Day27
+2024-07-15 13:58:20,378 BP07 day folders added Day27
+2024-07-15 13:58:20,378 BP07 day folders added Day27
+2024-07-15 13:58:20,378 BP07 day folders added Day28
+2024-07-15 13:58:20,378 BP07 day folders added Day28
+2024-07-15 13:58:20,378 BP07 day folders added Day28
+2024-07-15 13:58:20,378 BP07 day folders added Day28
+2024-07-15 13:58:20,378 BP07 day folders added Day28
+2024-07-15 13:58:20,378 BP07 day folders added Day5
+2024-07-15 13:58:20,378 BP07 day folders added Day5
+2024-07-15 13:58:20,378 BP07 day folders added Day5
+2024-07-15 13:58:20,378 BP07 day folders added Day5
+2024-07-15 13:58:20,378 BP07 day folders added Day5
+2024-07-15 13:58:20,378 BP07 day folders added Day6
+2024-07-15 13:58:20,378 BP07 day folders added Day6
+2024-07-15 13:58:20,378 BP07 day folders added Day6
+2024-07-15 13:58:20,378 BP07 day folders added Day6
+2024-07-15 13:58:20,378 BP07 day folders added Day6
+2024-07-15 13:58:20,378 BP07 day folders added Day4
+2024-07-15 13:58:20,378 BP07 day folders added Day4
+2024-07-15 13:58:20,378 BP07 day folders added Day4
+2024-07-15 13:58:20,378 BP07 day folders added Day4
+2024-07-15 13:58:20,378 BP07 day folders added Day4
+2024-07-15 13:58:20,378 BP07 day folders added Day7
+2024-07-15 13:58:20,378 BP07 day folders added Day7
+2024-07-15 13:58:20,378 BP07 day folders added Day7
+2024-07-15 13:58:20,379 BP07 day folders added Day7
+2024-07-15 13:58:20,379 BP07 day folders added Day7
+2024-07-15 13:58:20,379 BP07 day folders added Day14
+2024-07-15 13:58:20,379 BP07 day folders added Day14
+2024-07-15 13:58:20,379 BP07 day folders added Day14
+2024-07-15 13:58:20,379 BP07 day folders added Day14
+2024-07-15 13:58:20,379 BP07 day folders added Day14
+2024-07-15 13:58:20,379 BP07 day folders added Day8
+2024-07-15 13:58:20,379 BP07 day folders added Day8
+2024-07-15 13:58:20,379 BP07 day folders added Day8
+2024-07-15 13:58:20,379 BP07 day folders added Day8
+2024-07-15 13:58:20,379 BP07 day folders added Day8
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day9
+2024-07-15 13:58:20,379 BP07 day folders added Day13
+2024-07-15 13:58:20,379 BP07 day folders added Day13
+2024-07-15 13:58:20,379 BP07 day folders added Day13
+2024-07-15 13:58:20,379 BP07 day folders added Day13
+2024-07-15 13:58:20,379 BP07 day folders added Day13
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day15
+2024-07-15 13:58:20,379 BP07 day folders added Day11
+2024-07-15 13:58:20,379 BP07 day folders added Day11
+2024-07-15 13:58:20,379 BP07 day folders added Day11
+2024-07-15 13:58:20,379 BP07 day folders added Day11
+2024-07-15 13:58:20,379 BP07 day folders added Day11
+2024-07-15 13:58:45,806 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-15 13:58:45,813 missing days for BP06 for days [1, 2, 3, 4, 5, 6]
+2024-07-15 13:58:45,815 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-15 13:58:45,824 missing days for BP08 for days [43]
+2024-07-15 13:58:45,832 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-15 13:58:45,833 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-15 13:58:45,834 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
