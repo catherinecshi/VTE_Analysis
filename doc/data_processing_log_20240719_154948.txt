@@ -1,0 +1,51 @@
+2024-07-19 15:49:49,185 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-19 15:49:49,203 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-19 15:49:49,212 interactive is False
+2024-07-19 15:49:49,212 platform is darwin
+2024-07-19 15:49:49,558 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-19 15:49:49,566 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-19 15:49:50,388 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-19 15:49:54,223 SS data missing for BP08 on Day38
+2024-07-19 15:49:54,223 TS data missing for BP08 on Day38
+2024-07-19 15:49:54,780 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-19 15:49:56,380 DLC data missing for BP08 on Day40
+2024-07-19 15:50:00,958 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-19 15:50:04,609 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-19 15:50:09,366 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-19 15:50:09,648 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-19 15:50:14,239 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-19 15:50:17,176 DLC data missing for BP14 on Day4
+2024-07-19 15:50:17,178 DLC data missing for BP14 on Day3
+2024-07-19 15:50:17,179 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-19 15:50:17,180 DLC data missing for BP14 on Day2
+2024-07-19 15:50:17,181 DLC data missing for BP14 on Day5
+2024-07-19 15:50:17,182 DLC data missing for BP14 on Day12
+2024-07-19 15:50:17,183 DLC data missing for BP14 on Day15
+2024-07-19 15:50:17,185 DLC data missing for BP14 on Day14
+2024-07-19 15:50:17,186 DLC data missing for BP14 on Day13
+2024-07-19 15:50:17,187 DLC data missing for BP14 on Day7
+2024-07-19 15:50:17,189 DLC data missing for BP14 on Day9
+2024-07-19 15:50:17,190 DLC data missing for BP14 on Day8
+2024-07-19 15:50:17,192 DLC data missing for BP14 on Day6
+2024-07-19 15:50:17,193 DLC data missing for BP14 on Day1
+2024-07-19 15:50:17,194 DLC data missing for BP14 on Day18
+2024-07-19 15:50:17,195 DLC data missing for BP14 on Day20
+2024-07-19 15:50:17,196 DLC data missing for BP14 on Day16
+2024-07-19 15:50:17,198 DLC data missing for BP14 on Day11
+2024-07-19 15:50:17,199 DLC data missing for BP14 on Day10
+2024-07-19 15:50:17,200 DLC data missing for BP14 on Day17
+2024-07-19 15:50:17,202 DLC data missing for BP14 on Day21
+2024-07-19 15:50:17,203 DLC data missing for BP14 on Day19
+2024-07-19 15:50:17,735 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-19 15:50:22,390 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-19 15:50:26,757 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-19 15:50:31,340 DLC data missing for TH508 on Day26
+2024-07-19 15:50:32,159 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-19 15:50:49,428 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-19 15:50:54,663 DLC data missing for BP16 on Day18
+2024-07-19 15:50:55,819 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-19 15:50:59,469 DLC data missing for BP11 on Day29
+2024-07-19 15:50:59,471 TS data missing for BP11 on Day29
+2024-07-19 15:51:00,518 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/diff_info.csv/inferenceTraining
+2024-07-19 15:51:31,938 Loaded backend macosx version unknown.
+2024-07-19 16:38:26,615 decrease in # trials for BP06 on 7

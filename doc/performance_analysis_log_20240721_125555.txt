@@ -1,0 +1,6 @@
+2024-07-21 12:55:55,603 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-21 12:55:58,191 SS data missing for BP08 on Day38
+2024-07-21 12:55:58,191 TS data missing for BP08 on Day38
+2024-07-21 12:55:58,594 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-21 12:55:59,753 DLC data missing for BP08 on Day40
+2024-07-21 12:56:02,649 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store

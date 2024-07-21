@@ -1,0 +1,109 @@
+2024-07-21 13:16:22,363 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-21 13:16:22,375 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-21 13:16:22,381 interactive is False
+2024-07-21 13:16:22,381 platform is darwin
+2024-07-21 13:16:22,589 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-21 13:16:22,592 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-21 13:16:23,117 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-21 13:16:25,457 SS data missing for BP08 on Day38
+2024-07-21 13:16:25,457 TS data missing for BP08 on Day38
+2024-07-21 13:16:25,811 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-21 13:16:26,858 DLC data missing for BP08 on Day40
+2024-07-21 13:16:29,420 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-21 13:16:31,756 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-21 13:16:35,545 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-21 13:16:35,727 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-21 13:16:38,832 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-21 13:16:41,131 DLC data missing for BP14 on Day4
+2024-07-21 13:16:41,132 DLC data missing for BP14 on Day3
+2024-07-21 13:16:41,132 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-21 13:16:41,133 DLC data missing for BP14 on Day2
+2024-07-21 13:16:41,134 DLC data missing for BP14 on Day5
+2024-07-21 13:16:41,135 DLC data missing for BP14 on Day12
+2024-07-21 13:16:41,136 DLC data missing for BP14 on Day15
+2024-07-21 13:16:41,137 DLC data missing for BP14 on Day14
+2024-07-21 13:16:41,138 DLC data missing for BP14 on Day13
+2024-07-21 13:16:41,139 DLC data missing for BP14 on Day7
+2024-07-21 13:16:41,140 DLC data missing for BP14 on Day9
+2024-07-21 13:16:41,141 DLC data missing for BP14 on Day8
+2024-07-21 13:16:41,142 DLC data missing for BP14 on Day6
+2024-07-21 13:16:41,143 DLC data missing for BP14 on Day1
+2024-07-21 13:16:41,144 DLC data missing for BP14 on Day18
+2024-07-21 13:16:41,145 DLC data missing for BP14 on Day20
+2024-07-21 13:16:41,146 DLC data missing for BP14 on Day16
+2024-07-21 13:16:41,147 DLC data missing for BP14 on Day11
+2024-07-21 13:16:41,148 DLC data missing for BP14 on Day10
+2024-07-21 13:16:41,150 DLC data missing for BP14 on Day17
+2024-07-21 13:16:41,150 DLC data missing for BP14 on Day21
+2024-07-21 13:16:41,152 DLC data missing for BP14 on Day19
+2024-07-21 13:16:41,500 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-21 13:16:44,561 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-21 13:16:47,595 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-21 13:16:50,593 DLC data missing for TH508 on Day26
+2024-07-21 13:16:51,139 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-21 13:17:03,162 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-21 13:17:06,790 DLC data missing for BP16 on Day18
+2024-07-21 13:17:07,584 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-21 13:17:09,731 DLC data missing for BP11 on Day29
+2024-07-21 13:17:09,732 TS data missing for BP11 on Day29
+2024-07-21 13:17:29,159 decrease in # trials for BP08 on 34
+2024-07-21 13:17:29,160 decrease in # trials for BP08 on 35
+2024-07-21 13:17:29,160 decrease in # trials for BP08 on 36
+2024-07-21 13:17:29,160 decrease in # trials for BP08 on 37
+2024-07-21 13:17:29,163 decrease in # trials for BP09 on 20
+2024-07-21 13:17:29,163 decrease in # trials for BP09 on 21
+2024-07-21 13:17:29,163 decrease in # trials for BP09 on 22
+2024-07-21 13:17:29,164 decrease in # trials for BP09 on 23
+2024-07-21 13:17:29,164 decrease in # trials for BP09 on 24
+2024-07-21 13:17:29,164 decrease in # trials for BP09 on 25
+2024-07-21 13:17:29,164 decrease in # trials for BP09 on 26
+2024-07-21 13:17:29,164 decrease in # trials for BP09 on 27
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 28
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 29
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 30
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 31
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 32
+2024-07-21 13:17:29,165 decrease in # trials for BP09 on 33
+2024-07-21 13:17:29,166 decrease in # trials for BP09 on 34
+2024-07-21 13:17:29,166 decrease in # trials for BP09 on 35
+2024-07-21 13:17:29,166 decrease in # trials for BP09 on 36
+2024-07-21 13:17:29,166 decrease in # trials for BP09 on 37
+2024-07-21 13:17:29,166 decrease in # trials for BP09 on 38
+2024-07-21 13:17:29,168 decrease in # trials for BP10 on 15
+2024-07-21 13:17:29,168 decrease in # trials for BP10 on 16
+2024-07-21 13:17:29,168 decrease in # trials for BP10 on 17
+2024-07-21 13:17:29,168 decrease in # trials for BP10 on 18
+2024-07-21 13:17:29,169 decrease in # trials for BP10 on 19
+2024-07-21 13:17:29,169 decrease in # trials for BP10 on 28
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 29
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 30
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 31
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 32
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 33
+2024-07-21 13:17:29,170 decrease in # trials for BP10 on 34
+2024-07-21 13:17:29,171 decrease in # trials for BP10 on 35
+2024-07-21 13:17:29,171 decrease in # trials for BP10 on 36
+2024-07-21 13:17:29,171 decrease in # trials for BP10 on 37
+2024-07-21 13:17:29,171 decrease in # trials for BP10 on 38
+2024-07-21 13:17:29,171 decrease in # trials for BP10 on 39
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 40
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 41
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 42
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 43
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 44
+2024-07-21 13:17:29,172 decrease in # trials for BP10 on 45
+2024-07-21 13:17:29,173 decrease in # trials for BP10 on 46
+2024-07-21 13:17:29,175 decrease in # trials for BP11 on 29
+2024-07-21 13:17:29,177 decrease in # trials for BP11 on 46
+2024-07-21 13:17:29,177 decrease in # trials for BP11 on 47
+2024-07-21 13:17:29,177 decrease in # trials for BP11 on 48
+2024-07-21 13:17:29,177 decrease in # trials for BP11 on 49
+2024-07-21 13:17:29,177 decrease in # trials for BP11 on 50
+2024-07-21 13:17:29,178 decrease in # trials for BP11 on 51
+2024-07-21 13:17:29,178 decrease in # trials for BP11 on 52
+2024-07-21 13:17:29,182 decrease in # trials for BP14 on 16
+2024-07-21 13:17:29,182 decrease in # trials for BP14 on 17
+2024-07-21 13:17:29,183 decrease in # trials for BP14 on 18
+2024-07-21 13:17:29,210 decrease in # trials for TH608 on 3
+2024-07-21 13:17:29,315 Loaded backend macosx version unknown.
+2024-07-21 13:39:21,204 BP06 peed on Day22 at 5604814

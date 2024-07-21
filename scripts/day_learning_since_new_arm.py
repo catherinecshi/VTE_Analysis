@@ -23,18 +23,15 @@ days_since_new_arm = performance_analysis.get_days_since_new_arm(SAVE_PATH, DATA
 all_rats_performances = performance_analysis.create_all_rats_performance(data_structure=DATA_STRUCTURE)
 all_rats_perf_changes = performance_analysis.create_all_perf_changes(all_rats_performances)
 
-# sort by the number of days since new arm was added
-sorted_by_days_since_new_arm = days_since_new_arm.sort_values(by='days_since_new_arm')
-
 # dataframe for overall change in perf
-merged_df = pd.merge(all_rats_perf_changes, days_since_new_arm, how='inner', on=['rat', 'day'])
+merged_df = pd.merge(all_rats_perf_changes, days_since_new_arm, how="inner", on=["rat", "day"])
 
-plotting.create_box_and_whisker_plot(merged_df, x='days_since_new_arm', y='perf_change',
-                                    title='Learning during Volatility',
-                                    xlabel='Number of Days Since New Arm Added',
-                                    ylabel='Change in Performance since Last Session')
+plotting.create_box_and_whisker_plot(merged_df, x="days_since_new_arm", y="perf_change",
+                                    title="Learning during Volatility",
+                                    xlabel="Number of Days Since New Arm Added",
+                                    ylabel="Change in Performance since Last Session")
 
-plotting.create_histogram(merged_df, 'days_since_new_arm', 'perf_change',
-                          title='Learning during Volatility',
-                          xlabel='Number of Days Since New Arm Added',
-                          ylabel='Change in Performance since Last Session')
+plotting.create_histogram(merged_df, "days_since_new_arm", "perf_change",
+                          title="Learning during Volatility",
+                          xlabel="Number of Days Since New Arm Added",
+                          ylabel="Change in Performance since Last Session")

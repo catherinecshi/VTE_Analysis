@@ -96,3 +96,6 @@ next on agenda:
 - BP21 jenya put the wrong rat on, so check the ss and cut out when new rat is put on
     - take last timestamp of first dlc and cut ss there
 - make ss logs dataframes instead
+
+rn for days_since_new_arm it counts trials when there's a decrease in trials
+but that doesn't correspond to the 'trial it is learning'.... fix in future? cut it off?

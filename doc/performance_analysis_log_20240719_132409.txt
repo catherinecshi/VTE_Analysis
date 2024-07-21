@@ -1,0 +1,2 @@
+2024-07-19 13:24:09,850 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-19 13:24:09,877 Loaded backend macosx version unknown.

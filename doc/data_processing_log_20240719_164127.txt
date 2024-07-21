@@ -1,0 +1,194 @@
+2024-07-19 16:41:28,235 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-19 16:41:28,246 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-19 16:41:28,252 interactive is False
+2024-07-19 16:41:28,252 platform is darwin
+2024-07-19 16:41:28,476 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-19 16:41:28,483 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-19 16:41:29,040 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-19 16:41:31,782 SS data missing for BP08 on Day38
+2024-07-19 16:41:31,782 TS data missing for BP08 on Day38
+2024-07-19 16:41:32,169 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-19 16:41:33,420 DLC data missing for BP08 on Day40
+2024-07-19 16:41:36,096 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-19 16:41:39,217 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-19 16:41:42,393 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-19 16:41:42,574 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-19 16:41:45,574 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-19 16:41:47,538 DLC data missing for BP14 on Day4
+2024-07-19 16:41:47,540 DLC data missing for BP14 on Day3
+2024-07-19 16:41:47,540 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-19 16:41:47,541 DLC data missing for BP14 on Day2
+2024-07-19 16:41:47,542 DLC data missing for BP14 on Day5
+2024-07-19 16:41:47,543 DLC data missing for BP14 on Day12
+2024-07-19 16:41:47,544 DLC data missing for BP14 on Day15
+2024-07-19 16:41:47,545 DLC data missing for BP14 on Day14
+2024-07-19 16:41:47,546 DLC data missing for BP14 on Day13
+2024-07-19 16:41:47,547 DLC data missing for BP14 on Day7
+2024-07-19 16:41:47,548 DLC data missing for BP14 on Day9
+2024-07-19 16:41:47,549 DLC data missing for BP14 on Day8
+2024-07-19 16:41:47,551 DLC data missing for BP14 on Day6
+2024-07-19 16:41:47,552 DLC data missing for BP14 on Day1
+2024-07-19 16:41:47,553 DLC data missing for BP14 on Day18
+2024-07-19 16:41:47,554 DLC data missing for BP14 on Day20
+2024-07-19 16:41:47,555 DLC data missing for BP14 on Day16
+2024-07-19 16:41:47,556 DLC data missing for BP14 on Day11
+2024-07-19 16:41:47,558 DLC data missing for BP14 on Day10
+2024-07-19 16:41:47,559 DLC data missing for BP14 on Day17
+2024-07-19 16:41:47,560 DLC data missing for BP14 on Day21
+2024-07-19 16:41:47,561 DLC data missing for BP14 on Day19
+2024-07-19 16:41:47,901 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-19 16:41:50,927 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-19 16:41:53,820 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-19 16:41:57,058 DLC data missing for TH508 on Day26
+2024-07-19 16:41:57,602 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-19 16:42:09,236 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-19 16:42:12,625 DLC data missing for BP16 on Day18
+2024-07-19 16:42:13,400 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-19 16:42:15,216 DLC data missing for BP11 on Day29
+2024-07-19 16:42:15,217 TS data missing for BP11 on Day29
+2024-07-19 16:42:15,807 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/diff_info.csv/inferenceTraining
+2024-07-19 16:42:34,944 Loaded backend macosx version unknown.
+2024-07-19 16:42:56,028 decrease in # trials for BP08 on 34
+2024-07-19 16:42:56,033 decrease in # trials for BP09 on 20
+2024-07-19 16:42:56,036 decrease in # trials for BP10 on 15
+2024-07-19 16:42:56,037 decrease in # trials for BP10 on 17
+2024-07-19 16:42:56,038 decrease in # trials for BP10 on 28
+2024-07-19 16:42:56,039 decrease in # trials for BP10 on 41
+2024-07-19 16:42:56,044 decrease in # trials for BP11 on 29
+2024-07-19 16:42:56,046 decrease in # trials for BP11 on 46
+2024-07-19 16:42:56,052 decrease in # trials for BP14 on 16
+2024-07-19 16:42:56,086 decrease in # trials for TH608 on 3
+2024-07-19 16:43:43,360 BP06 peed on Day22 at 5604814
+2024-07-19 16:43:47,504 total trial length is is 10 for BP06 on Day18
+2024-07-19 16:43:47,508 total trials - [17. 16. 20. 19. 18.  1.  1.  1.  1.  1.]
+2024-07-19 16:43:47,508 correct trials - [17. 15. 17. 15. 15.  1.  1.  1.  1.  1.]
+2024-07-19 16:43:51,714 total trial length is is 10 for BP06 on Day10
+2024-07-19 16:43:51,715 total trials - [13. 15. 21.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:43:51,716 correct trials - [13. 13. 17.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:44:04,630 BP08 peed on Day41 at 3103920
+2024-07-19 16:44:15,066 BP08 peed on Day47 at 1808053
+2024-07-19 16:44:15,079 BP08 peed on Day47 at 1828537
+2024-07-19 16:44:17,887 BP08 peed on Day14 at 2979366
+2024-07-19 16:44:27,013 BP08 peed on Day7 at 1182794
+2024-07-19 16:44:27,019 BP08 peed on Day7 at 73248
+2024-07-19 16:44:28,374 BP08 peed on Day8 at 519555
+2024-07-19 16:44:34,959 BP08 peed on Day16 at 425494
+2024-07-19 16:44:34,980 BP08 peed on Day16 at 512696
+2024-07-19 16:44:35,772 BP08 peed on Day16 at 2692192
+2024-07-19 16:44:35,784 BP08 peed on Day16 at 2722478
+2024-07-19 16:44:39,624 BP08 peed on Day45 at 3447929
+2024-07-19 16:44:39,634 BP08 peed on Day45 at 3470023
+2024-07-19 16:44:47,408 BP08 peed on Day26 at 3446429
+2024-07-19 16:44:47,534 BP08 peed on Day19 at 361628
+2024-07-19 16:44:47,678 BP08 peed on Day19 at 994313
+2024-07-19 16:44:47,762 BP08 peed on Day19 at 1327561
+2024-07-19 16:44:47,882 BP08 peed on Day19 at 1831561
+2024-07-19 16:44:48,140 BP08 peed on Day19 at 2810475
+2024-07-19 16:44:48,203 BP08 peed on Day19 at 3087712
+2024-07-19 16:44:49,755 BP08 peed on Day44 at 3206133
+2024-07-19 16:44:49,848 BP08 peed on Day44 at 3641196
+2024-07-19 16:45:09,242 BP09 peed on Day33 at 2175892
+2024-07-19 16:45:13,721 BP09 peed on Day8 at 1503340
+2024-07-19 16:45:13,770 BP09 peed on Day8 at 1639280
+2024-07-19 16:45:27,574 BP09 peed on Day19 at 2201060
+2024-07-19 16:45:27,587 BP09 peed on Day19 at 2230367
+2024-07-19 16:45:42,192 BP07 peed on Day1 at 1204082
+2024-07-19 16:45:42,200 BP07 peed on Day1 at 1258711
+2024-07-19 16:45:59,791 TH605 peed on Day15 at 2179170
+2024-07-19 16:45:59,812 TH605 peed on Day15 at 2223141
+2024-07-19 16:45:59,854 TH605 peed on Day15 at 2310742
+2024-07-19 16:46:04,677 TH605 peed on Day22 at 2462509
+2024-07-19 16:46:23,547 TH605 peed on Day21 at 1671734
+2024-07-19 16:46:35,513 BP22 peed on Day14 at 1181051
+2024-07-19 16:46:35,536 BP22 peed on Day14 at 1260865
+2024-07-19 16:46:47,501 BP22 peed on Day21 at 1359658
+2024-07-19 16:46:47,528 BP22 peed on Day21 at 1549221
+2024-07-19 16:47:14,228 BP13 peed on Day16 at 1127134
+2024-07-19 16:47:25,101 total trial length is is 10 for BP13 on Day19
+2024-07-19 16:47:25,103 total trials - [19. 18. 18. 29.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:47:25,104 correct trials - [17. 15. 11. 24.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:47:25,161 TH510 peed on Day4 at 2051295
+2024-07-19 16:47:33,129 TH510 peed on Day9 at 3198281
+2024-07-19 16:47:33,175 TH510 peed on Day9 at 3414035
+2024-07-19 16:47:35,406 TH510 peed on Day6 at 2422449
+2024-07-19 16:47:43,469 total trial length is is 10 for BP15 on Day13
+2024-07-19 16:47:43,470 total trials - [29. 26. 28.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:47:43,471 correct trials - [25. 26. 25.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:47:55,909 total trial length is is 10 for TH508 on Day31
+2024-07-19 16:47:55,911 total trials - [9. 9. 9. 8. 1. 1. 1. 1. 1. 1.]
+2024-07-19 16:47:55,911 correct trials - [8. 8. 7. 4. 1. 1. 1. 1. 1. 1.]
+2024-07-19 16:48:12,630 TH508 peed on Day32 at 1164410
+2024-07-19 16:48:19,618 total trial length is is 10 for TH508 on Day27
+2024-07-19 16:48:19,620 total trials - [11. 18. 14. 16.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:48:19,620 correct trials - [10.  7.  8.  8.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:48:31,091 total trial length is is 10 for TH405 on Day31
+2024-07-19 16:48:31,093 total trials - [21. 26. 23. 19.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:48:31,094 correct trials - [17. 21. 19. 18.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:48:31,577 TH405 peed on Day30 at 1057347
+2024-07-19 16:48:31,606 TH405 peed on Day30 at 1120682
+2024-07-19 16:49:06,648 total trial length is is 0 for TH608 on Day3
+2024-07-19 16:49:06,650 total trials - []
+2024-07-19 16:49:06,650 correct trials - []
+2024-07-19 16:49:06,988 TH608 peed on Day2 at 3283201
+2024-07-19 16:49:07,752 total trial length is is 10 for TH608 on Day5
+2024-07-19 16:49:07,753 total trials - [20. 18. 22.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:49:07,754 correct trials - [16. 16. 15.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:49:17,606 total trial length is is 10 for TH608 on Day33
+2024-07-19 16:49:17,609 total trials - [17. 18. 27. 18.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:49:17,609 correct trials - [17. 15. 16. 15.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:49:31,555 TH608 peed on Day26 at 2117973
+2024-07-19 16:50:16,446 BP19 peed on Day14 at 371037
+2024-07-19 16:50:16,464 BP19 peed on Day14 at 449429
+2024-07-19 16:50:39,651 BP10 peed on Day3 at 230502
+2024-07-19 16:50:39,674 BP10 peed on Day3 at 297997
+2024-07-19 16:50:40,390 total trial length is is 10 for BP10 on Day3
+2024-07-19 16:50:40,391 total trials - [29. 31.  1.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:50:40,391 correct trials - [28. 28.  0.  0.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:50:48,027 BP10 peed on Day12 at 2113616
+2024-07-19 16:50:50,438 total trial length is is 10 for BP10 on Day15
+2024-07-19 16:50:50,439 total trials - [51. 65. 37.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:50:50,439 correct trials - [49. 47. 27.  0.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:50:58,993 BP10 peed on Day35 at 2383744
+2024-07-19 16:51:00,131 total trial length is is 10 for BP10 on Day33
+2024-07-19 16:51:00,132 total trials - [31. 36. 18.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:51:00,132 correct trials - [30. 31. 11.  0.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:51:13,401 total trial length is is 10 for BP10 on Day16
+2024-07-19 16:51:13,404 total trials - [46. 63. 22.  1.  1.  1.  1.  1.  1.  1.]
+2024-07-19 16:51:13,404 correct trials - [45. 43. 18.  0.  0.  0.  0.  0.  0.  0.]
+2024-07-19 16:51:14,076 BP10 peed on Day11 at 578217
+2024-07-19 16:51:14,099 BP10 peed on Day11 at 631264
+2024-07-19 16:51:25,567 BP10 peed on Day43 at 1369436
+2024-07-19 16:51:25,574 BP10 peed on Day43 at 1390442
+2024-07-19 16:51:35,519 BP16 peed on Day18 at 1366208
+2024-07-19 16:51:35,529 BP16 peed on Day18 at 1397584
+2024-07-19 16:51:58,967 total trial length is is 1 for BP11 on Day29
+2024-07-19 16:51:58,970 total trials - [1.]
+2024-07-19 16:51:58,970 correct trials - [0.]
+2024-07-19 16:52:04,080        rat  day trial_type  total_trials  correct_trials
+0     BP06   12          1           9.0             9.0
+1     BP06   12          2           6.0             5.0
+2     BP06   12          3           7.0             5.0
+3     BP06   12          4           5.0             4.0
+4     BP06   15          1          11.0            11.0
+...    ...  ...        ...           ...             ...
+2066  BP11   44          0          21.0            15.0
+2067  BP11   44          1          20.0            14.0
+2068  BP11   44          2          33.0            29.0
+2069  BP11   44          3          22.0            20.0
+2070  BP11   44          4           1.0             1.0
+
+[2071 rows x 5 columns]
+2024-07-19 16:52:04,371         rat  day trial_type  perf_change
+0      BP06    7          1          NaN
+1      BP06    8          1     0.050000
+2      BP06    9          1    -0.066667
+3      BP06   11          1    -0.024242
+4      BP06   12          1     0.090909
+...     ...  ...        ...          ...
+2066  TH608   31          4    -0.042328
+2067  TH608   32          4     0.008715
+2068  TH608   34          4    -0.011029
+2069  TH608   35          4     0.011029
+2070  TH608   36          4     0.131016
+
+[2071 rows x 4 columns]

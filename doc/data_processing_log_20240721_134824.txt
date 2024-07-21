@@ -1,0 +1,230 @@
+2024-07-21 13:48:24,278 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-21 13:48:24,281 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-21 13:48:24,282 interactive is False
+2024-07-21 13:48:24,282 platform is darwin
+2024-07-21 13:48:24,308 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-21 13:48:24,310 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-21 13:48:24,465 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-21 13:48:27,186 SS data missing for BP08 on Day38
+2024-07-21 13:48:27,186 TS data missing for BP08 on Day38
+2024-07-21 13:48:27,546 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-21 13:48:28,604 DLC data missing for BP08 on Day40
+2024-07-21 13:48:31,697 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-21 13:48:34,753 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-21 13:48:37,904 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-21 13:48:38,082 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-21 13:48:41,516 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-21 13:48:43,488 DLC data missing for BP14 on Day4
+2024-07-21 13:48:43,490 DLC data missing for BP14 on Day3
+2024-07-21 13:48:43,490 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-21 13:48:43,491 DLC data missing for BP14 on Day2
+2024-07-21 13:48:43,492 DLC data missing for BP14 on Day5
+2024-07-21 13:48:43,492 DLC data missing for BP14 on Day12
+2024-07-21 13:48:43,493 DLC data missing for BP14 on Day15
+2024-07-21 13:48:43,494 DLC data missing for BP14 on Day14
+2024-07-21 13:48:43,495 DLC data missing for BP14 on Day13
+2024-07-21 13:48:43,496 DLC data missing for BP14 on Day7
+2024-07-21 13:48:43,497 DLC data missing for BP14 on Day9
+2024-07-21 13:48:43,498 DLC data missing for BP14 on Day8
+2024-07-21 13:48:43,499 DLC data missing for BP14 on Day6
+2024-07-21 13:48:43,500 DLC data missing for BP14 on Day1
+2024-07-21 13:48:43,501 DLC data missing for BP14 on Day18
+2024-07-21 13:48:43,501 DLC data missing for BP14 on Day20
+2024-07-21 13:48:43,502 DLC data missing for BP14 on Day16
+2024-07-21 13:48:43,503 DLC data missing for BP14 on Day11
+2024-07-21 13:48:43,504 DLC data missing for BP14 on Day10
+2024-07-21 13:48:43,505 DLC data missing for BP14 on Day17
+2024-07-21 13:48:43,506 DLC data missing for BP14 on Day21
+2024-07-21 13:48:43,507 DLC data missing for BP14 on Day19
+2024-07-21 13:48:43,881 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-21 13:48:47,099 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-21 13:48:50,015 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-21 13:48:53,130 DLC data missing for TH508 on Day26
+2024-07-21 13:48:53,713 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-21 13:49:05,181 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-21 13:49:09,200 DLC data missing for BP16 on Day18
+2024-07-21 13:49:09,952 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-21 13:49:11,748 DLC data missing for BP11 on Day29
+2024-07-21 13:49:11,748 TS data missing for BP11 on Day29
+2024-07-21 13:49:14,372 decrease in # trials for BP08 on 34
+2024-07-21 13:49:14,372 decrease in # trials for BP08 on 35
+2024-07-21 13:49:14,372 decrease in # trials for BP08 on 36
+2024-07-21 13:49:14,372 decrease in # trials for BP08 on 37
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 20
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 21
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 22
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 23
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 24
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 25
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 26
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 27
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 28
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 29
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 30
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 31
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 32
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 33
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 34
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 35
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 36
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 37
+2024-07-21 13:49:14,373 decrease in # trials for BP09 on 38
+2024-07-21 13:49:14,373 decrease in # trials for BP10 on 15
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 16
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 17
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 18
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 19
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 28
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 29
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 30
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 31
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 32
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 33
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 34
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 35
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 36
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 37
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 38
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 39
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 40
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 41
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 42
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 43
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 44
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 45
+2024-07-21 13:49:14,374 decrease in # trials for BP10 on 46
+2024-07-21 13:49:14,375 decrease in # trials for BP11 on 29
+2024-07-21 13:49:14,375 decrease in # trials for BP11 on 46
+2024-07-21 13:49:14,375 decrease in # trials for BP11 on 47
+2024-07-21 13:49:14,376 decrease in # trials for BP11 on 48
+2024-07-21 13:49:14,376 decrease in # trials for BP11 on 49
+2024-07-21 13:49:14,376 decrease in # trials for BP11 on 50
+2024-07-21 13:49:14,376 decrease in # trials for BP11 on 51
+2024-07-21 13:49:14,376 decrease in # trials for BP11 on 52
+2024-07-21 13:49:14,376 decrease in # trials for BP14 on 16
+2024-07-21 13:49:14,377 decrease in # trials for BP14 on 17
+2024-07-21 13:49:14,377 decrease in # trials for BP14 on 18
+2024-07-21 13:49:14,381 decrease in # trials for TH608 on 3
+2024-07-21 13:49:14,525 BP06 peed on Day22 at 5604814
+2024-07-21 13:49:14,572 something weird - middle_numbers > 4 at 148773happening for BP06 on Day18
+2024-07-21 13:49:14,814 something weird - middle_numbers > 4 at 1207566happening for BP06 on Day10
+2024-07-21 13:49:14,894 something weird - middle_numbers > 4 at 5038606happening for BP06 on Day21
+2024-07-21 13:49:15,139 BP08 peed on Day41 at 3103920
+2024-07-21 13:49:15,397 BP08 peed on Day47 at 1808053
+2024-07-21 13:49:15,398 BP08 peed on Day47 at 1828537
+2024-07-21 13:49:15,467 BP08 peed on Day14 at 2979366
+2024-07-21 13:49:15,467 something weird - middle_numbers > 4 at 2979366happening for BP08 on Day14
+2024-07-21 13:49:15,618 something weird - middle_numbers > 4 at 351618happening for BP08 on Day35
+2024-07-21 13:49:15,698 BP08 peed on Day7 at 1182794
+2024-07-21 13:49:15,698 BP08 peed on Day7 at 73248
+2024-07-21 13:49:15,734 BP08 peed on Day8 at 519555
+2024-07-21 13:49:15,903 BP08 peed on Day16 at 425494
+2024-07-21 13:49:15,903 BP08 peed on Day16 at 512696
+2024-07-21 13:49:15,920 BP08 peed on Day16 at 2692192
+2024-07-21 13:49:15,920 BP08 peed on Day16 at 2722478
+2024-07-21 13:49:16,014 BP08 peed on Day45 at 3447929
+2024-07-21 13:49:16,015 BP08 peed on Day45 at 3470023
+2024-07-21 13:49:16,210 BP08 peed on Day26 at 3446429
+2024-07-21 13:49:16,219 BP08 peed on Day19 at 361628
+2024-07-21 13:49:16,222 BP08 peed on Day19 at 994313
+2024-07-21 13:49:16,224 BP08 peed on Day19 at 1327561
+2024-07-21 13:49:16,226 BP08 peed on Day19 at 1831561
+2024-07-21 13:49:16,232 BP08 peed on Day19 at 2810475
+2024-07-21 13:49:16,233 BP08 peed on Day19 at 3087712
+2024-07-21 13:49:16,267 BP08 peed on Day44 at 3206133
+2024-07-21 13:49:16,269 BP08 peed on Day44 at 3641196
+2024-07-21 13:49:16,697 BP09 peed on Day33 at 2175892
+2024-07-21 13:49:16,807 BP09 peed on Day8 at 1503340
+2024-07-21 13:49:16,808 BP09 peed on Day8 at 1639280
+2024-07-21 13:49:17,138 BP09 peed on Day19 at 2201060
+2024-07-21 13:49:17,138 BP09 peed on Day19 at 2230367
+2024-07-21 13:49:17,489 BP07 peed on Day1 at 1204082
+2024-07-21 13:49:17,490 BP07 peed on Day1 at 1258711
+2024-07-21 13:49:17,895 TH605 peed on Day15 at 2179170
+2024-07-21 13:49:17,895 TH605 peed on Day15 at 2223141
+2024-07-21 13:49:17,896 TH605 peed on Day15 at 2310742
+2024-07-21 13:49:18,012 TH605 peed on Day22 at 2462440
+2024-07-21 13:49:18,445 TH605 peed on Day21 at 1671734
+2024-07-21 13:49:18,760 BP22 peed on Day14 at 1181051
+2024-07-21 13:49:18,761 BP22 peed on Day14 at 1260865
+2024-07-21 13:49:19,072 BP22 peed on Day21 at 1359658
+2024-07-21 13:49:19,072 something weird - middle_numbers > 4 at 1359658happening for BP22 on Day21
+2024-07-21 13:49:19,073 BP22 peed on Day21 at 1549221
+2024-07-21 13:49:19,712 BP13 peed on Day16 at 1127134
+2024-07-21 13:49:19,943 something weird - middle_numbers > 4 at 2226796happening for BP13 on Day19
+2024-07-21 13:49:19,968 TH510 peed on Day4 at 2051295
+2024-07-21 13:49:20,152 TH510 peed on Day9 at 3198281
+2024-07-21 13:49:20,153 TH510 peed on Day9 at 3414035
+2024-07-21 13:49:20,209 TH510 peed on Day6 at 2422449
+2024-07-21 13:49:20,209 something weird - middle_numbers > 4 at 2422449happening for TH510 on Day6
+2024-07-21 13:49:20,391 something weird - middle_numbers > 4 at 100731happening for BP15 on Day13
+2024-07-21 13:49:20,708 something weird - middle_numbers > 4 at 1774295happening for TH508 on Day31
+2024-07-21 13:49:21,117 TH508 peed on Day32 at 1164410
+2024-07-21 13:49:21,117 something weird - middle_numbers > 4 at 1164410happening for TH508 on Day32
+2024-07-21 13:49:21,520 something weird - middle_numbers > 4 at 1837582happening for TH508 on Day19
+2024-07-21 13:49:21,521 something weird - middle_numbers > 4 at 1990342happening for TH508 on Day19
+2024-07-21 13:49:21,540 something weird - middle_numbers > 4 at 2190185happening for TH405 on Day31
+2024-07-21 13:49:21,578 TH405 peed on Day30 at 1057347
+2024-07-21 13:49:21,578 something weird - middle_numbers > 4 at 1057347happening for TH405 on Day30
+2024-07-21 13:49:21,579 TH405 peed on Day30 at 1120682
+2024-07-21 13:49:22,218 something weird - middle_numbers > 4 at 2588695happening for TH405 on Day17
+2024-07-21 13:49:22,412 total trial length is is 0 for TH608 on Day3
+2024-07-21 13:49:22,412 total trials - []
+2024-07-21 13:49:22,412 correct trials - []
+2024-07-21 13:49:22,419 TH608 peed on Day2 at 3283201
+2024-07-21 13:49:22,423 something weird - middle_numbers > 4 at 2253486happening for TH608 on Day5
+2024-07-21 13:49:22,649 something weird - middle_numbers > 4 at 2387315happening for TH608 on Day32
+2024-07-21 13:49:22,658 something weird - middle_numbers > 4 at 991577happening for TH608 on Day33
+2024-07-21 13:49:23,009 TH608 peed on Day26 at 2117973
+2024-07-21 13:49:23,473 something weird - middle_numbers > 4 at 402167happening for BP21 on Day32
+2024-07-21 13:49:24,140 BP19 peed on Day14 at 371037
+2024-07-21 13:49:24,141 BP19 peed on Day14 at 449429
+2024-07-21 13:49:24,653 something weird - middle_numbers > 4 at 2709692happening for BP10 on Day36
+2024-07-21 13:49:24,664 something weird - middle_numbers > 4 at 880085happening for BP10 on Day37
+2024-07-21 13:49:24,732 BP10 peed on Day3 at 230502
+2024-07-21 13:49:24,733 BP10 peed on Day3 at 297997
+2024-07-21 13:49:24,774 something weird - middle_numbers > 4 at 1898288happening for BP10 on Day2
+2024-07-21 13:49:24,914 something weird - middle_numbers > 4 at 2662803happening for BP10 on Day24
+2024-07-21 13:49:24,914 something weird - middle_numbers > 4 at 2738424happening for BP10 on Day24
+2024-07-21 13:49:24,942 BP10 peed on Day12 at 2113616
+2024-07-21 13:49:25,203 BP10 peed on Day35 at 2383744
+2024-07-21 13:49:25,204 something weird - middle_numbers > 4 at 2414470happening for BP10 on Day35
+2024-07-21 13:49:25,520 something weird - middle_numbers > 4 at 66395happening for BP10 on Day16
+2024-07-21 13:49:25,572 BP10 peed on Day11 at 578217
+2024-07-21 13:49:25,572 BP10 peed on Day11 at 631264
+2024-07-21 13:49:25,572 something weird - middle_numbers > 4 at 631264happening for BP10 on Day11
+2024-07-21 13:49:25,840 BP10 peed on Day43 at 1369436
+2024-07-21 13:49:25,840 BP10 peed on Day43 at 1390442
+2024-07-21 13:49:26,084 BP16 peed on Day18 at 1366208
+2024-07-21 13:49:26,084 BP16 peed on Day18 at 1397584
+2024-07-21 13:49:26,673 total trial length is is 1 for BP11 on Day29
+2024-07-21 13:49:26,674 total trials - [1.]
+2024-07-21 13:49:26,674 correct trials - [0.]
+2024-07-21 13:49:26,816        rat  day  trial_type  total_trials  correct_trials
+0     BP06   12           1           9.0             9.0
+1     BP06   12           2           6.0             5.0
+2     BP06   12           3           7.0             5.0
+3     BP06   12           4           5.0             4.0
+4     BP06   15           1          11.0            11.0
+...    ...  ...         ...           ...             ...
+2111  BP11   44           0          21.0            15.0
+2112  BP11   44           1          20.0            14.0
+2113  BP11   44           2          33.0            29.0
+2114  BP11   44           3          22.0            20.0
+2115  BP11   44           4           1.0             1.0
+
+[2116 rows x 5 columns]
+2024-07-21 13:49:26,872         rat  day  trial_type  perf_change
+0      BP06    7           1          NaN
+1      BP06    8           1     0.050000
+2      BP06    9           1    -0.066667
+3      BP06   10           1     0.066667
+4      BP06   11           1    -0.090909
+...     ...  ...         ...          ...
+2111  TH608   32           4     0.008715
+2112  TH608   33           4     0.058824
+2113  TH608   34           4    -0.069853
+2114  TH608   35           4     0.020833
+2115  TH608   36           4     0.121212
+
+[2116 rows x 4 columns]
