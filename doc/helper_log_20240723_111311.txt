@@ -1,0 +1,49 @@
+2024-07-23 11:13:11,538 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-23 11:13:11,540 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-23 11:13:11,541 interactive is False
+2024-07-23 11:13:11,541 platform is darwin
+2024-07-23 11:13:11,579 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-23 11:13:11,580 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-23 11:13:11,714 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-23 11:13:14,604 SS data missing for BP08 on Day38
+2024-07-23 11:13:14,604 TS data missing for BP08 on Day38
+2024-07-23 11:13:15,037 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-23 11:13:16,159 DLC data missing for BP08 on Day40
+2024-07-23 11:13:19,322 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-23 11:13:22,095 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-23 11:13:25,798 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-23 11:13:26,014 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-23 11:13:29,610 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-23 11:13:32,010 DLC data missing for BP14 on Day4
+2024-07-23 11:13:32,011 DLC data missing for BP14 on Day3
+2024-07-23 11:13:32,011 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-23 11:13:32,012 DLC data missing for BP14 on Day2
+2024-07-23 11:13:32,013 DLC data missing for BP14 on Day5
+2024-07-23 11:13:32,013 DLC data missing for BP14 on Day12
+2024-07-23 11:13:32,014 DLC data missing for BP14 on Day15
+2024-07-23 11:13:32,015 DLC data missing for BP14 on Day14
+2024-07-23 11:13:32,016 DLC data missing for BP14 on Day13
+2024-07-23 11:13:32,017 DLC data missing for BP14 on Day7
+2024-07-23 11:13:32,018 DLC data missing for BP14 on Day9
+2024-07-23 11:13:32,019 DLC data missing for BP14 on Day8
+2024-07-23 11:13:32,020 DLC data missing for BP14 on Day6
+2024-07-23 11:13:32,020 DLC data missing for BP14 on Day1
+2024-07-23 11:13:32,021 DLC data missing for BP14 on Day18
+2024-07-23 11:13:32,022 DLC data missing for BP14 on Day20
+2024-07-23 11:13:32,023 DLC data missing for BP14 on Day16
+2024-07-23 11:13:32,024 DLC data missing for BP14 on Day11
+2024-07-23 11:13:32,025 DLC data missing for BP14 on Day10
+2024-07-23 11:13:32,025 DLC data missing for BP14 on Day17
+2024-07-23 11:13:32,026 DLC data missing for BP14 on Day21
+2024-07-23 11:13:32,027 DLC data missing for BP14 on Day19
+2024-07-23 11:13:32,452 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-23 11:13:36,116 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-23 11:13:39,564 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-23 11:13:43,222 DLC data missing for TH508 on Day26
+2024-07-23 11:13:43,925 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-23 11:13:48,815 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH608/inferenceTraining/.DS_Store
+2024-07-23 11:13:58,811 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-23 11:14:02,944 DLC data missing for BP16 on Day18
+2024-07-23 11:14:03,896 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-23 11:14:06,116 DLC data missing for BP11 on Day29
+2024-07-23 11:14:06,116 TS data missing for BP11 on Day29

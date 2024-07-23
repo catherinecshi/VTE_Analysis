@@ -29,20 +29,32 @@ Procedure:
 
 """
 
-### PYLINT
-# pylint: disable=no-name-in-module
-
-
-
 import os
 import math
+import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+#from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
-from scipy.spatial import ConvexHull
+from scipy.spatial.qhull import ConvexHull
 from matplotlib.patches import Polygon
+from datetime import datetime
+
+from src import helper
+
+### LOGGING
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
+
+# makes a new log everytime the code runs by checking the time
+log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/creating_zones_log_%Y%m%d_%H%M%S.txt")
+handler = logging.FileHandler(log_file)
+handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+logger.addHandler(handler)
+
+### PYLINT
+# pylint: disable=no-name-in-module, consider-using-enumerate
 
 
 def calculate_range(x, y):
@@ -53,18 +65,22 @@ def calculate_range(x, y):
     
     return x_min, x_max, y_min, y_max
 
-def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 950, hv_line_multiplier = 2, plot = False):
+def generate_lines(x, y, gap_between_lines=20, degree_step=10, min_length=950, hv_line_multiplier=2, plot=False):
     """
     Generate a set of lines within bounds (the x and y coordinates that bound the points in dataframe) that cover most of the bounds
 
     Args:
         x (array): x coords from df
         y (array): y coords from df
-        gap_between_lines (int, optional): the increment between x/y intercepts as the set of lines are created. Defaults to 20.
+        gap_between_lines (int, optional): the increment between x/y intercepts as the set of lines are created. 
+                                           Defaults to 20.
         degree_step (int, optional): the increment between the degree of the slope for the lines. Defaults to 10.
-        min_length (int, optional): the minimum length of lines to be included in the final set of lines. Done to avoid corner lines with short ass segments. Defaults to 950.
-        hv_line_multiplier (int, optional): multiplier for how many horizontal/vertical lines compared to angled lines. Defaults to 2.
-        plot (bool, optional): whether to plot the lines, mostly to check if they've been generated in a way to covers the bounds well
+        min_length (int, optional): the minimum length of lines to be included in the final set of lines. 
+                                    Done to avoid corner lines with short ass segments. Defaults to 950.
+        hv_line_multiplier (int, optional): multiplier for how many horizontal/vertical lines compared to angled lines. 
+                                            Defaults to 2.
+        plot (bool, optional): whether to plot the lines, 
+                               mostly to check if they've been generated in a way to covers the bounds well
 
     Returns:
         list: list of tuples representing the line. includes the slope (m) & y-intercept (b) for angled lines
@@ -72,7 +88,8 @@ def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 
     Procedure:
         1. create an array of possible slopes by incrementing using degree_step
         2. determine the number of lines needed
-            - since the lines are incremented based on x intercept, how many lines determine on the range it has to cover
+            - since the lines are incremented based on x intercept
+            - how many lines determine on the range it has to cover
         3. for each slope
             - calculate the number of lines that can be created based on x intercept, incrementing by gap_between_lines
             - get y intercept for each possible x intercept
@@ -508,54 +525,22 @@ def find_intersections(lines, starts, ends):
                 # check if it is vertical, because start and end values are in y if so
                 if np.isinf(lines[i][0]) and np.isinf(lines[j][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
-                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                        intersections.append(intersection)
                 elif np.isinf(lines[i][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
-                        is_point_in_segment(intersection, starts[j], ends[j]):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j]):
+                        intersections.append(intersection)
                 elif np.isinf(lines[j][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i]) and \
-                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                        intersections.append(intersection)
                 # no vertical lines
                 elif is_point_in_segment(intersection, starts[i], ends[i]) and \
-                    is_point_in_segment(intersection, starts[j], ends[j]):
-                        intersections.append(intersection)
+                     is_point_in_segment(intersection, starts[j], ends[j]):
+                    intersections.append(intersection)
     
     return intersections
-
-"""
-def make_ellipse(points, ax = None, scale_factor = 1.5):
-    # Fit the DBSCAN clusterer to the points
-    clustering = DBSCAN(eps=30, min_samples=10).fit(points)  # Adjust eps and min_samples as needed
-    core_samples_mask = np.zeros_like(clustering.labels_, dtype=bool)
-    core_samples_mask[clustering.core_sample_indices_] = True
-    labels = clustering.labels_
-
-    # Number of clusters in labels, ignoring noise if present
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-
-    if n_clusters_ > 0:
-        # Proceed with PCA and ellipse drawing for the largest cluster
-        # Find the largest cluster
-        largest_cluster_idx = np.argmax(np.bincount(labels[labels >= 0]))
-        cluster_points = points[labels == largest_cluster_idx]
-        
-        # PCA to determine the orientation
-        pca = PCA(n_components=2).fit(cluster_points)
-        center = pca.mean_
-        angle = np.arctan2(*pca.components_[0][::-1]) * (180 / np.pi)
-        width, height = 2 * np.sqrt(pca.explained_variance_) 
-        
-        # make ellipse bigger
-        width *= scale_factor
-        height *= scale_factor
-
-        return {'center': center, 'width': width, 'height': height, 'angle': angle}
-    else:
-        return None
-"""
 
 def make_convex_hull(intersection_points):
     """
@@ -585,8 +570,8 @@ def make_convex_hull(intersection_points):
 
 
 ### PLOTTING METHODS -----------
-def plot_lines(x, y, lines, title, save):
-    fig, ax = plt.subplots()
+def plot_lines(x, y, lines, title):
+    _, ax = plt.subplots()
     
     # plot data points
     ax.scatter(x, y, label = "Data Points")
@@ -601,16 +586,16 @@ def plot_lines(x, y, lines, title, save):
                 x_vals = np.array([x_min, x_max])
                 y_vals = slope * x_vals + b
 
-                ax.plot(x_vals, y_vals, 'r--', linewidth = 0.5)
+                ax.plot(x_vals, y_vals, "r--", linewidth=0.5)
             else: # horizontal lines
-                ax.axhline(y=b, color = 'r', linestyle = '--', linewidth = 0.5)
+                ax.axhline(y=b, color="r", linestyle="--", linewidth=0.5)
         else: # vertical lines
-            ax.axvline(x=b, color = 'r', linestyle = '--', linewidth = 0.5)
+            ax.axvline(x=b, color="r", linestyle="--", linewidth=0.5)
     
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     ax.grid(True)
-    ax.set_aspect('equal', 'box')
+    ax.set_aspect("equal", "box")
     ax.legend()
     
     if title:
@@ -626,16 +611,16 @@ def plot_coverage_mean(coverage_scores, lines):
     
     # plot - x is freq, y is avg dist
     plt.figure(figsize=(10, 6))
-    plt.hist(coverage_scores, bins = len(lines), color = 'skyblue')
-    plt.axvline(mean, color = 'r', linestyle = 'dashed', linewidth = 2)
-    plt.axvline(mean + std, color = 'g', linestyle = 'dashed', linewidth = 2, label = '1 std')
-    plt.axvline(mean - std, color = 'g', linestyle = 'dashed', linewidth = 2)
+    plt.hist(coverage_scores, bins = len(lines), color="skyblue")
+    plt.axvline(mean, color="r", linestyle="dashed", linewidth=2)
+    plt.axvline(mean + std, color="g", linestyle="dashed", linewidth=2, label="1 std")
+    plt.axvline(mean - std, color="g", linestyle="dashed", linewidth=2)
     
     plt.title("Coverage Score Distribution")
     plt.legend()
     plt.show()
 
-def plot_coverage_lines(x, y, lines, coverages, threshold = 0.8):
+def plot_coverage_lines(x, y, lines, coverages, threshold=0.8):
     # filter for lines that align well
     new_lines = []
     
@@ -647,7 +632,7 @@ def plot_coverage_lines(x, y, lines, coverages, threshold = 0.8):
     # plot
     plot_lines(x, y, new_lines, title = "New Lines")
 
-def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
+def plot_segments(x, y, lines, starts, ends, save=None, plot=False):
     plt.scatter(x, y)
     
     for i, (slope, b) in enumerate(lines):
@@ -661,7 +646,7 @@ def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
                 start_x = b
                 end_x = b
 
-                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+                plt.plot([start_x, end_x], [start_y, end_y], marker="o", color="r", linestyle="--")
             
         else: # horizontal & diagonal lines
             start_x = starts[i]
@@ -673,10 +658,10 @@ def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
                 start_y = slope * start_x + b
                 end_y = slope * end_x + b
 
-                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+                plt.plot([start_x, end_x], [start_y, end_y], marker="o", color="r", linestyle="--")
     
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.xlabel("X")
+    plt.ylabel("Y")
     plt.title("Segments")
     plt.grid(True)
     plt.show()
@@ -684,32 +669,32 @@ def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
     # save the figure
     if plot:
         plt.show()
-        plt.savefig(f'{save}/segments.jpg')
-    elif save:
-        plt.savefig(f'{save}/segments.jpg')
+    
+    if save:
+        plt.savefig(f"{save}/segments.jpg")
 
-def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = None, plot = False):
+def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save=None, plot=False):
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
-    plt.scatter(intersection_points[:,0], intersection_points[:,1], alpha=0.5, color = 'green')
-    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color='red')
+    plt.scatter(intersection_points[:,0], intersection_points[:,1], alpha=0.5, color="green")
+    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color="red")
     for simplex in hull.simplices:
-        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], 'k-')
+        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], "k-")
 
     # Create a Polygon patch for the convex hull
-    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor='k', fill=False)
+    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor="k", fill=False)
     plt.gca().add_patch(hull_polygon)
     
     if plot:
         plt.show()
-        plt.savefig(f'{save}/convex_hull.jpg')
+        plt.savefig(f"{save}/convex_hull.jpg")
     elif save:
-        plt.savefig(f'{save}/convex_hull.jpg')
+        plt.savefig(f"{save}/convex_hull.jpg")
 
 
 ## GET ZONES ------------------
-def get_centre_zone(x, y, save = None, threshold = None, plot = False): #currently highly experimental, ask cat for an exp if needed
+def get_centre_hull(x, y, threshold=None, plot=False, save=False): #currently highly experimental, ask cat for an exp if needed
     """
     Creates the convex hull for centre zone of the maze for any given recording
     Methodology described above
@@ -725,23 +710,29 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         (scipy.spatial.ConvexHull): convex hull corresponding to the centre zone
     """
     
-    # file paths for saves    
-    raw_path = save + '/raw_data.csv'
-    covered_path = save + '/covered_lines.csv'
-    intersections_path = save + '/intersections.csv'
-    hull_path = save + '/hull_vertices.npy'
+    # file paths for saves
+    save_path = os.path.join(helper.BASE_PATH, "processed_data")
+    raw_path = os.path.join(save_path, "/raw_data.csv")
+    covered_path = os.path.join(save_path, "/covered_lines.csv")
+    intersections_path = os.path.join(save_path, "/intersections.csv")
+    hull_path = os.path.join(save_path, "/hull_vertices.npy")
     
-    if save or not os.path.exists(raw_path) or not os.path.exists(hull_path): # saves regardless if file doesn't exist
+    # check if these files already exist
+    if not(os.path.exists(raw_path) and os.path.exists(covered_path) and \
+       os.path.exists(intersections_path) and os.path.exists(hull_path)):
+        save = True # saves regardless if file doesn't exist
+    
+    if save:
         # step 1 - generate lines that cover the entire plot
-        lines = generate_lines(x, y, plot = plot)
+        lines = generate_lines(x, y, plot=plot)
         
         # step 2 - calculate the coverage of how well the points cover the lines
-        coverages, starts, ends = calculate_line_coverages(x, y, lines, plot = plot)
+        coverages, starts, ends = calculate_line_coverages(x, y, lines, plot=plot)
         
         # step 3 - only keep the lines that are past the threshold
         updated_lines, updated_starts, updated_ends = make_new_lines(lines, coverages, starts, ends, threshold)
         if plot:
-            plot_segments(x, y, updated_lines, updated_starts, updated_ends, save = save) # plot the new lines if desired
+            plot_segments(x, y, updated_lines, updated_starts, updated_ends, save=save_path) # plot the new lines if desired
         
         # step 4 - find the intersection points between lines that still exist
         intersections = find_intersections(updated_lines, updated_starts, updated_ends)
@@ -750,7 +741,7 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         # step 5 - create convex hull
         hull, densest_cluster_points = make_convex_hull(intersection_points)
         if plot:
-            plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = save)
+            plot_hull(x, y, intersection_points, densest_cluster_points, hull, save=save_path)
         
         # separate lines into individual arrays
         slopes, b = zip(*lines)
@@ -758,21 +749,21 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         
         # data frame
         raw_data = { # complete raw data
-            'Coverages': coverages,
-            'Slopes': slopes,
-            'Intercepts': b,
-            'Starts': starts,
-            'Ends': ends
+            "Coverages": coverages,
+            "Slopes": slopes,
+            "Intercepts": b,
+            "Starts": starts,
+            "Ends": ends
         }
         raw_df = pd.DataFrame(raw_data)
         
         covered_lines = {
-            'Covered Slopes': covered_slopes,
-            'Covered Intercepts': covered_intercepts
+            "Covered Slopes": covered_slopes,
+            "Covered Intercepts": covered_intercepts
         }
         covered_df = pd.DataFrame(covered_lines)
         
-        intersections_df = pd.DataFrame(intersections, columns = ['Intersections X', 'Intersections Y'])
+        intersections_df = pd.DataFrame(intersections, columns=["Intersections X", "Intersections Y"])
         
         # save
         raw_df.to_csv(raw_path)
@@ -782,14 +773,6 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         # save convex hull
         np.save(hull_path, densest_cluster_points[hull.vertices])
     else:
-        # probably not necessary right now?
-        """df = pd.read_csv(file_path)
-        slopes = df['Slope'].tolist()
-        b = df['Intercept'].tolist()
-        coverages = df['Coverages'].tolist()
-        starts = df['Starts'].tolist()
-        ends = df['Ends'].tolist()"""
-        
         # load hull
         densest_cluster_points = np.load(hull_path)
         hull = ConvexHull(densest_cluster_points)

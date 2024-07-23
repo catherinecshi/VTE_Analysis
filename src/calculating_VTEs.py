@@ -5,17 +5,31 @@ main function to call is quantify_VTE()
 
 import os
 import pickle
+import logging
 import numpy as np
 import pandas as pd
 from scipy.stats import zscore
+from datetime import datetime
 
 from src import plotting
 from src import creating_zones
-from src import helper_functions
+from src import helper
 from src import performance_analysis
 
+### LOGGING
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
+
+# makes a new log everytime the code runs by checking the time
+log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/calculating_VTEs_log_%Y%m%d_%H%M%S.txt")
+handler = logging.FileHandler(log_file)
+handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+logger.addHandler(handler)
+
+# pylint: disable=broad-exception-caught, invalid-name, logging-fstring-interpolation
+
 ### AUXILIARY FUNCTIONS ------
-def type_to_choice(trial_type, correct, ratID, day):
+def type_to_choice(trial_type, correct):
     """
     gets the arm the rat went down when given trial_type and whether the rat got the choice correct
 
@@ -59,8 +73,8 @@ def type_to_choice(trial_type, correct, ratID, day):
             case 10:
                 choice = "D"
             case _:
-                print(f"Error for {ratID} on {day}")
-                raise helper_functions.ExpectationError("number from 1 - 10", trial_type)
+                print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
+                raise helper.ExpectationError("number from 1 - 10", trial_type)
     elif "Wrong" in correct:
         match trial_type:
             case 1:
@@ -84,11 +98,11 @@ def type_to_choice(trial_type, correct, ratID, day):
             case 10:
                 choice = "F"
             case _:
-                print(f"Error for {ratID} on {day}")
-                raise helper_functions.ExpectationError("number from 1 - 10", trial_type)
+                print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
+                raise helper.ExpectationError("number from 1 - 10", trial_type)
     else:
-        print(f"Error for {ratID} on {day}")
-        raise helper_functions.ExpectationError("correct or Wrong", correct)
+        print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
+        raise helper.ExpectationError("correct or Wrong", correct)
 
     return choice
 
@@ -124,7 +138,6 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
     """
     
     v_est = np.zeros_like(values) # initialise slope array with zeroes / velocity estimates
-    #print(values)
     
     # start from second element for differentiation
     for i in range(1, len(values)):
@@ -143,7 +156,6 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
             slope = (values[i] - values[i - window_len]) / (window_len * sr)
             
             if window_len > 1:
-                #print("window_len > 1")
                 # y = mx + c where c -> y-intercept, values[i] -> y, slope -> m, i * sr -> x (time at point i)
                 c = values[i] - slope * i * sr
 
@@ -157,7 +169,8 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
                         can_increase_window = False
                         window_len -= 1
                         slope = slope_
-                        #print("model too far from actual results")
+                        logging.info("model too far from actual results for "
+                                     f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
                         break
             
             if not can_increase_window:
@@ -255,7 +268,7 @@ def calculate_zIdPhi(IdPhi_values, trajectories = None, x = None, y = None):
 
 
 ### MAIN FUNCTIONS -----------
-def quantify_VTE(data_structure, ratID, day, save = None):
+def quantify_VTE(data_structure, rat_ID, day, save = None):
     """
     gets relevant VTE values for one rat for a specific day
 
@@ -283,29 +296,30 @@ def quantify_VTE(data_structure, ratID, day, save = None):
             - sort all values according to where the rat ended up going
         5. calculate zIdPhi values by zscoring across choice arm
     """
-    
-    x, y, _, SS_log, timestamps, trial_starts = helper_functions.initial_processing(data_structure, ratID, day)
+    helper.update_rat(rat_ID)
+    helper.update_day(day)
+    x, y, _, SS_log, timestamps, trial_starts = helper.initial_processing(data_structure, rat_ID, day)
     
     # define zones
-    centre_hull = creating_zones.get_centre_zone(x, y, save = save)
+    centre_hull = creating_zones.get_centre_hull(x, y)
     
     # store IdPhi and trajectory values
     IdPhi_values = {}
     trajectories = {}
     store_data = []
-    id = 0
+    count = 0
     
     performance = performance_analysis.trial_perf_for_session(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
-    same_len = helper_functions(performance, trial_starts) # check if there are the same number of trials for perf and trial_starts
+    same_len = helper.check_equal_length(performance, trial_starts) # check if there are the same number of trials for perf and trial_starts
     
     # raise error if there isn't the same number of trials for performance and trial_starts
     if not same_len:
-        print(f"Mismatch for {ratID} on {day} for performance vs trial_starts")
-        raise helper_functions.LengthMismatchError(performance.count, trial_starts.count)
+        print(f"Mismatch for {rat_ID} on {day} for performance vs trial_starts")
+        raise helper.LengthMismatchError(performance.count, len(trial_starts))
     
     for i, (trial_start, trial_type) in enumerate(trial_starts.items()): # where trial type is a string of a number corresponding to trial type
         # cut out the trajectory for each trial
-        trajectory_x, trajectory_y = helper_functions.get_trajectory(x, y, trial_start, timestamps, centre_hull)
+        trajectory_x, trajectory_y = helper.get_trajectory(x, y, trial_start, timestamps, centre_hull)
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
@@ -327,9 +341,10 @@ def quantify_VTE(data_structure, ratID, day, save = None):
             trajectories[choice] = [(trajectory_x, trajectory_y)]
         
         # store each trajectory for later
-        id += 1
-        traj_id = ratID + "_" + str(id)
-        new_row = {'ID': traj_id, 'Rat': ratID, 'Day': day, 'X Values': trajectory_x, 'Y Values': trajectory_y, 'Choice': choice, 'Trial Type': trial_type}
+        count += 1
+        traj_id = rat_ID + "_" + str(count)
+        new_row = {"ID": traj_id, "Rat": rat_ID, "Day": day, "X Values": trajectory_x,
+                   "Y Values": trajectory_y, "Choice": choice, "Trial Type": trial_type}
         store_data.append(new_row)
     
     df = pd.DataFrame(store_data)
@@ -340,7 +355,7 @@ def quantify_VTE(data_structure, ratID, day, save = None):
     
     return zIdPhi_values, IdPhi_values, trajectories
 
-def rat_VTE_over_sessions(data_structure, ratID):
+def rat_VTE_over_sessions(data_structure, rat_ID):
     """
     iterates over each day for one rat, then save zIdPhi, IdPhi and trajectories using pickle
     saves three file per day (zIdPhi values, IdPhi values, trajectories)
@@ -353,11 +368,11 @@ def rat_VTE_over_sessions(data_structure, ratID):
         Exception: if something bad happens for a day
     """
     
-    rat_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{ratID}'
+    rat_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{rat_ID}'
     
     for day in data_structure:
         try:
-            zIdPhi, IdPhi, trajectories = quantify_VTE(data_structure, ratID, day, save = False)
+            zIdPhi, IdPhi, trajectories = quantify_VTE(data_structure, rat_ID, day, save = False)
             zIdPhi_path = os.path.join(rat_path, day, 'zIdPhi.npy')
             IdPhi_path = os.path.join(rat_path, day, 'IdPhi.npy')
             trajectories_path = os.path.join(rat_path, day, 'trajectories.npy')
@@ -398,7 +413,7 @@ def zIdPhis_across_sessions(base_path):
         if os.path.isdir(day_path):
             days.append(day_folder)
         
-        for root, dirs, files in os.walk(day_path):
+        for root, _, files in os.walk(day_path):
             for f in files:
                 file_path = os.path.join(root, f)
                 if 'IdPhi' in f and 'z' not in f:
@@ -414,7 +429,7 @@ def zIdPhis_across_sessions(base_path):
 
                     if IdPhis_in_a_day > 1:
                         print(f"Error on day {day_folder}")
-                        raise helper_functions.ExpectationError("only 1 IdPhi file in a day", "more than 1")
+                        raise helper.ExpectationError("only 1 IdPhi file in a day", "more than 1")
         
         IdPhis_in_a_day = 0
     

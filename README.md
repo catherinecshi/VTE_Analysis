@@ -13,6 +13,11 @@ Some Aims of the project in order of likelihood of completion
             - in the task, there are 4 pair associations to be learned during the training period
             - when one pair association has been learned to a point of criteria being met, another pair is added, until all 4 has been learned
             - when a new pair association is being added, a new arm corresponding to the new element being introduced is made available to the rats
+    2. Model Expected & Unexpected Uncertainty, and see whether VTEs correlate with either
+    3. Look at theta sweeping activity 
+    4. See if SWRs correlate with expected or unexpected uncertainty
+
+Use by running scripts, which should all have docstrings describing what they do and which figures they produce
         
 
 

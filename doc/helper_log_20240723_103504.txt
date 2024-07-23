@@ -1,0 +1,15 @@
+2024-07-23 10:35:04,636 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
+2024-07-23 10:35:04,641 CONFIGDIR=/Users/catpillow/.matplotlib
+2024-07-23 10:35:04,642 interactive is False
+2024-07-23 10:35:04,642 platform is darwin
+2024-07-23 10:35:04,706 CACHEDIR=/Users/catpillow/.matplotlib
+2024-07-23 10:35:04,708 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
+2024-07-23 10:35:04,915 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-23 10:35:10,004 SS data missing for BP08 on Day38
+2024-07-23 10:35:10,004 TS data missing for BP08 on Day38
+2024-07-23 10:35:10,755 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-23 10:35:12,647 DLC data missing for BP08 on Day40
+2024-07-23 10:35:17,800 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-23 10:35:22,444 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-23 10:35:28,601 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-23 10:35:28,965 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store

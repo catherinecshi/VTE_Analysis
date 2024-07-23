@@ -1,0 +1,43 @@
+2024-07-22 14:15:12,374 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
+2024-07-22 14:15:14,823 SS data missing for BP08 on Day38
+2024-07-22 14:15:14,823 TS data missing for BP08 on Day38
+2024-07-22 14:15:15,186 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP08/inferenceTraining/.DS_Store
+2024-07-22 14:15:16,313 DLC data missing for BP08 on Day40
+2024-07-22 14:15:18,889 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP09/inferenceTraining/.DS_Store
+2024-07-22 14:15:21,258 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP07/inferenceTraining/.DS_Store
+2024-07-22 14:15:24,531 Skipping over non-directory folder: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/.DS_Store/inferenceTraining
+2024-07-22 14:15:24,728 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH605/inferenceTraining/.DS_Store
+2024-07-22 14:15:28,367 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP22/inferenceTraining/.DS_Store
+2024-07-22 14:15:30,236 DLC data missing for BP14 on Day4
+2024-07-22 14:15:30,237 DLC data missing for BP14 on Day3
+2024-07-22 14:15:30,237 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP14/inferenceTraining/.DS_Store
+2024-07-22 14:15:30,238 DLC data missing for BP14 on Day2
+2024-07-22 14:15:30,239 DLC data missing for BP14 on Day5
+2024-07-22 14:15:30,240 DLC data missing for BP14 on Day12
+2024-07-22 14:15:30,241 DLC data missing for BP14 on Day15
+2024-07-22 14:15:30,241 DLC data missing for BP14 on Day14
+2024-07-22 14:15:30,242 DLC data missing for BP14 on Day13
+2024-07-22 14:15:30,243 DLC data missing for BP14 on Day7
+2024-07-22 14:15:30,244 DLC data missing for BP14 on Day9
+2024-07-22 14:15:30,245 DLC data missing for BP14 on Day8
+2024-07-22 14:15:30,246 DLC data missing for BP14 on Day6
+2024-07-22 14:15:30,247 DLC data missing for BP14 on Day1
+2024-07-22 14:15:30,248 DLC data missing for BP14 on Day18
+2024-07-22 14:15:30,248 DLC data missing for BP14 on Day20
+2024-07-22 14:15:30,249 DLC data missing for BP14 on Day16
+2024-07-22 14:15:30,250 DLC data missing for BP14 on Day11
+2024-07-22 14:15:30,251 DLC data missing for BP14 on Day10
+2024-07-22 14:15:30,252 DLC data missing for BP14 on Day17
+2024-07-22 14:15:30,253 DLC data missing for BP14 on Day21
+2024-07-22 14:15:30,253 DLC data missing for BP14 on Day19
+2024-07-22 14:15:30,596 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP13/inferenceTraining/.DS_Store
+2024-07-22 14:15:34,158 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH510/inferenceTraining/.DS_Store
+2024-07-22 14:15:38,016 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH508/inferenceTraining/.DS_Store
+2024-07-22 14:15:41,645 DLC data missing for TH508 on Day26
+2024-07-22 14:15:42,238 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH405/inferenceTraining/.DS_Store
+2024-07-22 14:15:45,968 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/TH608/inferenceTraining/.DS_Store
+2024-07-22 14:15:54,155 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP10/inferenceTraining/.DS_Store
+2024-07-22 14:15:58,633 DLC data missing for BP16 on Day18
+2024-07-22 14:15:59,514 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP11/inferenceTraining/.DS_Store
+2024-07-22 14:16:01,435 DLC data missing for BP11 on Day29
+2024-07-22 14:16:01,435 TS data missing for BP11 on Day29

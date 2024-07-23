@@ -1,11 +1,25 @@
-from src import data_processing
-import numpy as np
+import os
+import pandas as pd
 
-save_path_2 = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Draft_2/BP11/inferenceTraining/Day1/old_dlc_2.csv'
-save_path_1 = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Draft_2/BP11/inferenceTraining/Day1/old_dlc_1.csv'
+from src import creating_zones
 
-df, _ = data_processing.concat_dlc(save_path_1, save_path_2)
+base_path = "/Users/catpillow/Documents/VTE_Analysis"
+dlc_path = os.path.join(base_path, "processed_data", "dlc_data")
 
-print(df)
-
-
+for rat in os.listdir(dlc_path):
+    rat_path = os.path.join(dlc_path, rat)
+    
+    for root, _, files in os.walk(rat_path):
+        for f in files:
+            if not "coordinates" in f:
+                continue
+            
+            file_path = os.path.join(root, f)
+            parts = f.split("_")
+            
+            df = pd.read_csv(file_path)
+            x = df["x"]
+            y = df["y"]
+            
+            lines = creating_zones.generate_lines(x, y, plot=True)
+            

@@ -7,13 +7,13 @@ import re
 import fnmatch
 import logging
 import shutil
-import pandas as pd
-import numpy as np
-from sklearn.cluster import DBSCAN
 from datetime import datetime
 
+import pandas as pd
+import numpy as np
+
 from src import readCameraModuleTimeStamps
-from src import helper_functions
+from src import helper
 
 ### LOGGING
 logger = logging.getLogger() # creating logging object
@@ -26,43 +26,40 @@ handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 logger.addHandler(handler)
 
 ### PYLINT
-# pylint: disable=logging-fstring-interpolation, broad-exception-caught
+# pylint: disable=logging-fstring-interpolation, broad-exception-caught, trailing-whitespace
 
-IMPLANTED_RATS = ["BP06", "BP12", "BP13", "TH405", "TH508", "BP20", "TH510", "TH605"]
-CURRENT_RAT = ""
-CURRENT_DAY = ""
+IMPLANTED_RATS = ["BP06", "BP07", "BP12", "BP13", "TH405", "TH508", "BP20", "TH510", "TH605"]
 MODULE = "inferenceTraining"
 
 
-### UPDATE GLOBALS ----------
-def update_rat(rat):
-    global CURRENT_RAT
-    CURRENT_RAT = rat
-
-def update_day(day):
-    global CURRENT_DAY
-    CURRENT_DAY = day
-
-
 ### SINGLE FILE PROCESSING ---------
-def old_process_dlc_data(file_path):
-    """
-    USE WHEN COMPLETELY UNPROCESSED, like when main df hasn't been created yet
-    reads csv files where first and second row and headers
-    index of df is the column corresponding to bodyparts & coords in header
-    """
-    df = pd.read_csv(file_path, header=[1, 2])
-    df.set_index(('bodyparts', 'coords'), inplace=True) # inplace -> modifies df, not making new one
-    return df
-
 def process_dlc_data(file_path):
     """processes normal dlc by skipping first row & appointing second + third row as headers
     processes concat dlc by appointing first and second row as headers, and first column as index"""
-    if "concat" in file_path:
-        df = pd.read_csv(file_path, header=[0, 1], index_col=0)
-    else:
-        df = pd.read_csv(file_path, skiprows=[0], header=[0, 1])
-    return df
+    try:
+        if "concat" in file_path:
+            header_df = pd.read_csv(file_path, nrows=2, header=None)
+            dtype_dict = {col: float for col in range(0, len(header_df.columns))} # save memory
+            data_df = pd.read_csv(file_path, skiprows=2, dtype=dtype_dict, header=None)
+            
+            # assign header
+            headers = pd.MultiIndex.from_arrays(header_df.values)
+            data_df.columns = headers
+            
+            data_df.drop(data_df.columns[0], axis=1, inplace=True)
+        else:
+            header_df = pd.read_csv(file_path, skiprows=[0], header=None, nrows=2)
+            dtype_dict = {col: float for col in range(0, len(header_df.columns))}
+            data_df = pd.read_csv(file_path, skiprows=3, dtype=dtype_dict, header=None)
+            
+            # assign header
+            headers = pd.MultiIndex.from_arrays(header_df.values)
+            data_df.columns = headers
+    except ValueError as e:
+        print(e, file_path)
+        return None
+    
+    return data_df
 
 def process_timestamps_data(file_path):
     """uses script provided by statescript to figure out timestamps of each dlc coordinate"""
@@ -79,6 +76,7 @@ def process_statescript_log(file_path):
 
 ### PRE-PROCESSING -----------
 def convert_all_timestamps(base_path):
+    """converts all timestamps into .npy arrays in base_path"""
     for rat_folder in os.listdir(base_path):
         rat_path = os.path.join(base_path, rat_folder, "inferenceTraining")
         if not os.path.isdir(rat_path):
@@ -90,7 +88,7 @@ def convert_all_timestamps(base_path):
             day_path = os.path.join(rat_path, day_folder)
             for root, _, files in os.walk(day_path):
                 for f in files:
-                    if ".videoTimeStamps" in f and '.npy' not in f:
+                    if ".videoTimeStamps" in f and ".npy" not in f:
                         try:
                             original_ts_path = os.path.join(root, f)
                             timestamps = process_timestamps_data(original_ts_path)
@@ -106,6 +104,7 @@ def convert_all_timestamps(base_path):
                             os.remove(original_ts_path)
 
 def convert_all_statescripts(base_path):
+    """converts all statescripts into txt files in base_path"""
     for rat_folder in os.listdir(base_path):
         rat_path = os.path.join(base_path, rat_folder, "inferenceTraining")
         if not os.path.isdir(rat_path):
@@ -147,7 +146,7 @@ def initial_to_inference(base_path):
                         logging.warning(f"error {e} for {day_folder} for initial to inference")
                     else:
                         os.rename(old_path, new_path)
-                    
+                
 
 ### CREATE MAIN DATA STRUCTURE -----------
 def load_data_structure(save_path):
@@ -236,10 +235,10 @@ def get_time_diff(ss_1, ss_2):
     content_1 = process_statescript_log(ss_1)
     content_2 = process_statescript_log(ss_2)
     
-    first_start = helper_functions.get_first_time(content_1)
-    first_end = helper_functions.get_last_time(content_1)
-    second_start = helper_functions.get_first_time(content_2)
-    second_end = helper_functions.get_last_time(content_2)
+    first_start = helper.get_first_time(content_1)
+    first_end = helper.get_last_time(content_1)
+    second_start = helper.get_first_time(content_2)
+    second_end = helper.get_last_time(content_2)
     
     diff = second_start - first_end
     ss_diff_info = (first_start, first_end, second_start, second_end, diff)
@@ -255,7 +254,7 @@ def get_time_diff(ss_1, ss_2):
                      f"first statescript file ends at {first_end}"
                      f"second statescript file starts at {second_start}")
         return ss_diff_info
-   
+
 def concat_ss(ss_1, ss_2):
     """concatenates two statescript logs - doesn't include comments of second ss log"""
     # cut off the comments of the second statescript and start from the first trial
@@ -267,7 +266,7 @@ def concat_ss(ss_1, ss_2):
     content_0 = process_statescript_log(ss_2)
     concatenated_content = content_0 + "\n" + filtered_content
     
-    logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - SS")
+    logging.info(f"concatenating {helper.CURRENT_RAT} for {helper.CURRENT_DAY} - SS")
     
     return concatenated_content
 
@@ -292,7 +291,7 @@ def concat_dlc(dlc_1, dlc_2):
     # get the index at which they split
     last_index = df_1.index[-1]
     first_index = df_2.index[0]
-    logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - DLC"
+    logging.info(f"concatenating {helper.CURRENT_RAT} for {helper.CURRENT_DAY} - DLC"
                  f"last index for first dlc at {last_index}"
                  f"first index for second dlc at {first_index}")
     
@@ -324,20 +323,20 @@ def concat_timestamps(timestamps_1, timestamps_2):
     timestamps_diff_info = (ts_1[0], ts_1[-1], ts_2[0], ts_2[-1], timestamps_time_diff)
     
     if ts_2[0] == ts_1[0] or ts_2[0] < ts_1[0]:
-        logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - timestamps reset"
+        logging.info(f"concatenating {helper.CURRENT_RAT} for {helper.CURRENT_DAY} - timestamps reset"
                      f"first timestamps started at {ts_1[0]} and ends at {ts_1[-1]}"
                      f"second timestamps started at {ts_2[0]} and ends at {ts_2[-1]}")
         new_timestamps_1 = ts_2 + ts_1[-1] # so the timestamps continue
         new_timestamps = np.append(ts_1, new_timestamps_1)
         return new_timestamps, timestamps_diff_info
     elif ts_2[0] > ts_1[-1]:
-        logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - timestamps jump"
+        logging.info(f"concatenating {helper.CURRENT_RAT} for {helper.CURRENT_DAY} - timestamps jump"
                      f"second timestamps file is {timestamps_time_diff} ahead of first file")
                      # check if the time diff is similar between timestamps and ss log
         new_timestamps = np.append(ts_1, ts_2)
         return new_timestamps, timestamps_diff_info
     else:
-        logging.info(f"concatenating {CURRENT_RAT} for {CURRENT_DAY} - timestamps reset"
+        logging.info(f"concatenating {helper.CURRENT_RAT} for {helper.CURRENT_DAY} - timestamps reset"
                      f"first timestamps started at {ts_1[0]} and ends at {ts_1[-1]}"
                      f"second timestamps started at {ts_2[0]} and ends at {ts_2[-1]}")
         new_timestamps_1 = ts_2 + ts_1[-1] # so the timestamps continue
@@ -464,7 +463,7 @@ def create_diff_info_dict(dlc_diff_info, ss_diff_info, ts_diff_info):
     else:
         ts_first_start, ts_first_end, ts_second_start, ts_second_end, ts_diff = None, None, None, None, None
     
-    diff_info = {"rat": CURRENT_RAT, "day": CURRENT_DAY,
+    diff_info = {"rat": helper.CURRENT_RAT, "day": helper.CURRENT_DAY,
                     "dlc_first_start": dlc_first_start, "dlc_first_end": dlc_first_end,
                     "dlc_second_start": dlc_second_start, "dlc_second_end": dlc_second_end, "dlc_diff": dlc_diff,
                     "ss_first_start": ss_first_start, "ss_first_end": ss_first_end,
@@ -498,7 +497,7 @@ def concat_duplicates(save_path):
     
     for rat_folder in os.listdir(save_path): # loop for each rat
         rat_path = os.path.join(save_path, rat_folder, "inferenceTraining")
-        update_rat(rat_folder)
+        helper.update_rat(rat_folder)
         
         # skip over .DS_Store
         if not os.path.isdir(rat_path):
@@ -507,7 +506,7 @@ def concat_duplicates(save_path):
         
         for day_folder in os.listdir(rat_path): # loop for each day (in each rat folder)
             day_path = os.path.join(rat_path, day_folder)
-            update_day(day_folder)
+            helper.update_day(day_folder)
             
             if any(rat_folder in rat for rat in IMPLANTED_RATS):
                 duplicate_files = find_duplicates_implanted(day_path) # naming convention is diff for implanted rats
@@ -517,7 +516,7 @@ def concat_duplicates(save_path):
                 duplicate_files["ss_2"] == "" and \
                 duplicate_files["timestamps_2"] == "":
                 continue # skip folders with no duplicates
-            logging.info(f"{CURRENT_RAT} on {CURRENT_DAY} has a duplicate"
+            logging.info(f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY} has a duplicate"
                          f"{duplicate_files}")
             
             track_folder = None
@@ -574,8 +573,8 @@ def concat_duplicates(save_path):
                 try:
                     current_diff_info = create_diff_info_dict(dlc_diff_info, ss_diff_info, ts_diff_info)
                 except Exception as e:
-                    logging.critical(f"{CURRENT_RAT} problem on {CURRENT_DAY} with error {e}")
-                    raise helper_functions.ExpectationError("saving diff info", f"{e}")
+                    logging.critical(f"{helper.CURRENT_RAT} problem on {helper.CURRENT_DAY} with error {e}")
+                    raise helper.ExpectationError("saving diff info", f"{e}")
                 
                 if current_diff_info is not None:
                     diff_info.append(current_diff_info)
@@ -607,87 +606,3 @@ def concat_duplicates(save_path):
     diff_info_path = os.path.join(save_path, "diff_info.csv")
     diff_info_df.to_csv(diff_info_path)
 
-
-### POST-LOADING PROCESSING ----------------
-def filter_dataframe(df, track_part = "greenLED", std_multiplier = 7, eps = 70, min_samples = 40, distance_threshold = 190, start_index = None): # currently keeps original indices
-    """
-    Filters dataframes. Check to make sure it's working properly. Generally, more than 100 filtered out points is bad
-    Keeps the original indices of the DataFrame
-
-    Args:
-        df (pandas.DataFrame): the data frame to be filtered
-        track_part (str, optional): part of rat to be used for their position. Defaults to 'greenLED'.
-        std_multiplier (int, optional): multiplier for std to define threshold beyond which jumps are excluded. Defaults to 7.
-        eps (int, optional): maximum distance between two samples for one to be considered as in the neighbourhood of another for DBCSCAN. Defaults to 70.
-        min_samples (int, optional): number of samples in a neighbourhood for a point to be considered a core point for DBSCAN. Defaults to 40.
-        distance_threshold (int, optional): distance threshold for identifying jumps in tracking data. Defaults to 190.
-        start_index (int, optional): index from which to start filtering. Defaults to None.
-
-    Returns:
-        x & y : panda.Series : filtered and interpolated coordinates for x and y
-    
-    Procedure:
-    1. filters based on the likelihood values
-    2. filters out points before start_index if provided
-    3. DBSCAN
-    4. filters out based on std thresholds
-    5. filters based on jumps
-    6. interpolate
-    """
-    
-    # modify a copy instead of the original
-    # also filter based on likelihood values
-    likely_data = df[df[(track_part, "likelihood")] > 0.999].copy()
-    
-    # filter out points before the rat has started its first trial
-    if start_index:
-        likely_data = likely_data[likely_data.index >= start_index]
-    
-    # DBSCAN Cluster analysis
-    coordinates = likely_data[[track_part]].copy()[[(track_part, "x"), (track_part, "y")]]
-    coordinates.dropna(inplace = True) # don't drop nan for dbscan
-    
-    clustering = DBSCAN(eps = eps, min_samples = min_samples).fit(coordinates)
-    labels = clustering.labels_
-    #noise_points_count = (labels == -1).sum() # so ik how many points were filtered out
-    #print(f"DBSCAN Filtered out {noise_points_count}")
-
-    filtered_indices = labels != -1 # filter out noise
-    filtered_data = likely_data[filtered_indices].copy()
-    
-    # calculate thresholds
-    diff_x = df[(track_part, "x")].diff().abs()
-    diff_y = df[(track_part, "y")].diff().abs()
-    threshold_x = diff_x.std() * std_multiplier
-    threshold_y = diff_y.std() * std_multiplier
-    
-    # calculate diff between current point and last non-jump point
-    last_valid_index = 0
-    jump_indices = [] # just to see how many points are jumped over
-    
-    for i in range(1, len(filtered_data)):
-        diff_x = abs(filtered_data.iloc[i][(track_part, "x")] - filtered_data.iloc[last_valid_index][(track_part, "x")])
-        diff_y = abs(filtered_data.iloc[i][(track_part, "y")] - filtered_data.iloc[last_valid_index][(track_part, "y")])
-        #distance = np.sqrt(diff_x**2 + diff_y**2) # euclidean distance
-        
-        # check for jumps
-        if diff_x > threshold_x or diff_y > threshold_y:
-            # mark as NaN
-            filtered_data.at[filtered_data.index[i], (track_part, "x")] = np.nan
-            filtered_data.at[filtered_data.index[i], (track_part, "y")] = np.nan
-            jump_indices.append(i)
-        else:
-            # udpate last valid index
-            last_valid_index = i
-    
-    # interpolating
-    filtered_data[(track_part, "x")].interpolate(inplace = True)
-    filtered_data[(track_part, "y")].interpolate(inplace = True)
-    
-    logging.info(f"number of points filtered out - {len(jump_indices)} for {CURRENT_RAT} on {CURRENT_DAY}")
-    
-    # final coordinate points
-    x = filtered_data[(track_part, "x")]
-    y = filtered_data[(track_part, "y")]
-    
-    return x, y 

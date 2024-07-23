@@ -1,7 +1,7 @@
 """
 General plotting functions
 """
-
+import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
 
-from src import helper_functions
+from src import helper
 
 
 ### GENERIC PLOTS ------------
@@ -38,6 +38,23 @@ def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
     if save:
         save_path = f"{save}/scatter_plot.jpg"
         plt.savefig(save_path)
+    else:
+        plt.show()
+
+def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", ylabel="", save=None):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(x_1, y_1, color="green", alpha=0.4)
+    plt.scatter(x_2, y_2, color="red", alpha=0.4)
+    
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True)
+    
+    if save:
+        save_path = os.path.join(save, f"{helper.CURRENT_DAY}_population_scatter_plot.jpg")
+        plt.savefig(save_path)
+        plt.close()
     else:
         plt.show()
 
@@ -126,7 +143,7 @@ def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title="", xlabel="",
 
 
 
-### PLOTTING ZONES ------------    
+### PLOTTING ZONES ------------
 def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=""):
     """
     plots a convex hull on a backdrop of x and y coordinates
@@ -199,7 +216,7 @@ def plot_ellipse(ellipse_params, x, y, save=None, title=""):
 
 
 
-### PLOTTING TRAJECTORIES --------  
+### PLOTTING TRAJECTORIES --------
 def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
     """
     plots a trajectory on the backdrop of x and y coordinates
@@ -287,7 +304,7 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
     plt.title(title)
     
     if label:
-        rounded_label = helper_functions.round_to_sig_figs(label, 3)
+        rounded_label = helper.round_to_sig_figs(label, 3)
         legend_elements = [Line2D([0], [0], color="blue", lw=2, label=rounded_label)]
         ax.legend(handles=legend_elements, loc="upper right", bbox_to_anchor=(1.15, 1))
     
