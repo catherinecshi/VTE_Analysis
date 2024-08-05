@@ -25,32 +25,6 @@ MODULE = "inferenceTraining"
 BASE_PATH = "/Users/catpillow/Documents/VTE_Analysis"
 
 # DATA ANALYSIS -------------
-def trial_perf_for_session(content): # currently doesn't work for every rat... change to session perf later
-    """
-    generates an ordered list of whether each trial resulted in a correct or incorrect choice
-
-    Args:
-        content (str): statescript log
-
-    Returns:
-        str array: either 'wrong' for incorrect choices or 'correct' for correct choices. should be in order
-    """
-    
-    lines = content.splitlines()
-    
-    performance = [] # storing whether the trial resulted in a correct or incorrect choice
-    
-    for line in lines:
-        if "#" in line: # skip initial comments
-            continue
-        
-        if "Wrong" in line:
-            performance.append("wrong")
-        elif "correct" in line:
-            performance.append("correct")
-    
-    return performance
-        
 def get_session_performance(content):
     """this function analyses one statescript log to retrieve performance
     
@@ -99,13 +73,14 @@ def get_session_performance(content):
     
     lines = content.splitlines()
     
-    # temporary variables
+    # initialise variables
     middle_numbers = set() # array to hold the middle numbers
     end_of_trial = False # checks if middle_numbers should be reset
     error_trial = None
     current_trial = None
     last_line = len(lines) - 2 # this is for the last trial of a session bc no 'New Trial' to signal end of trial
     no_trials = 0 # count number of trials that has passed
+    each_trial_perf = [] # store bools here
     
     # stored for graphing
     total_trials = np.zeros(10) # start out with the total number of possible trial types
@@ -196,7 +171,10 @@ def get_session_performance(content):
             
             # add to correct trials if correct
             if not error_trial:
+                each_trial_perf.append(True)
                 correct_trials[current_trial] += 1
+            else:
+                each_trial_perf.append(False)
             
             middle_numbers = set() # reset
             no_trials += 1
@@ -222,7 +200,7 @@ def get_session_performance(content):
             else:
                 break
 
-    return final_total_trials, final_correct_trials
+    return final_total_trials, final_correct_trials, each_trial_perf
 
 def get_trials_for_session(content):
     numbers = set()
@@ -246,7 +224,7 @@ def get_trials_for_session(content):
 
 def trial_accuracy(content):
     # just adding session_performance and get_trial_types together
-    total_trials, correct_trials = get_session_performance(content)
+    total_trials, correct_trials, _ = get_session_performance(content)
     trial_types = get_trials_for_session(content)
     
     return trial_types, total_trials, correct_trials
@@ -808,13 +786,14 @@ def create_all_perf_changes_by_trials(all_rats_performances):
         trial_data = sorted_rat_data.groupby("trial_type")
         
         for trial_type, trial_group in trial_data:
-            trial_performance = trial_group["correct_trials"] / trial_group["total_trials"]
+            trial_performance = (trial_group["correct_trials"] / trial_group["total_trials"]) * 100
             perf_change_in_trial = trial_performance.diff()
             for i, (_, row) in enumerate(trial_group.iterrows()):
                 if i == 0:
                     all_rat_perf.append({"rat": rat, "day":row["day"], "trial_type":trial_type, "perf_change": trial_performance.iloc[0] - 0.5})
                 else:
                     all_rat_perf.append({"rat": rat, "day":row["day"], "trial_type":trial_type, "perf_change":perf_change_in_trial.iloc[i]})
+            
 
     # save and return dataframe
     perf_changes_df = pd.DataFrame(all_rat_perf)

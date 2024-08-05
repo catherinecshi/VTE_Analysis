@@ -332,13 +332,65 @@ def BP07(include_patterns):
     # check and make sure everything is standardised and normal
     excluded_patterns = ['.dat', '.mda', 'mountain', '.json', '.mat', '.txt', 'postSleep', 'preSleep', '.h264', 'geometry', 'HWSync']
     check_for_aberrent_folders(excluded_patterns)
+    
+def copy_timestamps():
+    timestamps_path = "/Users/catpillow/Documents/VTE_Analysis/data/timestamps"
+    if not os.path.exists(timestamps_path):
+        os.makedirs(timestamps_path)
+    
+    rclone_command = [
+        "rclone", "copy",
+        f"{REMOTE_NAME}:{REMOTE_PATH}",
+        f"{timestamps_path}",
+        "--include", "*/initialTraining*/**/*.videoTimeStamps",
+        "--exclude", "*preSleep*",
+        "--exclude", "*postSleep*",
+        "--exclude", "*midSleep*"
+    ]
+    
+    result = subprocess.run(rclone_command, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}")
+    
+    for root, dirs, files in os.walk(timestamps_path):
+        for dir in dirs:
+            if "postSleep" in dir or "preSleep" in dir or "midSleep" in dir:
+                dir_path = os.path.join(root, dir)
+                shutil.rmtree(dir_path)
+
+def copy_statescripts():
+    statescript_path = "/Users/catpillow/Documents/VTE_Analysis/data/statescripts"
+    if not os.path.exists(statescript_path):
+        os.makedirs(statescript_path)
+    
+    rclone_command = [
+        "rclone", "copy",
+        f"{REMOTE_NAME}:{REMOTE_PATH}",
+        f"{statescript_path}",
+        "--include", "*/inferenceTraining*/**/*.stateScriptLog",
+        "--exclude", "*preSleep*",
+        "--exclude", "*postSleep*",
+        "--exclude", "*midSleep*"
+    ]
+    
+    result = subprocess.run(rclone_command, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}")
+    
+    for root, dirs, files in os.walk(statescript_path):
+        for dir in dirs:
+            if "postSleep" in dir or "preSleep" in dir or "midSleep" in dir:
+                dir_path = os.path.join(root, dir)
+                shutil.rmtree(dir_path)
 
 if __name__ == "__main__":
     # if getting stuff from the main folders
-    included_patterns = ["*.stateScriptLog", "*.videoTimeStamps"]
-    main(include_patterns=included_patterns) # for retrieving data where there is one in each day folder
-    BP07(included_patterns)
+    #included_patterns = ["*.stateScriptLog", "*.videoTimeStamps"]
+    #main(include_patterns=included_patterns) # for retrieving data where there is one in each day folder
+    #BP07(included_patterns)
     
     # if getting dlc stuff from one folder
-    dlc()
-    
+    #dlc()
+    copy_timestamps()

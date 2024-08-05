@@ -63,7 +63,7 @@ def process_dlc_data(file_path):
 
 def process_timestamps_data(file_path):
     """uses script provided by statescript to figure out timestamps of each dlc coordinate"""
-    timestamps = readCameraModuleTimeStamps.read_timestamps(file_path)
+    timestamps = readCameraModuleTimeStamps.read_timestamps_new(file_path)
     return timestamps
 
 def process_statescript_log(file_path):
@@ -99,7 +99,7 @@ def convert_all_timestamps(base_path):
                             if timestamps is None:
                                 logging.error(f"failed to process ts for {rat_folder} on {day_folder}")
                         except Exception as e:
-                            logging.error(f'error {e} for {rat_folder} on {day_folder}')
+                            print(f'error {e} for {rat_folder} on {day_folder}')
                         else:
                             os.remove(original_ts_path)
 
@@ -221,6 +221,52 @@ def load_data_structure(save_path):
                 logging.warning(f"SS data missing for {rat_folder} on {day_folder}")
             if timestamps_data is None:
                 logging.warning(f"TS data missing for {rat_folder} on {day_folder}")
+    
+    timestamps_path = "/Users/catpillow/Documents/VTE_Analysis/data/timestamps"
+    for rat in os.listdir(timestamps_path):
+        if ".DS" in rat:
+            continue
+
+        rat_path = os.path.join(timestamps_path, rat, "inferenceTraining")
+        for day in os.listdir(rat_path):
+            if ".DS" in day:
+                continue
+
+            day_path = os.path.join(rat_path, day)
+            for root, _, files in os.walk(day_path):
+                for file in files:
+                    if ".videoTimeStamps" not in file:
+                        continue
+                    
+                    file_path = os.path.join(root, file)
+                    try:
+                        data_structure[rat][day]["videoTimeStamps"] = np.load(file_path)
+                    except KeyError as ke:
+                        print(f"key error for {rat} on {day}")
+                    except ValueError as ve:
+                        print(f"value error for {rat} on {day}")
+    
+    statescript_path = "/Users/catpillow/Documents/VTE_Analysis/data/statescripts"
+    for rat in os.listdir(statescript_path):
+        if ".DS" in rat:
+            continue
+
+        rat_path = os.path.join(statescript_path, rat, "inferenceTraining")
+        for day in os.listdir(rat_path):
+            if ".DS" in day:
+                continue
+
+            day_path = os.path.join(rat_path, day)
+            for root, _, files in os.walk(day_path):
+                for file in files:
+                    if ".stateScriptLog" not in file:
+                        continue
+                    
+                    file_path = os.path.join(root, file)
+                    try:
+                        data_structure[rat][day]["stateScriptLog"] = process_statescript_log(file_path)
+                    except KeyError as ke:
+                        print(f"key error for {rat} on {day}")
 
     return data_structure
 

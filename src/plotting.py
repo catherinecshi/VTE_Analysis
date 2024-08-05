@@ -58,6 +58,15 @@ def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", yl
     else:
         plt.show()
 
+def create_line_plot(x, y, title="", xlabel="", ylabel=""):
+    plt.figure(figsize=(10, 6))
+    plt.plot(x, y, marker="o", linestyle="-", color="b")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True)
+    plt.show()
+
 def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
     sns.histplot(data=df, x=x, hue=y, multiple="stack", kde=True, legend=False, binwidth=1)
@@ -69,12 +78,17 @@ def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
     plt.show()
 
 def create_box_and_whisker_plot(df, x, y, title="", xlabel="", ylabel=""):
-    plt.figure(figsize=(10, 6))
-    df.boxplot(column=y, by=x)
+    filtered_df = df.groupby(x).filter(lambda group: len(group[y]) >= 5)
     
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.figure(figsize=(10, 6))
+    filtered_df.boxplot(column=y, by=x)
+    
+    plt.title(title, fontsize=16)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
+    
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     
     plt.show()
 
@@ -217,7 +231,7 @@ def plot_ellipse(ellipse_params, x, y, save=None, title=""):
 
 
 ### PLOTTING TRAJECTORIES --------
-def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
+def plot_trajectory(x, y, trajectories, title="", save=None, label=None, traj_id=None):
     """
     plots a trajectory on the backdrop of x and y coordinates
 
@@ -249,9 +263,14 @@ def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
     plt.grid(True)
     plt.legend()
     
-    if save:
-        save_path = f"{save}/trajectory.jpg"
+    if save is not None and traj_id is not None:
+        save_path = os.path.join(save, f"trajectory_{traj_id}.jpg")
         plt.savefig(save_path)
+        plt.close()
+    elif save is not None:
+        save_path = os.path.join(save, "trajectory.jpg")
+        plt.savefig(save_path)
+        plt.close()
     else:
         plt.show()
     

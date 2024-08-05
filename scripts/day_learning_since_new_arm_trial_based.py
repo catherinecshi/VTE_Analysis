@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import numpy as np
 
 from src import data_processing
 from src import performance_analysis
@@ -39,7 +40,6 @@ rat_df = days_since_new_arm.groupby("rat")
 learning_during_volatility = []
 for rat, rat_group in rat_df:
     sorted_by_day_df = rat_group.sort_values(by="day")
-    
     for i, row in sorted_by_day_df.iterrows():
         day = row["day"]
         number_of_days_since = row["days_since_new_arm"]
@@ -65,12 +65,31 @@ for rat, rat_group in rat_df:
 learning_during_volatility_df = pd.DataFrame(learning_during_volatility)
 learning_during_volatility_df.to_csv("/Users/catpillow/Documents/VTE_Analysis/processed_data/learning_during_volatility.csv")
 
+# Calculate SEM for each group of days_since_new_arm
+def calculate_sem(data):
+    n = len(data)
+    sem = np.std(data, ddof=1) / np.sqrt(n)
+    return sem
+
+sem_by_day = learning_during_volatility_df.groupby("days_since_new_arm")["perf_change"].apply(calculate_sem).reset_index()
+sem_by_day.columns = ["days_since_new_arm", "sem"]
+
+# Merge SEM values back into the main dataframe
+merged_df = pd.merge(learning_during_volatility_df, sem_by_day, on="days_since_new_arm", how="left")
+
 plotting.create_box_and_whisker_plot(learning_during_volatility_df, x="days_since_new_arm", y="perf_change",
                                     title="Learning during Volatility",
                                     xlabel="Number of Days Since New Arm Added",
                                     ylabel="Change in Performance since Last Session")
 
 plotting.create_histogram(learning_during_volatility_df, "days_since_new_arm", "perf_change",
+                          title="Learning during Volatility",
+                          xlabel="Number of Days Since New Arm Added",
+                          ylabel="Change in Performance since Last Session")
+
+plotting.create_line_plot(learning_during_volatility_df["days_since_new_arm"],
+                          learning_during_volatility_df["perf_change"],
+                          yerr=merged_df["sem"],
                           title="Learning during Volatility",
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="Change in Performance since Last Session")

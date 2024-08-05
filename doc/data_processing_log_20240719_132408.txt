@@ -1,8 +1,0 @@
-2024-07-19 13:24:08,651 matplotlib data path: /Users/catpillow/anaconda3/envs/VTE_Analysis/lib/python3.12/site-packages/matplotlib/mpl-data
-2024-07-19 13:24:08,670 CONFIGDIR=/Users/catpillow/.matplotlib
-2024-07-19 13:24:08,679 interactive is False
-2024-07-19 13:24:08,680 platform is darwin
-2024-07-19 13:24:09,021 CACHEDIR=/Users/catpillow/.matplotlib
-2024-07-19 13:24:09,025 Using fontManager instance from /Users/catpillow/.matplotlib/fontlist-v330.json
-2024-07-19 13:24:09,850 Skipping over DS_Store: /Users/catpillow/Documents/VTE_Analysis/data/VTE_Data/BP06/inferenceTraining/.DS_Store
-2024-07-19 13:24:09,877 Loaded backend macosx version unknown.

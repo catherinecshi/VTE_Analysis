@@ -8,6 +8,7 @@ import pickle
 import logging
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.stats import zscore
 from datetime import datetime
 
@@ -50,7 +51,10 @@ def type_to_choice(trial_type, correct):
     
     choice = None
     
-    if "correct" in correct:
+    if isinstance(trial_type, str):
+        trial_type = int(trial_type)
+    
+    if correct is True:
         match trial_type:
             case 1:
                 choice = "A"
@@ -72,37 +76,34 @@ def type_to_choice(trial_type, correct):
                 choice = "A"
             case 10:
                 choice = "D"
-            case _:
-                print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
-                raise helper.ExpectationError("number from 1 - 10", trial_type)
-    elif "Wrong" in correct:
-        match trial_type:
-            case 1:
-                choice = "B"
-            case 2:
-                choice = "C"
-            case 3:
-                choice = "D"
-            case 4:
-                choice = "E"
-            case 5:
-                choice = "F"
-            case 6:
-                choice = "D"
-            case 7:
-                choice = "E"
-            case 8:
-                choice = "E"
-            case 9:
-                choice = "C"
-            case 10:
-                choice = "F"
             case _:
                 print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
                 raise helper.ExpectationError("number from 1 - 10", trial_type)
     else:
-        print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
-        raise helper.ExpectationError("correct or Wrong", correct)
+        match trial_type:
+            case 1:
+                choice = "B"
+            case 2:
+                choice = "C"
+            case 3:
+                choice = "D"
+            case 4:
+                choice = "E"
+            case 5:
+                choice = "F"
+            case 6:
+                choice = "D"
+            case 7:
+                choice = "E"
+            case 8:
+                choice = "E"
+            case 9:
+                choice = "C"
+            case 10:
+                choice = "F"
+            case _:
+                print(f"Error for {helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
+                raise helper.ExpectationError("number from 1 - 10", trial_type)
 
     return choice
 
@@ -211,7 +212,7 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     
     return IdPhi
 
-def calculate_zIdPhi(IdPhi_values, trajectories = None, x = None, y = None):
+def calculate_zIdPhi(IdPhi_values, trajectories=None, x=None, y=None):
     """
     calculates the zIdPhi values when given the IdPhi values, and zscores according to which arm the rat went down
     takes trajectories as well for visualising purposes
@@ -298,10 +299,14 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     """
     helper.update_rat(rat_ID)
     helper.update_day(day)
-    x, y, _, SS_log, timestamps, trial_starts = helper.initial_processing(data_structure, rat_ID, day)
+    DLC_df, SS_log, timestamps, trial_starts = helper.initial_processing(data_structure, rat_ID, day)
+    
+    # check if timestamps is ascending bc annoying trodes code & files
+    if not np.all(timestamps[:-1] <= timestamps[1:]):
+        raise helper.CorruptionError(rat_ID, day, timestamps)
     
     # define zones
-    centre_hull = creating_zones.get_centre_hull(x, y)
+    centre_hull = creating_zones.get_centre_hull(DLC_df)
     
     # store IdPhi and trajectory values
     IdPhi_values = {}
@@ -309,21 +314,17 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     store_data = []
     count = 0
     
-    performance = performance_analysis.trial_perf_for_session(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
-    same_len = helper.check_equal_length(performance, trial_starts) # check if there are the same number of trials for perf and trial_starts
-    
-    # raise error if there isn't the same number of trials for performance and trial_starts
-    if not same_len:
-        print(f"Mismatch for {rat_ID} on {day} for performance vs trial_starts")
-        raise helper.LengthMismatchError(performance.count, len(trial_starts))
+    _, _, performance = performance_analysis.get_session_performance(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
+    same_len = helper.check_equal_length(performance, list(trial_starts.keys())) # check if there are the same number of trials for perf and trial_starts
+
     
     for i, (trial_start, trial_type) in enumerate(trial_starts.items()): # where trial type is a string of a number corresponding to trial type
         # cut out the trajectory for each trial
-        trajectory_x, trajectory_y = helper.get_trajectory(x, y, trial_start, timestamps, centre_hull)
+        trajectory_x, trajectory_y = helper.get_trajectory(DLC_df, trial_start, timestamps, centre_hull)
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
-        #plot_animation(x, y, trajectory_x = trajectory_x, trajectory_y= trajectory_y)
+        #plot_animation(x, y, trajectory_x=trajectory_x, trajectory_y=trajectory_y)
         
         # get the choice arm from the trial type and performance
         choice = type_to_choice(trial_type, performance[i])
@@ -342,18 +343,22 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         
         # store each trajectory for later
         count += 1
-        traj_id = rat_ID + "_" + str(count)
-        new_row = {"ID": traj_id, "Rat": rat_ID, "Day": day, "X Values": trajectory_x,
-                   "Y Values": trajectory_y, "Choice": choice, "Trial Type": trial_type}
+        traj_id = rat_ID + "_" + day + "_" + str(count)
+        new_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y,
+                   "Choice": choice, "Trial Type": trial_type, "IdPhi": IdPhi}
         store_data.append(new_row)
+        
+        # plot and save if desired
+        if save is not None:
+            trajectory = (trajectory_x, trajectory_y)
+            plotting.plot_trajectory(DLC_df["x"], DLC_df["y"], trajectory, title=f"{rat_ID}_{day}_{traj_id}", save=save, traj_id=traj_id)
     
     df = pd.DataFrame(store_data)
-    file_path = f"{save}/trajectories.csv"
+    file_path = os.path.join(save, "trajectories.csv")
     df.to_csv(file_path)
+    plt.close()
     
-    zIdPhi_values = calculate_zIdPhi(IdPhi_values, trajectories)
-    
-    return zIdPhi_values, IdPhi_values, trajectories
+    return IdPhi_values, trajectories
 
 def rat_VTE_over_sessions(data_structure, rat_ID):
     """
@@ -368,19 +373,15 @@ def rat_VTE_over_sessions(data_structure, rat_ID):
         Exception: if something bad happens for a day
     """
     
-    rat_path = f'/Users/catpillow/Documents/VTE Analysis/VTE_Data/{rat_ID}'
+    save_path = os.path.join(helper.BASE_PATH, "processed_data")
     
     for day in data_structure:
         try:
-            zIdPhi, IdPhi, trajectories = quantify_VTE(data_structure, rat_ID, day, save = False)
-            zIdPhi_path = os.path.join(rat_path, day, 'zIdPhi.npy')
-            IdPhi_path = os.path.join(rat_path, day, 'IdPhi.npy')
-            trajectories_path = os.path.join(rat_path, day, 'trajectories.npy')
+            IdPhi, trajectories = quantify_VTE(data_structure, rat_ID, day, save = False)
+            IdPhi_path = os.path.join(save_path, "IdPhi.npy")
+            trajectories_path = os.path.join(save_path, "trajectories.npy")
             
             # save 
-            with open(zIdPhi_path, 'wb') as fp:
-                pickle.dump(zIdPhi, fp)
-            
             with open(IdPhi_path, 'wb') as fp:
                 pickle.dump(IdPhi, fp)
             
@@ -416,8 +417,8 @@ def zIdPhis_across_sessions(base_path):
         for root, _, files in os.walk(day_path):
             for f in files:
                 file_path = os.path.join(root, f)
-                if 'IdPhi' in f and 'z' not in f:
-                    with open(file_path, 'rb') as fp:
+                if "IdPhi" in f and "z" not in f:
+                    with open(file_path, "rb") as fp:
                         IdPhi_values = pickle.load(fp)
                     
                     for (choice, IdPhis) in IdPhi_values:
