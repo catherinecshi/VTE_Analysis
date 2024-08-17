@@ -1,3 +1,9 @@
+"""
+plots the day by day performance change against days since new arm was introduced
+day by day performance change goes as - 
+if new arm was introduced on day 1, diff betweeen day 50% & day 1 is taken
+"""
+
 import logging
 import pandas as pd
 import numpy as np
@@ -89,7 +95,7 @@ plotting.create_histogram(learning_during_volatility_df, "days_since_new_arm", "
 
 plotting.create_line_plot(learning_during_volatility_df["days_since_new_arm"],
                           learning_during_volatility_df["perf_change"],
-                          yerr=merged_df["sem"],
+                          merged_df["sem"],
                           title="Learning during Volatility",
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="Change in Performance since Last Session")

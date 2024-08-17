@@ -35,7 +35,6 @@ import alphashape
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-#from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 from scipy.spatial.qhull import ConvexHull
 from scipy.spatial.distance import cdist
@@ -771,7 +770,7 @@ def plot_segments(x, y, lines, starts, ends, save=None):
     else:
         plt.show()
 
-def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save=None):
+def plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points, hull, save=None):
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
@@ -789,6 +788,7 @@ def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save=None
         plt.close()
     else:
         plt.show()
+
 def plot_convex_hull(x, y, hull_indices):
     """
     Plot the convex hull for given x and y coordinates and precomputed hull indices.
@@ -814,7 +814,7 @@ def plot_convex_hull(x, y, hull_indices):
     plt.show()
 
 ## GET ZONES ------------------
-def get_centre_hull(df, threshold=None, save_figures=None): #currently highly experimental, ask cat for an exp if needed
+def get_centre_hull(df, threshold=None, save_figures=None):
     """
     Creates the convex hull for centre zone of the maze for any given recording
     Methodology described above
@@ -865,7 +865,7 @@ def get_centre_hull(df, threshold=None, save_figures=None): #currently highly ex
         # step 5 - create convex hull
         hull, densest_cluster_points = make_convex_hull(intersection_points)
         if save_figures:
-            plot_hull(x, y, intersection_points, densest_cluster_points, hull, save=save_path)
+            plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points, hull, save=save_path)
         
         # separate lines into individual arrays
         slopes, b = zip(*lines)

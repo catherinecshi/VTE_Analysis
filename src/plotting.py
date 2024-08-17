@@ -58,12 +58,15 @@ def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", yl
     else:
         plt.show()
 
-def create_line_plot(x, y, title="", xlabel="", ylabel=""):
+def create_line_plot(x, y, sem, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    plt.plot(x, y, marker="o", linestyle="-", color="b")
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.errorbar(x, y, yerr=sem, fmt="-o", capsize=5)
+    plt.title(title, fontsize=24)
+    plt.xlabel(xlabel, fontsize=20)
+    plt.ylabel(ylabel, fontsize=20)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend()
     plt.grid(True)
     plt.show()
 

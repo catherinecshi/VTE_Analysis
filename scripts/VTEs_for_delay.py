@@ -1,8 +1,13 @@
+"""
+Creates line plot for % VTEs per session against number of days since new arm has been introduced
+
+* requires VTE values to already have been created through VTE_Processing
+"""
+
 import os
 import re
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 from src import helper
 from src import plotting
@@ -20,7 +25,6 @@ days_since_new_arm = days_since_new_arm.astype({"rat": "str",
                                                 "days_since_new_arm": "int"})
 
 vtes_during_volatility = []
-
 vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
 for rat in os.listdir(vte_path):
     if ".DS" in rat:
@@ -58,57 +62,24 @@ for rat in os.listdir(vte_path):
                 
 vtes_during_volatility_df = pd.DataFrame(vtes_during_volatility)
 vtes_during_volatility_df.to_csv(os.path.join(vte_path, "vtes_during_volatility.csv"))
-print(vtes_during_volatility_df["no_days"].dtype, "no days")
-print(vtes_during_volatility_df["perc_vtes"].dtype, "perc vtes")
 
 # Calculate the mean and SEM for each day
 mean_perc_vtes = vtes_during_volatility_df.groupby("no_days")["perc_vtes"].mean()
 sem_perc_vtes = vtes_during_volatility_df.groupby("no_days")["perc_vtes"].sem()
 
 # Create the line plot with error bars
-plt.figure(figsize=(10, 6))
-plt.errorbar(mean_perc_vtes.index, mean_perc_vtes, yerr=sem_perc_vtes, fmt='-o', capsize=5, label='% VTE Trials')
-plt.title("VTEs during Volatility", fontsize=20)
-plt.xlabel("Number of Days Since New Arm Added", fontsize=16)
-plt.ylabel("% VTE Trials", fontsize=16)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
-plt.legend()
-plt.grid(True)
-plt.show()
+plotting.create_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
+                          title="VTEs during Volatility",
+                          xlabel="Number of Days Since New Arm Added",
+                          ylabel="% VTE Trials")
 
 # Define fictional data
 x_values = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-mean_perc_vtes = np.array([3.5, 5, 4.8, 4.6, 4.3, 3.9, 3.5, 3.3, 2.8, 2])
-sem_perc_vtes = np.array([0.5, 0.8, 0.7, 0.4, 0.36, 0.3, 0.28, 0.26, 0.25, 0.22])
+exp_mean_perc_vtes = np.array([3.5, 5, 4.8, 4.6, 4.3, 3.9, 3.5, 3.3, 2.8, 2])
+exp_sem_perc_vtes = np.array([0.5, 0.8, 0.7, 0.4, 0.36, 0.3, 0.28, 0.26, 0.25, 0.22])
 
-# Create the line plot with error bars
-plt.figure(figsize=(10, 6))
-plt.errorbar(x_values, mean_perc_vtes, yerr=sem_perc_vtes, fmt='-o', capsize=5, label='% VTE Trials')
-plt.title("Expected VTEs during Volatility", fontsize=20)
-plt.xlabel("Number of Days Since New Arm Added", fontsize=16)
-plt.ylabel("% VTE Trials", fontsize=16)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
-plt.legend()
-plt.grid(True)
-plt.show()
-
-"""
-plotting.create_box_and_whisker_plot(vtes_during_volatility_df, x="no_days", y="perc_vtes",
-                                    title="VTEs during Volatility",
-                                    xlabel="Number of Days Since New Arm Added",
-                                    ylabel="% VTE Trials")
-
-plotting.create_histogram(vtes_during_volatility_df, "no_days", "perc_vtes",
-                          title="VTEs during Volatility",
+# expected data
+plotting.create_line_plot(x_values, exp_mean_perc_vtes, exp_sem_perc_vtes,
+                          title="Expected VTEs during Volatility",
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="% VTE Trials")
-
-plotting.create_line_plot(vtes_during_volatility_df["days_since_new_arm"],
-                          vtes_during_volatility_df["perc_vtes"],
-                          title="VTEs during Volatility",
-                          xlabel="Number of Days Since New Arm Added",
-                          ylabel="% VTE Trials")
-                          
-"""

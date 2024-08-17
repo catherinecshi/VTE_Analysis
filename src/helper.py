@@ -38,9 +38,6 @@ import numpy as np
 from scipy.spatial.qhull import Delaunay
 from datetime import datetime
 
-from src import data_processing
-from src import creating_zones
-
 ### LOGGING
 logger = logging.getLogger() # creating logging object
 logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
@@ -69,7 +66,7 @@ def update_day(day):
     """use when iterating over rats or days, and debug messages need to know rat & days"""
     global CURRENT_DAY
     CURRENT_DAY = day
-    
+
 
 
 ### ERRORS ------------
