@@ -29,20 +29,34 @@ Procedure:
 
 """
 
-### PYLINT
-# pylint: disable=no-name-in-module
-
-
-
 import os
-import math
+import logging
+import alphashape
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
-from scipy.spatial import ConvexHull
-from matplotlib.patches import Polygon
+from scipy.spatial.qhull import ConvexHull
+from scipy.spatial.distance import cdist
+from matplotlib.patches import Polygon as mPolygon
+from shapely.geometry import Polygon as sPolygon
+from shapely.geometry import Point
+from datetime import datetime
+
+from src import helper
+
+### LOGGING
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
+
+# makes a new log everytime the code runs by checking the time
+log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/creating_zones_log_%Y%m%d_%H%M%S.txt")
+handler = logging.FileHandler(log_file)
+handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+logger.addHandler(handler)
+
+### PYLINT
+# pylint: disable=no-name-in-module, consider-using-enumerate
 
 
 def calculate_range(x, y):
@@ -53,127 +67,54 @@ def calculate_range(x, y):
     
     return x_min, x_max, y_min, y_max
 
-def generate_lines(x, y, gap_between_lines = 20, degree_step = 10, min_length = 950, hv_line_multiplier = 2, plot = False):
+def create_lines(x_coords, y_coords, save=None):
     """
-    Generate a set of lines within bounds (the x and y coordinates that bound the points in dataframe) that cover most of the bounds
+    Generate a random set of lines within bounds (the x and y coordinates 
+    that bound the points in dataframe) that cover most of the bounds
 
     Args:
         x (array): x coords from df
         y (array): y coords from df
-        gap_between_lines (int, optional): the increment between x/y intercepts as the set of lines are created. Defaults to 20.
-        degree_step (int, optional): the increment between the degree of the slope for the lines. Defaults to 10.
-        min_length (int, optional): the minimum length of lines to be included in the final set of lines. Done to avoid corner lines with short ass segments. Defaults to 950.
-        hv_line_multiplier (int, optional): multiplier for how many horizontal/vertical lines compared to angled lines. Defaults to 2.
-        plot (bool, optional): whether to plot the lines, mostly to check if they've been generated in a way to covers the bounds well
+        plot (bool, optional): whether to plot the lines, 
+                               mostly to check if they've been generated in a way to covers the bounds well
 
     Returns:
         list: list of tuples representing the line. includes the slope (m) & y-intercept (b) for angled lines
-        
-    Procedure:
-        1. create an array of possible slopes by incrementing using degree_step
-        2. determine the number of lines needed
-            - since the lines are incremented based on x intercept, how many lines determine on the range it has to cover
-        3. for each slope
-            - calculate the number of lines that can be created based on x intercept, incrementing by gap_between_lines
-            - get y intercept for each possible x intercept
-            - discard short lines, as determined by length of line within the bounds
-            - then do the same based on incrementing the y intercept
-        4. for horizontal lines
-            - increment based on y-intercept (b)
-            - slope is 0
-        5. for vertical lines
-            - increment based on x-intercept
-            - slope is np.inf and b is the x-intercept instead
     """
+    x_min, x_max, y_min, y_max = calculate_range(x_coords, y_coords)
+    num_lines = 3000
+    x_positions = np.random.uniform(x_min, x_max, num_lines)
+    y_positions = np.random.uniform(y_min, y_max, num_lines)
+    angles = np.random.uniform(0, 180, num_lines)
     
     lines = []
+    for x, y, angle in zip(x_positions, y_positions, angles):
+        theta = np.radians(angle)
+        if np.isclose(np.cos(theta), 0): # vertical
+            lines.append((float("inf"), x))
+        elif np.isclose(np.sin(theta), 0): # horizontal
+            lines.append((0, y))
+        else:
+            m = np.tan(theta)
+            b = y - m * x
+            lines.append((m, b))
     
-    # convert degree steps into slopes where m = tan(angle in radians)
-    angle_degrees = np.arange(0, 180, degree_step)
-    slopes = np.tan(np.radians(angle_degrees))
+    # explicitly make horizontal and vertical lines
+    for i, x in enumerate(x_positions):
+        if i > 250:
+            break
+        lines.append((float("inf"), x))
     
-    # get range
-    x_min, x_max, y_min, y_max = calculate_range(x, y)
-    extended_range = max(x_max - x_min, y_max - y_min) * 1.5
+    for i, y in enumerate(y_positions):
+        if i > 250:
+            break
+        lines.append((0, y))
+    if save:
+        plot_lines(x_coords, y_coords, lines, save)
     
-    # determine number of lines needed
-    num_angled_lines = int(2 * extended_range / gap_between_lines) + 1
-    num_hv_lines = num_angled_lines * hv_line_multiplier
-    
-    for slope in slopes:
-        if np.isfinite(slope) and np.abs(slope) < 1e10 and slope != 0:
-            # increment based on x intercept - add gap incrementally
-            # get number of steps i can take
-            x_steps = (x_max - x_min) / gap_between_lines
-            x_steps = math.ceil(x_steps)
-            
-            for i in range(x_steps):
-                # calculate x intercept
-                x_intercept = (i * gap_between_lines) + x_min
-                
-                # get b value (y intercept) -> b = y - mx
-                b = 0 - (slope * x_intercept) + x_min
-                
-                # check for length of line and discard short ones
-                # determine end points within range
-                y_at_x_min = slope * x_min + b
-                y_at_x_max = slope * x_max + b
-                x_at_y_min = (y_min - b) / slope
-                x_at_y_max = (y_max - b) / slope
-
-                # clip line into range
-                start_x = max(min(x_at_y_min, x_at_y_max, x_max), x_min)
-                end_x = min(max(x_at_y_min, x_at_y_max, x_min), x_max)
-                start_y = max(min(y_at_x_min, y_at_x_max, y_max), y_min)
-                end_y = min(max(y_at_x_min, y_at_x_max, y_min), y_max)
-                
-                # calculate length of lines
-                length = np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
-                if length >= min_length: # only include line if it is long enough
-                    lines.append((slope ,b))
-            
-            # same thing but now increment based on y intercept
-            y_steps = (y_max - y_min) / gap_between_lines
-            y_steps = math.ceil(y_steps)
-            
-            for i in range(y_steps):
-                b = (i * gap_between_lines) + y_min
-                
-                # check for length of line and discard short ones
-                # determine end points within range
-                y_at_x_min = slope * x_min + b
-                y_at_x_max = slope * x_max + b
-                x_at_y_min = (y_min - b) / slope
-                x_at_y_max = (y_max - b) / slope
-
-                # clip line into range
-                start_x = max(min(x_at_y_min, x_at_y_max, x_max), x_min)
-                end_x = min(max(x_at_y_min, x_at_y_max, x_min), x_max)
-                start_y = max(min(y_at_x_min, y_at_x_max, y_max), y_min)
-                end_y = min(max(y_at_x_min, y_at_x_max, y_min), y_max)
-                
-                # calculate length of lines
-                length = np.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
-                if length >= min_length: # only include line if it is long enough
-                    lines.append((slope ,b))
-                
-    # generating horizontal and vertical lines - all long enough so no need for filtering
-    # horizontal lines
-    for i in range(-num_hv_lines // 2, num_hv_lines // 2):
-        b = y_min + (i * gap_between_lines / hv_line_multiplier) # have more horizontal and vertical lines
-        lines.append((0, b))
-        
-    #vertical lines
-    for i in range(-num_hv_lines // 2, num_hv_lines // 2):
-        x_position = x_min + (i * gap_between_lines / hv_line_multiplier)
-        lines.append((np.inf, x_position))
-    
-    if plot:
-        plot_lines(x, y, lines, title = "Original Lines")
-            
     return lines
 
-def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5, plot = False):
+def calculate_line_coverages(x, y, lines, num_segments=15, threshold=10, save=None):
     """
     calculates how well each line is covered by points based on how many line segments have points in its vicinity
 
@@ -201,8 +142,6 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5, plot
             - longest_streak is added as the coverage score
         2. same for horizontal lines, but swap x and y
         3. same again for angled lines, but just with different ways of divying up segments because the length isn't the same for every line
-    
-    
     """
     
     coverage_scores = []
@@ -350,9 +289,13 @@ def calculate_line_coverages(x, y, lines, num_segments = 15, threshold = 5, plot
         coverage = longest_streak / num_segments
         coverage_scores.append(coverage)
         
-    if plot:
-        plot_coverage_mean(coverage_scores, lines)
-        plot_coverage_lines(x, y, lines, coverage_scores)
+    avg = np.mean(coverage_scores)
+    std = np.std(coverage_scores)
+    std_up = avg + std
+        
+    if save is not None:
+        plot_coverage_mean(coverage_scores, lines, save=save)
+        plot_coverage_lines(x, y, lines, coverage_scores, threshold=std_up, save=save)
     
     return coverage_scores, starts, ends
 
@@ -463,12 +406,12 @@ def calculate_intersection(line1, line2):
                 
     return None
 
-def is_point_in_segment(point, start, end, vertical = False):
+def is_point_in_segment(point, start, end, vertical=False):
     """
     checks if the intersection is inside the starts and ends of where the line is covered
 
     Args:
-        point (int, int): x and y coordinates
+        point (int, int): (x, y)
         start (int): start of where the line is covered
         end (int): end of where the line is covered
         vertical (bool, optional): for if it is vertical, since i'm using x values to check. Defaults to False.
@@ -508,56 +451,37 @@ def find_intersections(lines, starts, ends):
                 # check if it is vertical, because start and end values are in y if so
                 if np.isinf(lines[i][0]) and np.isinf(lines[j][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
-                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                        intersections.append(intersection)
                 elif np.isinf(lines[i][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i], vertical = True) and \
-                        is_point_in_segment(intersection, starts[j], ends[j]):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j]):
+                        intersections.append(intersection)
                 elif np.isinf(lines[j][0]):
                     if is_point_in_segment(intersection, starts[i], ends[i]) and \
-                        is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
-                            intersections.append(intersection)
+                       is_point_in_segment(intersection, starts[j], ends[j], vertical = True):
+                        intersections.append(intersection)
                 # no vertical lines
                 elif is_point_in_segment(intersection, starts[i], ends[i]) and \
-                    is_point_in_segment(intersection, starts[j], ends[j]):
-                        intersections.append(intersection)
+                     is_point_in_segment(intersection, starts[j], ends[j]):
+                    intersections.append(intersection)
     
     return intersections
 
-"""
-def make_ellipse(points, ax = None, scale_factor = 1.5):
-    # Fit the DBSCAN clusterer to the points
-    clustering = DBSCAN(eps=30, min_samples=10).fit(points)  # Adjust eps and min_samples as needed
-    core_samples_mask = np.zeros_like(clustering.labels_, dtype=bool)
-    core_samples_mask[clustering.core_sample_indices_] = True
-    labels = clustering.labels_
+def make_convex_hull(intersection_points, eps=5, min_samples=30):
+    #Perform DBSCAN clustering
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    clusters = dbscan.fit_predict(intersection_points)
 
-    # Number of clusters in labels, ignoring noise if present
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    # Find the cluster with the most points (highest concentration)
+    cluster_indices, counts = np.unique(clusters, return_counts=True)
+    densest_cluster_index = cluster_indices[np.argmax(counts)]
+    densest_cluster_points = intersection_points[clusters == densest_cluster_index]
+    
+    convex_hull = ConvexHull(densest_cluster_points)
+    return convex_hull, densest_cluster_points
 
-    if n_clusters_ > 0:
-        # Proceed with PCA and ellipse drawing for the largest cluster
-        # Find the largest cluster
-        largest_cluster_idx = np.argmax(np.bincount(labels[labels >= 0]))
-        cluster_points = points[labels == largest_cluster_idx]
-        
-        # PCA to determine the orientation
-        pca = PCA(n_components=2).fit(cluster_points)
-        center = pca.mean_
-        angle = np.arctan2(*pca.components_[0][::-1]) * (180 / np.pi)
-        width, height = 2 * np.sqrt(pca.explained_variance_) 
-        
-        # make ellipse bigger
-        width *= scale_factor
-        height *= scale_factor
-
-        return {'center': center, 'width': width, 'height': height, 'angle': angle}
-    else:
-        return None
-"""
-
-def make_convex_hull(intersection_points):
+def make_convex_hull_experimental(intersection_points, eps=5, min_samples=30, distance_threshold=5):
     """
     creates a convex hull around the intersection points found
 
@@ -568,9 +492,68 @@ def make_convex_hull(intersection_points):
         scipy.spatial.ConvexHull: convex hull for the intersections
         np int array: all of the cluster points at the densest point
     """
+    def check_segmentation(cluster_points, x_coord, y_coord, min_x, max_x, min_y, max_y, dist_threshold=30, num_seg=10):
+        segment_len_x = (max_x - min_x) / num_seg
+        segment_len_y = (max_y - min_y) / num_seg
+
+        # check vertical line
+        consecutive_coverage = 0
+        longest_streak = 0
+        total_coverage = 0
+        multiple_segments_vertical = False
+        for i in range(num_seg):
+            segment_start = min_y + i * segment_len_y
+            segment_end = segment_start + segment_len_y
+            segment_points = cluster_points[(cluster_points[:, 1] >= segment_start) & (cluster_points[:, 1] <= segment_end)]
+            
+            if len(segment_points) > 0: # check if there are any points
+                distances = np.abs(segment_points[:, 0] - x_coord)
+                point_on_line = np.any(distances <= dist_threshold)
+                    
+                # add to consecutive coverage if there is something on line, no if not
+                if point_on_line:
+                    consecutive_coverage += 1
+                    total_coverage += 1
+                    if longest_streak < consecutive_coverage:
+                        longest_streak = consecutive_coverage # keep track of longest streak of coverage
+                    
+                    if longest_streak > 1 and consecutive_coverage == 1:
+                        multiple_segments_vertical = True
+                else:
+                    consecutive_coverage = 0
+        coverage_vertical = total_coverage / num_seg
+        
+        # check horizontal line
+        consecutive_coverage = 0
+        longest_streak = 0
+        total_coverage = 0
+        multiple_segments_horizontal = False
+        for i in range(num_seg):
+            segment_start = min_x + i * segment_len_x
+            segment_end = segment_start + segment_len_x
+            segment_points = cluster_points[(cluster_points[:, 0] >= segment_start) & (cluster_points[:, 0] <= segment_end)]
+            
+            if len(segment_points) > 0: # check if there are any points
+                distances = np.abs(segment_points[:, 1] - y_coord)
+                point_on_line = np.any(distances <= dist_threshold)
+                    
+                # add to consecutive coverage if there is something on line, no if not
+                if point_on_line:
+                    consecutive_coverage += 1
+                    total_coverage += 1
+                    if longest_streak < consecutive_coverage:
+                        longest_streak = consecutive_coverage # keep track of longest streak of coverage
+                    
+                    if longest_streak > 1 and consecutive_coverage == 1:
+                        multiple_segments_horizontal = True
+                else:
+                    consecutive_coverage = 0
+        coverage_horizontal = total_coverage / num_seg
+        
+        return multiple_segments_vertical, multiple_segments_horizontal, coverage_vertical, coverage_horizontal
     
     #Perform DBSCAN clustering
-    dbscan = DBSCAN(eps=10, min_samples=5)  # Adjust these parameters as necessary
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     clusters = dbscan.fit_predict(intersection_points)
 
     # Find the cluster with the most points (highest concentration)
@@ -579,17 +562,113 @@ def make_convex_hull(intersection_points):
     densest_cluster_points = intersection_points[clusters == densest_cluster_index]
 
     # Create a convex hull around the densest cluster
-    hull = ConvexHull(densest_cluster_points)
+    point_outside = True
+    iterated_points = densest_cluster_points
+    concave_hull = alphashape.alphashape(densest_cluster_points, 0.1)
+    buffer_zone = concave_hull.buffer(15)
+    while point_outside:
+        hull_polygon = sPolygon(iterated_points)
+        min_x, min_y, max_x, max_y = hull_polygon.bounds
+        
+        point_found = False
+        for x_coord in np.arange(min_x, max_x + 1, 1):
+            if max_x < x_coord or min_x > x_coord:
+                break
+
+            for y_coord in np.arange(min_y, max_y + 1, 1):
+                if max_y < y_coord or min_y > y_coord:
+                    break
+                
+                point = Point(x_coord, y_coord)
+                if buffer_zone.contains(point) == False:
+                    point_found = True
+
+                    # check which axis to reduce
+                    max_x_dist = max_x - x_coord
+                    min_x_dist = x_coord - min_x
+                    max_y_dist = max_y - y_coord
+                    min_y_dist = x_coord - min_y
+                    
+                    many_segs_v, many_segs_h, coverage_v, coverage_h = check_segmentation(densest_cluster_points, x_coord, y_coord, min_x, max_x, min_y, max_y)
+                    
+                    if many_segs_v and many_segs_h:
+                        if max_x_dist > min_x_dist:
+                            min_x = x_coord
+                        else:
+                            max_x = x_coord
+                        
+                        if max_y_dist > min_y_dist:
+                            min_y = y_coord
+                        else:
+                            max_y = y_coord
+                    elif many_segs_v:
+                        if max_y_dist > min_y_dist:
+                            min_y = y_coord
+                        else:
+                            max_y = y_coord
+                    elif many_segs_h:
+                        if max_x_dist > min_x_dist:
+                            min_x = x_coord
+                        else:
+                            max_x = x_coord
+                    """else:
+                        if coverage_v > coverage_h:
+                            if max_x_dist > min_x_dist:
+                                min_x = x_coord
+                            else:
+                                max_x = x_coord
+                        else:
+                            if max_y_dist > min_y_dist:
+                                min_y = y_coord
+                            else:
+                                max_y = y_coord"""
+
+                    iterated_points = densest_cluster_points[
+                        (densest_cluster_points[:, 1] <= max_y - 10) & (densest_cluster_points[:, 1] >= min_y + 10) &
+                        (densest_cluster_points[:, 0] <= max_x - 10) & (densest_cluster_points[:, 0] >= min_x + 10)
+                    ]
+                
+            if point_found:
+                break
+
+        if not point_found:
+            point_outside = False
+            break
     
-    return hull, densest_cluster_points
+    final_convex_hull = ConvexHull(iterated_points)
+    
+    plt.scatter(intersection_points[:, 0], intersection_points[:, 1], s=10, c='green')
+    plt.scatter(densest_cluster_points[:, 0], densest_cluster_points[:, 1], s=10, c='red')
+
+    # Plot concave hull
+    if concave_hull:
+        x_coord, y_coord = concave_hull.exterior.xy
+        plt.plot(x_coord, y_coord, 'b-')
+
+    # Plot final convex hull for the overlapping region
+    for simplex in final_convex_hull.simplices:
+        plt.plot(iterated_points[simplex, 0], iterated_points[simplex, 1], 'm-')
+
+    plt.show()
+    
+    return final_convex_hull, densest_cluster_points
 
 
 ### PLOTTING METHODS -----------
-def plot_lines(x, y, lines, title, save):
-    fig, ax = plt.subplots()
+def plot_lines(x, y, lines, title=None, save=None):
+    """plots x & y coords on a backdrop of lines
+
+    Args:
+        x (list): float list
+        y (list): float list
+        lines (tuple): (m, b)
+        title (str, optional): title if desired. Defaults to None.
+        save (str, optional): file path of file. Defaults to None.
+    """
+    _, ax = plt.subplots()
     
     # plot data points
-    ax.scatter(x, y, label = "Data Points")
+    ax.scatter(x, y, label = "Data Points", color="red")
     
     # get range
     x_min, x_max, y_min, y_max = calculate_range(x, y)
@@ -601,24 +680,28 @@ def plot_lines(x, y, lines, title, save):
                 x_vals = np.array([x_min, x_max])
                 y_vals = slope * x_vals + b
 
-                ax.plot(x_vals, y_vals, 'r--', linewidth = 0.5)
+                ax.plot(x_vals, y_vals, "g--", linewidth=0.5, alpha=0.5)
             else: # horizontal lines
-                ax.axhline(y=b, color = 'r', linestyle = '--', linewidth = 0.5)
+                ax.axhline(y=b, color="g", linestyle="--", linewidth=0.5)
         else: # vertical lines
-            ax.axvline(x=b, color = 'r', linestyle = '--', linewidth = 0.5)
+            ax.axvline(x=b, color="g", linestyle="--", linewidth=0.5)
     
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     ax.grid(True)
-    ax.set_aspect('equal', 'box')
+    ax.set_aspect("equal", "box")
     ax.legend()
     
     if title:
         plt.title(title)
     
-    plt.show()
+    if save is None:
+        plt.show()
+    else:
+        plt.savefig(save)
 
-def plot_coverage_mean(coverage_scores, lines):
+def plot_coverage_mean(coverage_scores, lines, save=None):
+    """plotting to look at what the coverage mean + std looks like"""
     # plot distance to know what's a good threshold
     # get std & mean
     std = np.std(coverage_scores)
@@ -626,28 +709,30 @@ def plot_coverage_mean(coverage_scores, lines):
     
     # plot - x is freq, y is avg dist
     plt.figure(figsize=(10, 6))
-    plt.hist(coverage_scores, bins = len(lines), color = 'skyblue')
-    plt.axvline(mean, color = 'r', linestyle = 'dashed', linewidth = 2)
-    plt.axvline(mean + std, color = 'g', linestyle = 'dashed', linewidth = 2, label = '1 std')
-    plt.axvline(mean - std, color = 'g', linestyle = 'dashed', linewidth = 2)
+    plt.hist(coverage_scores, bins = len(lines), color="blue")
+    plt.axvline(mean, color="r", linestyle="dashed", linewidth=2)
+    plt.axvline(mean + std, color="g", linestyle="dashed", linewidth=2, label="1 std")
+    plt.axvline(mean - std, color="g", linestyle="dashed", linewidth=2)
     
     plt.title("Coverage Score Distribution")
     plt.legend()
-    plt.show()
+    if save is None:
+        plt.show()
+    else:
+        plt.savefig(save)
 
-def plot_coverage_lines(x, y, lines, coverages, threshold = 0.8):
+def plot_coverage_lines(x, y, lines, coverages, threshold=0.5, save=None):
     # filter for lines that align well
     new_lines = []
     
     for index, coverage in enumerate(coverages):
         if coverage > threshold:
-            #print(index)
             new_lines.append(lines[index])
     
     # plot
-    plot_lines(x, y, new_lines, title = "New Lines")
+    plot_lines(x, y, new_lines, title = "New Lines", save=save)
 
-def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
+def plot_segments(x, y, lines, starts, ends, save=None):
     plt.scatter(x, y)
     
     for i, (slope, b) in enumerate(lines):
@@ -661,7 +746,7 @@ def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
                 start_x = b
                 end_x = b
 
-                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+                plt.plot([start_x, end_x], [start_y, end_y], marker="o", color="r", linestyle="--")
             
         else: # horizontal & diagonal lines
             start_x = starts[i]
@@ -673,43 +758,63 @@ def plot_segments(x, y, lines, starts, ends, save = None, plot = False):
                 start_y = slope * start_x + b
                 end_y = slope * end_x + b
 
-                plt.plot([start_x, end_x], [start_y, end_y], marker = 'o', color = 'r', linestyle = '--')
+                plt.plot([start_x, end_x], [start_y, end_y], marker="o", color="r", linestyle="--")
     
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.xlabel("X")
+    plt.ylabel("Y")
     plt.title("Segments")
     plt.grid(True)
-    plt.show()
     
-    # save the figure
-    if plot:
+    if save is not None:
+        plt.savefig(f"{save}/segments.jpg")
+    else:
         plt.show()
-        plt.savefig(f'{save}/segments.jpg')
-    elif save:
-        plt.savefig(f'{save}/segments.jpg')
 
-def plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = None, plot = False):
+def plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points, hull, save=None):
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
-    plt.scatter(intersection_points[:,0], intersection_points[:,1], alpha=0.5, color = 'green')
-    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color='red')
+    plt.scatter(intersection_points[:,0], intersection_points[:,1], alpha=0.5, color="green")
+    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color="red", alpha=0.3)
     for simplex in hull.simplices:
-        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], 'k-')
+        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], "k-")
 
     # Create a Polygon patch for the convex hull
-    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor='k', fill=False)
+    hull_polygon = mPolygon(densest_cluster_points[hull.vertices], closed=True, edgecolor="k", fill=False)
     plt.gca().add_patch(hull_polygon)
     
-    if plot:
+    if save is not None:
+        plt.savefig(f"{save}/convex_hull.jpg")
+        plt.close()
+    else:
         plt.show()
-        plt.savefig(f'{save}/convex_hull.jpg')
-    elif save:
-        plt.savefig(f'{save}/convex_hull.jpg')
 
+def plot_convex_hull(x, y, hull_indices):
+    """
+    Plot the convex hull for given x and y coordinates and precomputed hull indices.
+
+    Parameters:
+    x (array-like): An array of x coordinates
+    y (array-like): An array of y coordinates
+    hull_indices (array-like): Indices of the points that make up the convex hull
+    """
+    points = np.column_stack((x, y))
+    plt.plot(points[:, 0], points[:, 1], 'o')
+    
+    hull_points = points[hull_indices]
+    plt.plot(hull_points[:, 0], hull_points[:, 1], 'r--', lw=2)
+    plt.plot(hull_points[:, 0], hull_points[:, 1], 'ro')
+    
+    # Close the hull by connecting the last point to the first
+    plt.plot([hull_points[-1, 0], hull_points[0, 0]], [hull_points[-1, 1], hull_points[0, 1]], 'r--', lw=2)
+    
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Convex Hull')
+    plt.show()
 
 ## GET ZONES ------------------
-def get_centre_zone(x, y, save = None, threshold = None, plot = False): #currently highly experimental, ask cat for an exp if needed
+def get_centre_hull(df, threshold=None, save_figures=None):
     """
     Creates the convex hull for centre zone of the maze for any given recording
     Methodology described above
@@ -725,23 +830,33 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         (scipy.spatial.ConvexHull): convex hull corresponding to the centre zone
     """
     
-    # file paths for saves    
-    raw_path = save + '/raw_data.csv'
-    covered_path = save + '/covered_lines.csv'
-    intersections_path = save + '/intersections.csv'
-    hull_path = save + '/hull_vertices.npy'
+    x = df["x"]
+    y = df["y"]
     
-    if save or not os.path.exists(raw_path) or not os.path.exists(hull_path): # saves regardless if file doesn't exist
+    # file paths for saves
+    save_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_data", helper.CURRENT_RAT)
+    raw_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_raw_data.csv")
+    covered_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_covered_lines.csv")
+    intersections_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_intersections.csv")
+    hull_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_hull_vertices.npy")
+    
+    # check if these files already exist
+    if not(os.path.exists(hull_path)):
+        save = True # saves regardless if file doesn't exist
+    else:
+        save = False
+    
+    if save:
         # step 1 - generate lines that cover the entire plot
-        lines = generate_lines(x, y, plot = plot)
+        lines = create_lines(x, y, save=save_figures)
         
         # step 2 - calculate the coverage of how well the points cover the lines
-        coverages, starts, ends = calculate_line_coverages(x, y, lines, plot = plot)
+        coverages, starts, ends = calculate_line_coverages(x, y, lines, save=save_figures)
         
         # step 3 - only keep the lines that are past the threshold
         updated_lines, updated_starts, updated_ends = make_new_lines(lines, coverages, starts, ends, threshold)
-        if plot:
-            plot_segments(x, y, updated_lines, updated_starts, updated_ends, save = save) # plot the new lines if desired
+        if save_figures:
+            plot_segments(x, y, updated_lines, updated_starts, updated_ends, save=save_path) # plot the new lines if desired
         
         # step 4 - find the intersection points between lines that still exist
         intersections = find_intersections(updated_lines, updated_starts, updated_ends)
@@ -749,8 +864,8 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         
         # step 5 - create convex hull
         hull, densest_cluster_points = make_convex_hull(intersection_points)
-        if plot:
-            plot_hull(x, y, intersection_points, densest_cluster_points, hull, save = save)
+        if save_figures:
+            plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points, hull, save=save_path)
         
         # separate lines into individual arrays
         slopes, b = zip(*lines)
@@ -758,21 +873,21 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         
         # data frame
         raw_data = { # complete raw data
-            'Coverages': coverages,
-            'Slopes': slopes,
-            'Intercepts': b,
-            'Starts': starts,
-            'Ends': ends
+            "Coverages": coverages,
+            "Slopes": slopes,
+            "Intercepts": b,
+            "Starts": starts,
+            "Ends": ends
         }
         raw_df = pd.DataFrame(raw_data)
         
         covered_lines = {
-            'Covered Slopes': covered_slopes,
-            'Covered Intercepts': covered_intercepts
+            "Covered Slopes": covered_slopes,
+            "Covered Intercepts": covered_intercepts
         }
         covered_df = pd.DataFrame(covered_lines)
         
-        intersections_df = pd.DataFrame(intersections, columns = ['Intersections X', 'Intersections Y'])
+        intersections_df = pd.DataFrame(intersections, columns=["Intersections X", "Intersections Y"])
         
         # save
         raw_df.to_csv(raw_path)
@@ -782,19 +897,10 @@ def get_centre_zone(x, y, save = None, threshold = None, plot = False): #current
         # save convex hull
         np.save(hull_path, densest_cluster_points[hull.vertices])
     else:
-        # probably not necessary right now?
-        """df = pd.read_csv(file_path)
-        slopes = df['Slope'].tolist()
-        b = df['Intercept'].tolist()
-        coverages = df['Coverages'].tolist()
-        starts = df['Starts'].tolist()
-        ends = df['Ends'].tolist()"""
-        
         # load hull
         densest_cluster_points = np.load(hull_path)
         hull = ConvexHull(densest_cluster_points)
-        
-        # remake lines if needed
-        #lines = list(zip(slopes, b))
+        #hull_vertices = hull.vertices
+        #plot_convex_hull(df["x"], df["y"], hull_vertices)
     
     return hull

@@ -1,19 +1,26 @@
+"""
+plots the day by day performance change against days since new arm was introduced
+day by day performance change goes as - 
+if new arm was introduced on day 1, diff betweeen day 50% & day 1 is taken
+"""
+
 import logging
 import pandas as pd
+import numpy as np
 
 from src import data_processing
 from src import performance_analysis
 from src import plotting
 
-logging.basicConfig(filename='day_learning_since_new_arm_log.txt',
+logging.basicConfig(filename="day_learning_since_new_arm_log.txt",
                     format='%(asctime)s %(message)s',
-                    filemode='w')
+                    filemode="w")
 
 logger = logging.getLogger() # creating logging object
 logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 
 # loading
-SAVE_PATH = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data'
+SAVE_PATH = "/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data"
 DATA_STRUCTURE = data_processing.load_data_structure(SAVE_PATH)
 
 # get the dataframe with days until new arm appeared
@@ -21,64 +28,74 @@ days_since_new_arm = performance_analysis.get_days_since_new_arm(SAVE_PATH, DATA
 
 # get the change in performance day by day
 all_rats_performances = performance_analysis.create_all_rats_performance(data_structure=DATA_STRUCTURE)
-logging.debug(all_rats_performances)
 all_perf_changes_by_trial = performance_analysis.create_all_perf_changes_by_trials(all_rats_performances)
-logging.debug(all_perf_changes_by_trial)
+
+# ensure type is the same
+days_since_new_arm["trials_available"] = days_since_new_arm["trials_available"].apply(lambda x: [int (y) for y in x])
+days_since_new_arm = days_since_new_arm.astype({"rat": "str",
+                                                "day": "int", 
+                                                "arm_added": "bool", 
+                                                "days_since_new_arm": "int"})
+all_perf_changes_by_trial = all_perf_changes_by_trial.astype({"rat": "str",
+                                                              "day": "int", 
+                                                              "trial_type": "int", 
+                                                              "perf_change": "float"})
 
 # create an array of just the corresponding trial type change
-trials_available_df = days_since_new_arm.groupby('trials_available')
+rat_df = days_since_new_arm.groupby("rat")
+learning_during_volatility = []
+for rat, rat_group in rat_df:
+    sorted_by_day_df = rat_group.sort_values(by="day")
+    for i, row in sorted_by_day_df.iterrows():
+        day = row["day"]
+        number_of_days_since = row["days_since_new_arm"]
+        try:
+            highest_trial_available = max(row["trials_available"])
+        except ValueError as e:
+            print(f"value error {e} with {rat} on {day}")
+        corresponding_row = None
 
-for trials_available, group in trials_available_df:
-    
-
-# sort by the number of days since new arm was added
-sorted_by_days_since_new_arm = days_since_new_arm.sort_values(by='days_since_new_arm')
-
-
-
-plotting.create_box_and_whisker_plot(merged_df, x='days_since_new_arm', y='perf_change',
-                                    title='Learning during Volatility',
-                                    xlabel='Number of Days Since New Arm Added',
-                                    ylabel='Change in Performance since Last Session')
-
-plotting.create_histogram(merged_df, 'days_since_new_arm', 'perf_change',
-                          title='Learning during Volatility',
-                          xlabel='Number of Days Since New Arm Added',
-                          ylabel='Change in Performance since Last Session')
-
-
-
-#scrap
-"""
-current_number_days = 0
-learning_vs_volatility = []
-learning_vs_volatility.append([])
-for index_i, row_i in sorted_by_days_since_new_arm.iterrows():
-    # find the corresponding change in performance
-    for index_j, row_j in all_rats_perf_changes.iterrows():
-        if not(row_i['day'] is row_j['day'] and row_i['rat'] is row_j['rat']): # if not match between rat & day
+        corresponding_row = all_perf_changes_by_trial[(all_perf_changes_by_trial["rat"] == rat) & \
+                                                      (all_perf_changes_by_trial["day"] == day) & \
+                                                      (all_perf_changes_by_trial["trial_type"] == highest_trial_available)]
+                                                      
+        if corresponding_row.empty:
+            print(f"error for {rat} on {day} - no corresponding perf change")
             continue
 
-        trial_type = row_j['trial_type']
-        available_arms = row_i['trials_available']
-        
-        # check that the trial types match up
-        int_trial_type = helper_functions.string_to_int_trial_types(trial_type)
-        if int_trial_type not in available_arms:
-            logging.error(f'incongruence between {available_arms} and {int_trial_type}'
-                            f' for {row_i['rat']} on {row_i['day']}')
+        corresponding_perf_change = corresponding_row["perf_change"].iloc[0]
+        learning_during_volatility.append({"rat": rat, "day": day, "trial_type": highest_trial_available,
+                                           "days_since_new_arm": number_of_days_since,
+                                           "perf_change": corresponding_perf_change})
 
-        # get the most recently added trial type
-        most_recent_trial = max(available_arms)
-        match = helper_functions.trial_type_equivalency(most_recent_trial, trial_type)
-        
-        if not match: # skip if not most recent trial type
-            continue
-            
-        if row_i['days_since_new_arm'] is current_number_days:
-            learning_vs_volatility[current_number_days].append(row_j['perf_change'])
-        else:
-            current_number_days = row_i['days_since_new_arm']
-            learning_vs_volatility.append([])
-            learning_vs_volatility[current_number_days].append(row_j['perf_change'])
-"""
+learning_during_volatility_df = pd.DataFrame(learning_during_volatility)
+learning_during_volatility_df.to_csv("/Users/catpillow/Documents/VTE_Analysis/processed_data/learning_during_volatility.csv")
+
+# Calculate SEM for each group of days_since_new_arm
+def calculate_sem(data):
+    n = len(data)
+    sem = np.std(data, ddof=1) / np.sqrt(n)
+    return sem
+
+sem_by_day = learning_during_volatility_df.groupby("days_since_new_arm")["perf_change"].apply(calculate_sem).reset_index()
+sem_by_day.columns = ["days_since_new_arm", "sem"]
+
+# Merge SEM values back into the main dataframe
+merged_df = pd.merge(learning_during_volatility_df, sem_by_day, on="days_since_new_arm", how="left")
+
+plotting.create_box_and_whisker_plot(learning_during_volatility_df, x="days_since_new_arm", y="perf_change",
+                                    title="Learning during Volatility",
+                                    xlabel="Number of Days Since New Arm Added",
+                                    ylabel="Change in Performance since Last Session")
+
+plotting.create_histogram(learning_during_volatility_df, "days_since_new_arm", "perf_change",
+                          title="Learning during Volatility",
+                          xlabel="Number of Days Since New Arm Added",
+                          ylabel="Change in Performance since Last Session")
+
+plotting.create_line_plot(learning_during_volatility_df["days_since_new_arm"],
+                          learning_during_volatility_df["perf_change"],
+                          merged_df["sem"],
+                          title="Learning during Volatility",
+                          xlabel="Number of Days Since New Arm Added",
+                          ylabel="Change in Performance since Last Session")

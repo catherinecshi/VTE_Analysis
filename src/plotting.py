@@ -1,7 +1,7 @@
 """
 General plotting functions
 """
-
+import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -9,13 +9,12 @@ from matplotlib.patches import Polygon, Ellipse
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
-from PIL import Image
 
-from src import helper_functions
+from src import helper
 
 
 ### GENERIC PLOTS ------------
-def create_scatter_plot(x, y, title='', xlabel='', ylabel='', save=None):
+def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
     """
     create scatter plot
 
@@ -29,7 +28,7 @@ def create_scatter_plot(x, y, title='', xlabel='', ylabel='', save=None):
     """
     
     plt.figure(figsize=(10, 6))
-    plt.scatter(x, y, color='green', alpha=0.4)
+    plt.scatter(x, y, color="green", alpha=0.4)
     
     plt.title(title)
     plt.xlabel(xlabel)
@@ -42,9 +41,38 @@ def create_scatter_plot(x, y, title='', xlabel='', ylabel='', save=None):
     else:
         plt.show()
 
-def create_histogram(df, x, y, title='', xlabel='', ylabel=''):
+def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", ylabel="", save=None):
     plt.figure(figsize=(10, 6))
-    sns.histplot(data=df, x=x, hue=y, multiple='stack', kde=True, legend=False, binwidth=1)
+    plt.scatter(x_1, y_1, color="green", alpha=0.4)
+    plt.scatter(x_2, y_2, color="red", alpha=0.4)
+    
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True)
+    
+    if save:
+        save_path = os.path.join(save, f"{helper.CURRENT_DAY}_population_scatter_plot.jpg")
+        plt.savefig(save_path)
+        plt.close()
+    else:
+        plt.show()
+
+def create_line_plot(x, y, sem, title="", xlabel="", ylabel=""):
+    plt.figure(figsize=(10, 6))
+    plt.errorbar(x, y, yerr=sem, fmt="-o", capsize=5)
+    plt.title(title, fontsize=24)
+    plt.xlabel(xlabel, fontsize=20)
+    plt.ylabel(ylabel, fontsize=20)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=df, x=x, hue=y, multiple="stack", kde=True, legend=False, binwidth=1)
     
     plt.title(title)
     plt.xlabel(xlabel)
@@ -52,17 +80,22 @@ def create_histogram(df, x, y, title='', xlabel='', ylabel=''):
     
     plt.show()
 
-def create_box_and_whisker_plot(df, x, y, title='', xlabel='', ylabel=''):
-    plt.figure(figsize=(10, 6))
-    df.boxplot(column=y, by=x)
+def create_box_and_whisker_plot(df, x, y, title="", xlabel="", ylabel=""):
+    filtered_df = df.groupby(x).filter(lambda group: len(group[y]) >= 5)
     
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.figure(figsize=(10, 6))
+    filtered_df.boxplot(column=y, by=x)
+    
+    plt.title(title, fontsize=16)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
+    
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     
     plt.show()
 
-def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title='', save=None):
+def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title="", xlabel="", ylabel="", save=None):
     """
     creates occupancy map
 
@@ -94,30 +127,30 @@ def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title='', save=None)
     occupancy_grid = occupancy_grid / framerate
     
     # Define the colors for the custom colormap
-    cdict = {'red':   [(0.0,  0.0, 0.0),   # Black for zero
+    cdict = {"red":   [(0.0,  0.0, 0.0),   # Black for zero
                        (0.01, 1.0, 1.0),   # Red for values just above zero
                        (1.0,  1.0, 1.0)],  # Keeping it red till the end
 
-             'green': [(0.0,  0.0, 0.0),
+             "green": [(0.0,  0.0, 0.0),
                        (0.01, 0.0, 0.0),   # No green for low values
                        (1.0,  1.0, 1.0)],  # Full green at the end
 
-             'blue':  [(0.0,  0.0, 0.0),
+             "blue":  [(0.0,  0.0, 0.0),
                        (0.01, 0.0, 0.0),   # No blue for low values
                        (1.0,  1.0, 1.0)]}  # Full blue at the end
 
-    custom_cmap = LinearSegmentedColormap('custom_hot', segmentdata=cdict, N=256)
+    custom_cmap = LinearSegmentedColormap("custom_hot", segmentdata=cdict, N=256)
     
     # rotating so it looks like scatter plot
     rotated_occupancy_grid = np.rot90(occupancy_grid)
     
     # plotting
     plt.figure(figsize=(10, 6))
-    plt.imshow(rotated_occupancy_grid, cmap=custom_cmap, interpolation='nearest')
-    plt.colorbar(label='Time spent in seconds')
+    plt.imshow(rotated_occupancy_grid, cmap=custom_cmap, interpolation="nearest")
+    plt.colorbar(label="Time spent in seconds")
     plt.title(title)
-    plt.xlabel('X Bins')
-    plt.ylabel('Y Bins')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     
     if save:
         save_path = f"{save}/occupancy_map.jpg"
@@ -127,7 +160,7 @@ def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title='', save=None)
 
 
 
-### PLOTTING ZONES ------------    
+### PLOTTING ZONES ------------
 def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=""):
     """
     plots a convex hull on a backdrop of x and y coordinates
@@ -145,13 +178,13 @@ def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=
     plt.scatter(x, y)
 
     # Plotting (optional, for visualization)
-    plt.scatter(hull_points[:,0], hull_points[:,1], alpha=0.5, color='green')
-    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color='red')
+    plt.scatter(hull_points[:,0], hull_points[:,1], alpha=0.5, color="green")
+    plt.scatter(densest_cluster_points[:,0], densest_cluster_points[:,1], color="red")
     for simplex in hull.simplices:
-        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], 'k-')
+        plt.plot(densest_cluster_points[simplex, 0], densest_cluster_points[simplex, 1], "k-")
 
     # Create a Polygon patch for the convex hull
-    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor='k', fill=False)
+    hull_polygon = Polygon(densest_cluster_points[hull.vertices], closed=True, edgecolor="k", fill=False)
     plt.gca().add_patch(hull_polygon)
     
     plt.title(title) # add title
@@ -178,30 +211,30 @@ def plot_ellipse(ellipse_params, x, y, save=None, title=""):
         title (str, optional): title. Defaults to "".
     """
     
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     
     # Plot data points
     ax.scatter(x, y, alpha=0.5)
     
     # If ellipse_params is not None, create and add the ellipse
     if ellipse_params is not None:
-        ellipse = Ellipse(xy=ellipse_params['center'], width=ellipse_params['width'],
-                          height=ellipse_params['height'], angle=ellipse_params['angle'],
-                          edgecolor='r', facecolor='none')
+        ellipse = Ellipse(xy=ellipse_params["center"], width=ellipse_params["width"],
+                          height=ellipse_params["height"], angle=ellipse_params["angle"],
+                          edgecolor="r", facecolor="none")
         ax.add_patch(ellipse)
     
-    plt.title(title) # add title 
+    plt.title(title) # add title
     
     if save:
         save_path = f"{save}/ellipse.jpg"
         plt.savefig(save_path)
     else:
         plt.show()
-    
 
 
-### PLOTTING TRAJECTORIES --------  
-def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
+
+### PLOTTING TRAJECTORIES --------
+def plot_trajectory(x, y, trajectories, title="", save=None, label=None, traj_id=None):
     """
     plots a trajectory on the backdrop of x and y coordinates
 
@@ -219,23 +252,28 @@ def plot_trajectory(x, y, trajectories, title="", save=None, label=None):
     
     # plot the normal points
     plt.figure(figsize=(10, 6))
-    plt.plot(x, y, color='green', alpha=0.4)
+    plt.plot(x, y, color="green", alpha=0.4)
     
     # plot the trajectory
-    plt.plot(trajectory_x, trajectory_y, color='red', alpha=0.8, label=label)
+    plt.plot(trajectory_x, trajectory_y, color="red", alpha=0.8, label=label)
     
     # add title
     plt.title(title)
     
     # display plot
-    plt.xlabel('X coordinate')
-    plt.ylabel('Y coordinate')
+    plt.xlabel("X coordinate")
+    plt.ylabel("Y coordinate")
     plt.grid(True)
     plt.legend()
     
-    if save:
-        save_path = f"{save}/trajectory.jpg"
+    if save is not None and traj_id is not None:
+        save_path = os.path.join(save, f"trajectory_{traj_id}.jpg")
         plt.savefig(save_path)
+        plt.close()
+    elif save is not None:
+        save_path = os.path.join(save, "trajectory.jpg")
+        plt.savefig(save_path)
+        plt.close()
     else:
         plt.show()
     
@@ -262,7 +300,7 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
     
     fig, ax = plt.subplots()
     ax.scatter(x, y, alpha=0.2) # plot the totality first
-    line, = ax.plot([], [], 'bo-', linewidth = 2) # line plot
+    line, = ax.plot([], [], "bo-", linewidth = 2) # line plot
     
     ax.set_xlim(np.min(x), np.max(x))
     ax.set_ylim(np.min(y), np.max(y))
@@ -288,17 +326,17 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
     plt.title(title)
     
     if label:
-        rounded_label = helper_functions.round_to_sig_figs(label, 3)
-        legend_elements = [Line2D([0], [0], color='blue', lw=2, label=rounded_label)]
-        ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.15, 1))
+        rounded_label = helper.round_to_sig_figs(label, 3)
+        legend_elements = [Line2D([0], [0], color="blue", lw=2, label=rounded_label)]
+        ax.legend(handles=legend_elements, loc="upper right", bbox_to_anchor=(1.15, 1))
     
     # save or display
     if save:
         save_path = f"{save}/trajectory_animation.gif"
-        ani.save(save_path, writer='pillow')
+        ani.save(save_path, writer="pillow")
     else:
-        plt.show()
-        
+        plt.show() 
+
 
 
 ### SPECIALIZED PLOTS -------
@@ -323,20 +361,20 @@ def plot_zIdPhi(zIdPhi_values, save=None):
     plt.figure(figsize=(10, 6))
     
     # Plot the histogram
-    plt.hist(all_zIdPhis, bins=30, alpha=0.7, label='All Trial Types')
+    plt.hist(all_zIdPhis, bins=30, alpha=0.7, label="All Trial Types")
     
     # Calculate and plot the mean and standard deviation lines
     mean = np.mean(all_zIdPhis)
     std = np.std(all_zIdPhis)
     
-    plt.axvline(mean, color='red', linestyle='dashed', linewidth=2, label='Mean')
-    plt.axvline(mean + std, color='green', linestyle='dashed', linewidth=2, label='+1 STD')
-    plt.axvline(mean - std, color='green', linestyle='dashed', linewidth=2, label='-1 STD')
+    plt.axvline(mean, color="red", linestyle="dashed", linewidth=2, label="Mean")
+    plt.axvline(mean + std, color="green", linestyle="dashed", linewidth=2, label="+1 STD")
+    plt.axvline(mean - std, color="green", linestyle="dashed", linewidth=2, label="-1 STD")
     
     # Set the title and labels
-    plt.title('Combined IdPhi Distribution Across All Trial Types')
-    plt.xlabel('zIdPhi')
-    plt.ylabel('Frequency')
+    plt.title("Combined IdPhi Distribution Across All Trial Types")
+    plt.xlabel("zIdPhi")
+    plt.ylabel("Frequency")
     
     # Show the legend
     plt.legend()
