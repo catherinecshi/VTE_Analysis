@@ -69,6 +69,7 @@ def get_session_performance(content):
     Returns:
         final_total_trials (numpy array): array of total trials for each trial type; 0 index -> 'AB' etc
         final_correct_trials (numpy array): array of correct trials for each trial type
+        each_trial_perf (bool list): list of trues and falses depending on whether the rat performed correctly for trial
     """
     
     lines = content.splitlines()

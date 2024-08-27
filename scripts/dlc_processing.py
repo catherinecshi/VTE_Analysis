@@ -1,5 +1,7 @@
 import os
 import gc
+import logging
+import datetime
 import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
@@ -8,7 +10,19 @@ from src import data_processing
 from src import helper
 from src import plotting
 
-def filter_dataframe(df, tracking="greenLED", std_multiplier=7, eps=70, min_samples=40, max_interpolation_distance=100, start_index=None): # currently keeps original indices
+### LOGGING
+logger = logging.getLogger() # creating logging object
+logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
+
+# makes a new log everytime the code runs by checking the time
+log_file = datetime.datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/dlc_processing_log_%Y%m%d_%H%M%S.txt")
+handler = logging.FileHandler(log_file)
+handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+logger.addHandler(handler)
+
+# pylint: disable=logging-fstring-interpolation, unbalanced-tuple-unpacking
+
+def filter_dataframe(df, tracking="greenLED", std_multiplier=7, eps=70, min_samples=40, max_interpolation_distance=100, jump_threshold=50, start_index=None): # currently keeps original indices
     """
     Filters dataframes. Check to make sure it's working properly. Generally, more than 100 filtered out points is bad
     Keeps the original indices of the DataFrame
@@ -47,8 +61,8 @@ def filter_dataframe(df, tracking="greenLED", std_multiplier=7, eps=70, min_samp
         likely_data = likely_data[likely_data.index >= start_index]
     
     if likely_data.empty:
-        print(f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY} empty after filtering by likelihood")
-        return None, None, None
+        logging.error(f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY} empty after filtering by likelihood")
+        return None, None, None, None
     
     # DBSCAN Cluster analysis
     coordinates = likely_data[[tracking]].copy()[[(tracking, "x"), (tracking, "y")]]
@@ -77,13 +91,19 @@ def filter_dataframe(df, tracking="greenLED", std_multiplier=7, eps=70, min_samp
         
         # check for jumps
         if diff_x > threshold_x or diff_y > threshold_y:
-            # mark as NaN
-            filtered_data.at[filtered_data.index[i], (tracking, "x")] = np.nan
-            filtered_data.at[filtered_data.index[i], (tracking, "y")] = np.nan
+            # add into list to see if it should be marked as NaN
             jump_indices.append(i)
         else:
             # udpate last valid index
             last_valid_index = i
+            
+    # only exclude jumps if it doesn't cross the jump threshold
+    if len(jump_indices) < jump_threshold:
+        for jump_index in jump_indices:
+            filtered_data.at[filtered_data.index[jump_index], (tracking, "x")] = np.nan
+            filtered_data.at[filtered_data.index[jump_index], (tracking, "y")] = np.nan
+    else:
+        logging.debug(f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY} too many jumps")
     
     # interpolating
     for axis in ["x", "y"]:
@@ -100,17 +120,19 @@ def filter_dataframe(df, tracking="greenLED", std_multiplier=7, eps=70, min_samp
     # final coordinate points
     x_coords = filtered_data[(tracking, "x")]
     y_coords = filtered_data[(tracking, "y")]
-    try:
-        time = filtered_data[("time", "time")]
-    except Exception:
-        print(helper.CURRENT_RAT, helper.CURRENT_DAY)
     
     # check how many points have been filtered out
     total_filtered_out = len(df) - len(x_coords)
     points_filtered = {"total": total_filtered_out, "likelihood": unlikely_data, "start": start_index,
                        "DBSCAN": noise_points_count, "jumps": len(jump_indices)}
     
-    return x_coords, y_coords, time, points_filtered
+    try: # because sometimes it's empty for some reason
+        times = filtered_data[("time", "time")]
+    except Exception:
+        logging.debug(f"{helper.CURRENT_RAT} {helper.CURRENT_DAY} times empty")
+        return x_coords, y_coords, pd.Series(), points_filtered
+    
+    return x_coords, y_coords, times, points_filtered
 
 def smooth_points(points, span=3):
     """
@@ -167,7 +189,7 @@ IMPLANTED_RATS = ["BP06", "BP07", "BP12", "BP13", "TH405", "TH508", "BP20", "TH5
 for rat, day_group in DATA_STRUCTURE.items():
     filtered_info = []
     
-    if "BP06" in rat or "TH608" in rat or "BP08" in rat:
+    if not "BP10" in rat or not "BP11" in rat or not "BP19" in rat or not "BP21" in rat or not "TH405" in rat or not "TH610" in rat:
         continue
     
     # determine which part to track rats on
@@ -192,34 +214,33 @@ for rat, day_group in DATA_STRUCTURE.items():
         
         # skip if no DLC or empty DLC
         if DLC_df is None or DLC_df.empty:
-            print(f"no or empty DLC for {rat} on {day}")
+            logging.info(f"no or empty DLC for {rat} on {day}")
             continue
         
         # skip if already made
         save_path_coords = os.path.join(rat_folder, f"{day}_coordinates.csv")
-        if os.path.exists(save_path_coords):
-            continue
+        """if os.path.exists(save_path_coords):
+            continue"""
         
         if timestamps is not None:
             timestamps = helper.check_timestamps(DLC_df, timestamps) # initial check of everything
             try:
                 DLC_df[("time", "time")] = timestamps
             except ValueError:
-                print(rat, day)
-                print(f"{len(DLC_df)}, {len(timestamps)}")
+                logging.error(f"unequal dlc frames {len(DLC_df)} and timestmaps {len(timestamps)} for {rat} on {day}")
                 continue
         
         if timestamps is not None and SS_log is not None:
             try:
                 trial_starts = helper.get_video_trial_starts(timestamps, SS_log)
             except Exception as e:
-                print(f"{e} for {rat} on {day}")
+                logging.debug(f"{e} for {rat} on {day}")
                 x, y, times, points_filtered_out = filter_dataframe(DLC_df, tracking=track_part)
             else:
                 try:
                     first_trial_start = next(iter(trial_starts)) # get the first trial start time to pass into filtering
                 except StopIteration as si:
-                    print(f"{si} for {rat} on {day}")
+                    logging.error(f"{si} for {rat} on {day}")
                     x, y, times, points_filtered_out = filter_dataframe(DLC_df, tracking=track_part)
                 else:
                     x, y, times, points_filtered_out = filter_dataframe(DLC_df, tracking=track_part, start_index=first_trial_start)
@@ -253,3 +274,5 @@ for rat, day_group in DATA_STRUCTURE.items():
     
     del filtered_info, filtered_info_df
     gc.collect()
+    
+    logger.info(f"{rat} dlc processed")

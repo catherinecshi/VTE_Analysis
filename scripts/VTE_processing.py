@@ -5,66 +5,11 @@ from scipy.stats import zscore
 
 from src import helper
 from src import data_processing
-from src import creating_zones
-from src import calculating_VTEs
-
-### CREATING CENTRE HULL
-base_path = "/Users/catpillow/Documents/VTE_Analysis"
-dlc_path = os.path.join(base_path, "processed_data", "dlc_data")
-
-for rat in os.listdir(dlc_path):
-    rat_path = os.path.join(dlc_path, rat)
-    helper.update_rat(rat)
-    if "BP11" in rat:
-        continue
-    
-    for root, _, files in os.walk(rat_path):
-        for f in files:
-            if not "coordinates" in f:
-                continue
-            
-            file_path = os.path.join(root, f)
-            parts = f.split("_")
-            day = parts[0]
-            helper.update_day(day)
-            
-            df = pd.read_csv(file_path)
-            x = df["x"]
-            y = df["y"]
-            
-            if x.empty or y.empty:
-                print(f"x or y is empty for {rat} on {day}")
-                continue
-            
-            save_hull_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Data", rat)
-            if not os.path.exists(save_hull_path):
-                os.makedirs(save_hull_path)
-            hull_path = os.path.join(save_hull_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_hull_vertices.npy")
-            
-            lines = creating_zones.create_lines(x, y)
-            
-            coverages, starts, ends = creating_zones.calculate_line_coverages(x, y, lines)
-            
-            avg = np.mean(coverages)
-            std = np.std(coverages)
-            std_up = avg + std
-            
-            updated_lines, updated_starts, updated_ends = creating_zones.make_new_lines(lines, coverages, starts, ends, threshold=std_up)
-            
-            intersections = creating_zones.find_intersections(updated_lines, updated_starts, updated_ends)
-            intersection_points = np.array(intersections) # np array for DBSCAN to work
-            
-            if intersection_points.size == 0:
-                print(f"intersection empty for {rat} on {day}")
-                continue
-            
-            hull, densest_cluster_points = creating_zones.make_convex_hull(intersection_points)
-            creating_zones.plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points, hull, save=save_hull_path)
-            np.save(hull_path, densest_cluster_points[hull.vertices])
-
-
+from src import trajectory_analysis
 
 ### GETTING zIdPhi VALUES
+base_path = "/Users/catpillow/Documents/VTE_Analysis"
+dlc_path = os.path.join(base_path, "processed_data", "dlc_data")
 data_path = os.path.join(base_path, "data", "VTE_Data")
 data_structure = data_processing.load_data_structure(data_path)
 
@@ -85,7 +30,7 @@ for rat in os.listdir(vte_path):
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 
-                _, _ = calculating_VTEs.quantify_VTE(data_structure, rat, day, save=save_path)
+                _, _ = trajectory_analysis.quantify_VTE(data_structure, rat, day, save=save_path)
             except Exception as error:
                 print(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")
 

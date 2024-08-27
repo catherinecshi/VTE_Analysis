@@ -316,18 +316,26 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     
     _, _, performance = performance_analysis.get_session_performance(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
     same_len = helper.check_equal_length(performance, list(trial_starts.keys())) # check if there are the same number of trials for perf and trial_starts
-
     
     for i, (trial_start, trial_type) in enumerate(trial_starts.items()): # where trial type is a string of a number corresponding to trial type
+        count += 1
+        traj_id = rat_ID + "_" + day + "_" + str(count)
+        
         # cut out the trajectory for each trial
-        trajectory_x, trajectory_y = helper.get_trajectory(DLC_df, trial_start, timestamps, centre_hull)
+        trajectory_x, trajectory_y, traj_len = helper.get_trajectory(DLC_df, trial_start, centre_hull, traj_id)
+        if not trajectory_x: # empty list, happens for the last trajectory
+            continue
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
-        #plot_animation(x, y, trajectory_x=trajectory_x, trajectory_y=trajectory_y)
+        #plotting.plot_trajectory_animation(DLC_df["x"], DLC_df["y"], trajectory_x, trajectory_y, title=traj_id)
         
         # get the choice arm from the trial type and performance
-        choice = type_to_choice(trial_type, performance[i])
+        if same_len or len(performance) < i:
+            choice = type_to_choice(trial_type, performance[i])
+        elif len(performance) >= i:
+            logging.debug(f"performance not capturing every trial for {rat_ID} on {day}")
+            continue
         
         # store IdPhi according to which arm the rat went down
         if choice not in IdPhi_values:
@@ -342,10 +350,8 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
             trajectories[choice] = [(trajectory_x, trajectory_y)]
         
         # store each trajectory for later
-        count += 1
-        traj_id = rat_ID + "_" + day + "_" + str(count)
-        new_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y,
-                   "Choice": choice, "Trial Type": trial_type, "IdPhi": IdPhi}
+        new_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                   "Choice": choice, "Trial Type": trial_type, "IdPhi": IdPhi, "Length": traj_len}
         store_data.append(new_row)
         
         # plot and save if desired
@@ -359,81 +365,3 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     plt.close()
     
     return IdPhi_values, trajectories
-
-def rat_VTE_over_sessions(data_structure, rat_ID):
-    """
-    iterates over each day for one rat, then save zIdPhi, IdPhi and trajectories using pickle
-    saves three file per day (zIdPhi values, IdPhi values, trajectories)
-
-    Args:
-        data_structure (dict): {rat_folder: {day_folder: {"DLC_tracking":dlc_data, "stateScriptLog": ss_data, "timestamps": timestamps_data}}}
-        ratID (str): rat
-    
-    Raises:
-        Exception: if something bad happens for a day
-    """
-    
-    save_path = os.path.join(helper.BASE_PATH, "processed_data")
-    
-    for day in data_structure:
-        try:
-            IdPhi, trajectories = quantify_VTE(data_structure, rat_ID, day, save = False)
-            IdPhi_path = os.path.join(save_path, "IdPhi.npy")
-            trajectories_path = os.path.join(save_path, "trajectories.npy")
-            
-            # save 
-            with open(IdPhi_path, 'wb') as fp:
-                pickle.dump(IdPhi, fp)
-            
-            with open(trajectories_path, 'wb') as fp:
-                pickle.dump(trajectories, fp)
-        except Exception as error:
-            print(f'error in rat_VTE_over_session - {error} on day {day}')
-            
-def zIdPhis_across_sessions(base_path):
-    """
-    zscores the zIdPhis across an multiple sessions instead of just one session
-    increases sample such that what counts as a VTE should be more accurate, given camera is constant
-
-    Args:
-        base_path (str): file path where IdPhi values were saved, presumably from rat_VTE_over_sessions
-
-    Raises:
-        helper_functions.ExpectationError: if more than 1 IdPhi values file is found in a day
-
-    Returns:
-        (dict): {choice: zIdPhi_values}
-    """
-    
-    IdPhis_across_days = {} # this is so it can be zscored altogether
-    days = []
-    IdPhis_in_a_day = 0
-    
-    for day_folder in os.listdir(base_path):
-        day_path = os.path.join(base_path, day_folder)
-        if os.path.isdir(day_path):
-            days.append(day_folder)
-        
-        for root, _, files in os.walk(day_path):
-            for f in files:
-                file_path = os.path.join(root, f)
-                if "IdPhi" in f and "z" not in f:
-                    with open(file_path, "rb") as fp:
-                        IdPhi_values = pickle.load(fp)
-                    
-                    for (choice, IdPhis) in IdPhi_values:
-                        if not IdPhis_across_days[choice]:
-                            IdPhis_across_days[choice] = []
-                        
-                        IdPhis_across_days[choice].append(IdPhis)
-                        IdPhis_in_a_day += 1
-
-                    if IdPhis_in_a_day > 1:
-                        print(f"Error on day {day_folder}")
-                        raise helper.ExpectationError("only 1 IdPhi file in a day", "more than 1")
-        
-        IdPhis_in_a_day = 0
-    
-    zIdPhi_values = calculate_zIdPhi(IdPhis_across_days)
-    
-    return zIdPhi_values

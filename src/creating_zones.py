@@ -834,11 +834,11 @@ def get_centre_hull(df, threshold=None, save_figures=None):
     y = df["y"]
     
     # file paths for saves
-    save_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_data", helper.CURRENT_RAT)
+    save_path = os.path.join(helper.BASE_PATH, "processed_data", "hull_data")
     raw_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_raw_data.csv")
     covered_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_covered_lines.csv")
     intersections_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_intersections.csv")
-    hull_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_hull_vertices.npy")
+    hull_path = os.path.join(save_path, f"{helper.CURRENT_RAT}_{helper.CURRENT_DAY}_hull.npy")
     
     # check if these files already exist
     if not(os.path.exists(hull_path)):

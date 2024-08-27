@@ -193,7 +193,7 @@ def load_data_structure(save_path):
                     if fnmatch.fnmatch(f, "*dlc*.csv"):
                         file_path = os.path.join(root, f)
                         dlc_data = process_dlc_data(file_path)
-                    
+                    """
                     # storing the statescript log
                     if fnmatch.fnmatch(f, "*statescriptlog*"):
                         file_path = os.path.join(root, f)
@@ -205,7 +205,7 @@ def load_data_structure(save_path):
                         try:
                             timestamps_data = np.load(file_path)
                         except Exception as e: # bc trodes code keeps on giving me errors :(
-                            print(f'error {e} for {rat_folder} on {day_folder}')
+                            print(f"error {e} for {rat_folder} on {day_folder}")"""
             
             # add to dictionary
             data_structure[rat_folder][day_folder] = {
@@ -217,10 +217,6 @@ def load_data_structure(save_path):
             # log missing data
             if dlc_data is None:
                 logging.warning(f"DLC data missing for {rat_folder} on {day_folder}")
-            if ss_data is None:
-                logging.warning(f"SS data missing for {rat_folder} on {day_folder}")
-            if timestamps_data is None:
-                logging.warning(f"TS data missing for {rat_folder} on {day_folder}")
     
     timestamps_path = "/Users/catpillow/Documents/VTE_Analysis/data/timestamps"
     for rat in os.listdir(timestamps_path):
@@ -241,9 +237,9 @@ def load_data_structure(save_path):
                     file_path = os.path.join(root, file)
                     try:
                         data_structure[rat][day]["videoTimeStamps"] = np.load(file_path)
-                    except KeyError as ke:
+                    except KeyError as _:
                         print(f"key error for {rat} on {day}")
-                    except ValueError as ve:
+                    except ValueError as _:
                         print(f"value error for {rat} on {day}")
     
     statescript_path = "/Users/catpillow/Documents/VTE_Analysis/data/statescripts"
@@ -265,7 +261,7 @@ def load_data_structure(save_path):
                     file_path = os.path.join(root, file)
                     try:
                         data_structure[rat][day]["stateScriptLog"] = process_statescript_log(file_path)
-                    except KeyError as ke:
+                    except KeyError as _:
                         print(f"key error for {rat} on {day}")
 
     return data_structure

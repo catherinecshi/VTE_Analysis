@@ -297,7 +297,7 @@ def get_video_trial_starts(timestamps, SS_df): # gets indices for x/y where tria
     
     return video_trial_info
 
-def get_trajectory(df, start, timestamps, hull):
+def get_trajectory(df, start, hull, traj_id):
     """
     gets all the x and y points within a trajectory given the start point and hull within which the trajectory is
     
@@ -305,8 +305,8 @@ def get_trajectory(df, start, timestamps, hull):
         x (int array): x coordinates from which to cut trajectory out of
         y (int array): y coordinates from which to cut trajectory out of
         start (int): index of dataframe corresponding to start of trajectory
-        timestamps (int array): the times for each frame of the dataframe
         hull (scipy.spatial ConvexHull): hull within which trajectory is
+        traj_id (str): trajectory id
     
     Returns:
         (int array): all x points for trajectory
@@ -321,12 +321,14 @@ def get_trajectory(df, start, timestamps, hull):
     
     count = 0
     index = 0
+    start_time = None
+    end_time = None
     while True: # x has been filtered so is not an appropriate length now
         # getting x and y
         if count == 0:
             corresponding_row = df[df[("times")] == start]
             if corresponding_row.empty:
-                print(f"trial started and cannot find x and y values - {start} for {CURRENT_RAT} on {CURRENT_DAY}")
+                print(f"trial started and cannot find x and y values - {start} for {traj_id}")
                 idx = bisect.bisect_right(df[("times")].values, start)
                 if idx >= len(df):
                     print(f"something wrong with idx {CURRENT_RAT} on {CURRENT_DAY}")
@@ -334,10 +336,12 @@ def get_trajectory(df, start, timestamps, hull):
                 corresponding_row = df.iloc[index]
                 x_val = corresponding_row["x"]
                 y_val = corresponding_row["y"]
+                time = corresponding_row["times"]
             else:
                 index = df[df[("times")] == start].index[0]
                 x_val = corresponding_row["x"].values[0]
                 y_val = corresponding_row["y"].values[0]
+                time = corresponding_row["times"].values[0]
         else:
             index += 1
             if index >= len(df):
@@ -345,6 +349,7 @@ def get_trajectory(df, start, timestamps, hull):
             corresponding_row = df.iloc[index]
             x_val = corresponding_row["x"]
             y_val = corresponding_row["y"]
+            time = corresponding_row["times"]
             
         # check to make sure x and y aren't arrays
         if isinstance(x_val, list):
@@ -357,17 +362,29 @@ def get_trajectory(df, start, timestamps, hull):
         inside = is_point_in_hull(point, hull) # check if still inside desired hull
         
         if inside:
-            past_inside = True
+            if past_inside is False: # first time inside the centre
+                past_inside = True
+                start_time = time
             trajectory_x.append(x_val)
             trajectory_y.append(y_val)
         else:
             if past_inside:
+                end_time = time
                 break # ok so now it has exited the centre hull
         
         count += 1
-        if count > 500:
+        if count > 5000:
+            print(f"{traj_id} past 5000 counts")
             break
-    return trajectory_x, trajectory_y
+        
+    # get the time spent in the centre
+    if end_time is not None and start_time is not None:
+        time_diff = end_time - start_time
+        logger.debug(f"time not available for {traj_id}")
+    else:
+        time_diff = None
+    
+    return trajectory_x, trajectory_y, time_diff
 
 
 

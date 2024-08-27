@@ -56,3 +56,4 @@ for rat in os.listdir(vte_path):
                     count += 1
             except Exception as error:
                 print(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")
+            
