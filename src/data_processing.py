@@ -193,19 +193,6 @@ def load_data_structure(save_path):
                     if fnmatch.fnmatch(f, "*dlc*.csv"):
                         file_path = os.path.join(root, f)
                         dlc_data = process_dlc_data(file_path)
-                    """
-                    # storing the statescript log
-                    if fnmatch.fnmatch(f, "*statescriptlog*"):
-                        file_path = os.path.join(root, f)
-                        ss_data = process_statescript_log(file_path)
-                    
-                    # storing the video timestamps array
-                    if fnmatch.fnmatch(f, "*videotimestamps*"):
-                        file_path = os.path.join(root, f)
-                        try:
-                            timestamps_data = np.load(file_path)
-                        except Exception as e: # bc trodes code keeps on giving me errors :(
-                            print(f"error {e} for {rat_folder} on {day_folder}")"""
             
             # add to dictionary
             data_structure[rat_folder][day_folder] = {
@@ -220,10 +207,11 @@ def load_data_structure(save_path):
     
     timestamps_path = "/Users/catpillow/Documents/VTE_Analysis/data/timestamps"
     for rat in os.listdir(timestamps_path):
-        if ".DS" in rat:
-            continue
-
         rat_path = os.path.join(timestamps_path, rat, "inferenceTraining")
+        if not os.path.isdir(rat_path) or "DS_Store" in rat:
+            logging.info(f"Skipping over non-directory folder: {rat_path}")
+            continue
+        
         for day in os.listdir(rat_path):
             if ".DS" in day:
                 continue
@@ -244,10 +232,11 @@ def load_data_structure(save_path):
     
     statescript_path = "/Users/catpillow/Documents/VTE_Analysis/data/statescripts"
     for rat in os.listdir(statescript_path):
-        if ".DS" in rat:
-            continue
-
         rat_path = os.path.join(statescript_path, rat, "inferenceTraining")
+        if not os.path.isdir(rat_path) or "DS_Store" in rat:
+            logging.info(f"Skipping over non-directory folder: {rat_path}")
+            continue
+        
         for day in os.listdir(rat_path):
             if ".DS" in day:
                 continue

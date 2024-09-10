@@ -9,6 +9,7 @@ from matplotlib.patches import Polygon, Ellipse
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
+from scipy.spatial import ConvexHull
 
 from src import helper
 
@@ -58,6 +59,17 @@ def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", yl
     else:
         plt.show()
 
+def create_bar_plot(data, x_ticks, title="", x_label="", y_label=""):
+    plt.figure(figsize=(10, 6))
+    plt.bar(x_ticks, data)
+    
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    
+    plt.tight_layout()
+    plt.show()
+
 def create_line_plot(x, y, sem, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
     plt.errorbar(x, y, yerr=sem, fmt="-o", capsize=5)
@@ -79,6 +91,25 @@ def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
     plt.ylabel(ylabel)
     
     plt.show()
+
+def create_frequency_histogram(list1, label1="", list2=None, label2="", xlim=None, title="", xlabel="", ylabel=""):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=list1, kde=True, color='red', label=label1)
+    
+    # Plot the second dataset if provided
+    if list2 is not None:
+        sns.histplot(data=list2, kde=True, color='blue', label=label2)
+    
+    plt.legend()
+    
+    if xlim is not None:
+        plt.xlim(xlim)
+    
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+    
 
 def create_box_and_whisker_plot(df, x, y, title="", xlabel="", ylabel=""):
     filtered_df = df.groupby(x).filter(lambda group: len(group[y]) >= 5)
@@ -161,7 +192,20 @@ def create_occupancy_map(x, y, framerate=0.03, bin_size=15, title="", xlabel="",
 
 
 ### PLOTTING ZONES ------------
-def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=""):
+def plot_convex_hull(x, y, hull_points, title="", xlabel="", ylabel=""):
+    hull = ConvexHull(hull_points)
+    
+    plt.plot(x, y, "o", markersize=5)
+    for simplex in hull.simplices:
+        plt.plot(hull_points[simplex, 0], hull_points[simplex, 1], "k-")
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    
+    plt.show()
+
+def plot_hull_from_density(x, y, hull_points, densest_cluster_points, hull, save=None, title=""):
     """
     plots a convex hull on a backdrop of x and y coordinates
 
@@ -194,6 +238,30 @@ def plot_hull(x, y, hull_points, densest_cluster_points, hull, save=None, title=
         plt.savefig(save_path)
     else:
         plt.show()
+        
+def plot_hull_from_indices(x, y, hull_indices):
+    """
+    Plot the convex hull for given x and y coordinates and precomputed hull indices.
+
+    Parameters:
+    x (array-like): An array of x coordinates
+    y (array-like): An array of y coordinates
+    hull_indices (array-like): Indices of the points that make up the convex hull
+    """
+    points = np.column_stack((x, y))
+    plt.plot(points[:, 0], points[:, 1], 'o')
+    
+    hull_points = points[hull_indices]
+    plt.plot(hull_points[:, 0], hull_points[:, 1], 'r--', lw=2)
+    plt.plot(hull_points[:, 0], hull_points[:, 1], 'ro')
+    
+    # Close the hull by connecting the last point to the first
+    plt.plot([hull_points[-1, 0], hull_points[0, 0]], [hull_points[-1, 1], hull_points[0, 1]], 'r--', lw=2)
+    
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Convex Hull')
+    plt.show()
         
 def plot_ellipse(ellipse_params, x, y, save=None, title=""):
     """

@@ -586,7 +586,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     total = {}
     
     # extract trial_types
-    for rat_ID, days_dict in all_days_until_criteria.items():
+    for rats, days_dict in all_days_until_criteria.items():
         trial_types = days_dict.keys()
         break
     
@@ -597,7 +597,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     _, ax = plt.subplots()
     x_ticks = np.arange(len(trial_types))
     
-    for i, (rat_ID, days_dict) in enumerate(all_days_until_criteria.items()):
+    for i, (rats, days_dict) in enumerate(all_days_until_criteria.items()):
         # exclude rats that didn't make it to DE for now
         if len(days_dict) < 4:
             continue
@@ -605,9 +605,12 @@ def plot_days_until_criteria(all_days_until_criteria):
         color = colormap(i / (num_rats - 1)) if num_rats > 1 else colormap(0.0)
         
         for j, trial_type in enumerate(trial_types):
-            y = days_dict[trial_type]
+            try:
+                y = days_dict[trial_type]
+            except KeyError:
+                continue
             
-            ax.scatter(j, y, color=color, label=rat_ID if j == 0 else"")
+            ax.scatter(j, y, color=color, label=rats if j == 0 else"")
             
             # add to an array for averages and std
             if trial_type not in total:
@@ -702,9 +705,9 @@ def rat_performance_over_sessions(data_structure, rat_ID):
     #plot_rat_performance(rat_performance)
     return rat_performance # this returns df for one rat
 
-def create_all_rats_performance(data_structure):
+def create_all_rats_performance(data_structure=None):
     """
-    loops through all the rats to create pickle files from ss data
+    loops through all the rats to create csv files from ss data
 
     Args:
         data_structure (dict): all the data
@@ -714,17 +717,20 @@ def create_all_rats_performance(data_structure):
         pd.DataFrames: {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
                         where trial_type are the corresponding numbers
     """
-    dataframes = []
-    
-    for rat_ID in data_structure:
-        helper.update_rat(rat_ID)
-        rat_performance = rat_performance_over_sessions(data_structure, rat_ID)
-        dataframes.append(rat_performance)
-    all_rats_performances = pd.concat(dataframes, ignore_index=True)
-    
-    # save dataframe
     save_path = os.path.join(BASE_PATH, "processed_data", "rat_performance.csv")
-    all_rats_performances.to_csv(save_path)
+    if data_structure is not None:
+        dataframes = []
+        
+        for rat_ID in data_structure:
+            helper.update_rat(rat_ID)
+            rat_performance = rat_performance_over_sessions(data_structure, rat_ID)
+            dataframes.append(rat_performance)
+        all_rats_performances = pd.concat(dataframes, ignore_index=True)
+        
+        # save dataframe
+        all_rats_performances.to_csv(save_path)
+    else:
+        all_rats_performances = pd.read_csv(save_path)
     
     return all_rats_performances
 
@@ -806,7 +812,8 @@ def days_until_criteria(all_rats_performances):
     """counts the days until a rat hits criteria for a specific trial type
 
     Args:
-        all_rats_performances (dict): {rat: performance array}
+        all_rats_performances (pd.DataFrames): {'rat', 'day', 'trial_type', 'total_trials', 'correct_trials'}
+                                               where trial_type are the corresponding numbers
 
     Returns:
         dict: {rat: {trial_type: day}} where day is the day in which the rat reached criteria
@@ -814,84 +821,68 @@ def days_until_criteria(all_rats_performances):
     
     all_days_until_criteria = {}
     
-    for rat_ID, rat_performance in all_rats_performances.items():
-        sorted_days = sorted(rat_performance.keys(), key = lambda x: int(x[3:])) # sort by after 'day'
-        
+    for rat, rat_data in all_rats_performances.groupby("rat"):
         # each trial type
-        AB_learned = 0
-        BC_learned = 0
-        CD_learned = 0
-        DE_learned = 0
-        CD_start = None
-        DE_start = None
-        day_learned = {}
+        trial_learned: dict[int, int] = {}
+        trial_starts = np.zeros(5)
+        day_learned: dict[int, int] = {}
         
-        for day in sorted_days:
-            performance_for_day = rat_performance[day]
+        sorted_days = rat_data.sort_values(by=["day"])
+        for _, row in sorted_days.iterrows():
+            day = row["day"]
+            trial_type = row["trial_type"]
+            total_trials = row["total_trials"]
+            correct_trials = row["correct_trials"]
+            performance = correct_trials / total_trials
             
-            match = re.search(r"\d+", day) # gets first int in the string
-            if match:
-                day_int = int(match.group())
+            # get when trial types are first introduced
+            if trial_type == 1 and trial_starts[0] == 0: # AB
+                trial_starts[0] = day
+                if day != 1:
+                    print(f"{rat}'s AB started on day {day}")
+            elif trial_type == 2 and trial_starts[1] == 0: # BC
+                trial_starts[1] = day
+                if day != 1:
+                    print(f"{rat}'s BC started on day {day}")
+            elif trial_type == 3 and trial_starts[2] == 0: # CD
+                trial_starts[2] = day
+            elif trial_type == 4 and trial_starts[3] == 0: # DE
+                trial_starts[3] = day
+            elif trial_type == 5 and trial_starts[4] == 0: # EF
+                trial_starts[4] = day
             
-            for trial_type, total_trials, correct_trials in performance_for_day:
-                # find day where trial_types get introduced
-                if "CD" in trial_type and not CD_start: # if CD_start is still None & in trialtype
-                    CD_start = day_int
-                elif "DE" in trial_type and not DE_start:
-                    DE_start = day_int
-                
-                performance = correct_trials / total_trials
-                
-                if performance >= 0.8: # reached criteria
-                    if AB_learned < 2 and "AB" in trial_type and total_trials > 6.0: # haven't reached criteria yet but got >0.8
-                        # set total trials above 5 because oto few trials probably shouldn't be counted - happend w bp19
-                        AB_learned += 1
-                    
-                    if BC_learned < 2 and "BC" in trial_type and total_trials > 6.0:
-                        BC_learned += 1
-
-                    if CD_learned < 2 and "CD" in trial_type:
-                        CD_learned += 1
+            # get when performance crosses threshold
+            if performance >= 0.75:
+                if trial_type in trial_learned:
+                    if trial_learned[trial_type] == 0:
+                        trial_learned[trial_type] += 1
+                    elif trial_learned[trial_type] == 1: # second >0.75 in a row
+                        if trial_type == 1:
+                            day -= (trial_starts[0] - 1) # - 1 bc starts at 0
+                        elif trial_type == 2:
+                            day -= (trial_starts[1] - 1)
+                        elif trial_type == 3:
+                            day -= (trial_starts[2] - 1)
+                        elif trial_type == 4:
+                            day -= (trial_starts[3] - 1)
+                        elif trial_type == 5:
+                            day -= (trial_starts[4] - 1)
                         
-                    if DE_learned < 2 and "DE" in trial_type:
-                        DE_learned += 1
-                    
-                    if AB_learned == 2: # reached criteria
-                        AB_learned += 1 # so this if statement doesn't get repeatedly triggered
-                        day_learned[trial_type] = day_int
-                    
-                    if BC_learned == 2:
-                        BC_learned += 1
-                        day_learned[trial_type] = day_int
+                        if day < 2: # something has gone wrong
+                            print(f"{rat} on day{day} for {trial_type} has day < 2")
                         
-                    if CD_learned == 2:
-                        CD_learned += 1
-                        day_diff = day_int - CD_start # minus the day the rat first started learning a pair
-                        day_learned[trial_type] = day_diff
-                    
-                    if DE_learned == 2:
-                        DE_learned += 1
-                        day_diff = day_int - DE_start
-                        day_learned[trial_type] = day_diff
-                else: # failed
-                    if AB_learned < 2 and AB_learned > 0 and "AB" in trial_type: # haven't reached criteria yet but got <0.8
-                        AB_learned -= 1
-                    
-                    if BC_learned < 2 and BC_learned > 0 and "BC" in trial_type:
-                        BC_learned -= 1
-
-                    if CD_learned < 2 and CD_learned > 0 and "CD" in trial_type:
-                        CD_learned -= 1
-                        
-                    if DE_learned < 2 and DE_learned > 0 and "DE" in trial_type:
-                        DE_learned -= 1
+                        day_learned[trial_type] = day
+                        trial_learned[trial_type] += 1
+                    elif trial_learned[trial_type] < 0 or trial_learned[trial_type] > 3:
+                        print(f"trial learned is not 0 or 1 {trial_learned[trial_type]}")
+                else:
+                    trial_learned[trial_type] = 1
+            else: # reset bc criteria needs in a row
+                trial_learned[trial_type] = 0
         
-        if AB_learned and BC_learned and CD_learned and DE_learned:
-            all_days_until_criteria[rat_ID] = day_learned
-        else:
-            print(f'not all pairs learned - {rat_ID} {AB_learned} {BC_learned} {CD_learned} {DE_learned}')
-
-    #plot_days_until_criteria(all_days_until_criteria)
+        all_days_until_criteria[rat] = day_learned
+    
+    plot_days_until_criteria(all_days_until_criteria)
     
     return all_days_until_criteria # returns {ratID: {trial_type:day}} where day is day it was learned
 

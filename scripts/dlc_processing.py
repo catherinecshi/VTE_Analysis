@@ -276,3 +276,29 @@ for rat, day_group in DATA_STRUCTURE.items():
     gc.collect()
     
     logger.info(f"{rat} dlc processed")
+
+dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "dlc_data")
+cleaned_dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "cleaned_dlc")
+
+for rat in os.listdir(dlc_path):
+    if ".DS_Store" in rat:
+        continue
+    
+    cleaned_rat_path = os.path.join(cleaned_dlc_path, rat)
+    if not os.path.exists(cleaned_rat_path):
+        os.mkdir(cleaned_rat_path)
+    
+    rat_path = os.path.join(dlc_path, rat)
+    for root, _, files in os.walk(rat_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                df = pd.read_csv(file_path)
+            except UnicodeDecodeError:
+                print(f"unicode error for {file}")
+                continue
+            
+            df_cleaned = df.dropna()
+            df_cleaned = df_cleaned.reset_index(drop=True)
+            new_file_path = os.path.join(cleaned_dlc_path, rat, file)
+            df_cleaned.to_csv(new_file_path)

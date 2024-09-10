@@ -297,95 +297,6 @@ def get_video_trial_starts(timestamps, SS_df): # gets indices for x/y where tria
     
     return video_trial_info
 
-def get_trajectory(df, start, hull, traj_id):
-    """
-    gets all the x and y points within a trajectory given the start point and hull within which the trajectory is
-    
-    Args:
-        x (int array): x coordinates from which to cut trajectory out of
-        y (int array): y coordinates from which to cut trajectory out of
-        start (int): index of dataframe corresponding to start of trajectory
-        hull (scipy.spatial ConvexHull): hull within which trajectory is
-        traj_id (str): trajectory id
-    
-    Returns:
-        (int array): all x points for trajectory
-        (int array): all y points for trajectory
-    """
-    
-    # cut out the trajectory for each trial
-    # look through points starting at trial start time to see when it goes into different hulls
-    past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
-    trajectory_x = []
-    trajectory_y = []
-    
-    count = 0
-    index = 0
-    start_time = None
-    end_time = None
-    while True: # x has been filtered so is not an appropriate length now
-        # getting x and y
-        if count == 0:
-            corresponding_row = df[df[("times")] == start]
-            if corresponding_row.empty:
-                print(f"trial started and cannot find x and y values - {start} for {traj_id}")
-                idx = bisect.bisect_right(df[("times")].values, start)
-                if idx >= len(df):
-                    print(f"something wrong with idx {CURRENT_RAT} on {CURRENT_DAY}")
-                    break
-                corresponding_row = df.iloc[index]
-                x_val = corresponding_row["x"]
-                y_val = corresponding_row["y"]
-                time = corresponding_row["times"]
-            else:
-                index = df[df[("times")] == start].index[0]
-                x_val = corresponding_row["x"].values[0]
-                y_val = corresponding_row["y"].values[0]
-                time = corresponding_row["times"].values[0]
-        else:
-            index += 1
-            if index >= len(df):
-                break
-            corresponding_row = df.iloc[index]
-            x_val = corresponding_row["x"]
-            y_val = corresponding_row["y"]
-            time = corresponding_row["times"]
-            
-        # check to make sure x and y aren't arrays
-        if isinstance(x_val, list):
-            x_val = x_val[0]
-        
-        if isinstance(y_val, list):
-            y_val = y_val[0]
-        
-        point = (x_val, y_val)
-        inside = is_point_in_hull(point, hull) # check if still inside desired hull
-        
-        if inside:
-            if past_inside is False: # first time inside the centre
-                past_inside = True
-                start_time = time
-            trajectory_x.append(x_val)
-            trajectory_y.append(y_val)
-        else:
-            if past_inside:
-                end_time = time
-                break # ok so now it has exited the centre hull
-        
-        count += 1
-        if count > 5000:
-            print(f"{traj_id} past 5000 counts")
-            break
-        
-    # get the time spent in the centre
-    if end_time is not None and start_time is not None:
-        time_diff = end_time - start_time
-        logger.debug(f"time not available for {traj_id}")
-    else:
-        time_diff = None
-    
-    return trajectory_x, trajectory_y, time_diff
-
 
 
 ### CONVERSIONS ----------
@@ -440,7 +351,8 @@ def ss_trial_starts_to_video(timestamps, SS_times):
         else: # if there isn't a perfect match
             # index where time is inserted into timestamps
             idx = bisect.bisect_left(timestamps, time)
-            trial_starts.append(timestamps[idx])
+            if idx < len(timestamps):
+                trial_starts.append(timestamps[idx])
     
     return trial_starts # with this, each trial_start is the index of the time when trial starts in relation to timestamps
 
@@ -609,12 +521,15 @@ def initial_processing(data_structure, rat, day):
     
     trial_starts = get_video_trial_starts(timestamps, SS_log)
     
-    dlc_path = os.path.join(BASE_PATH, "processed_data", "dlc_data", rat)
+    dlc_path = os.path.join(BASE_PATH, "processed_data", "cleaned_dlc", rat)
     file_path = None
     for _, _, files in os.walk(dlc_path):
-        for f in files:
-            if day in f and "coordinates" in f:
-                file_path = os.path.join(dlc_path, f)
+        for file in files:
+            parts = file.split("_")
+            day_from_file = parts[0]
+            
+            if day == day_from_file and "coordinates" in parts[1]:
+                file_path = os.path.join(dlc_path, file)
                 break
     
     df = pd.read_csv(file_path)

@@ -4,13 +4,14 @@ main function to call is quantify_VTE()
 """
 
 import os
-import pickle
+import bisect
 import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import zscore
 from datetime import datetime
+from collections import OrderedDict
 
 from src import plotting
 from src import creating_zones
@@ -22,14 +23,29 @@ logger = logging.getLogger() # creating logging object
 logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 
 # makes a new log everytime the code runs by checking the time
-log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/calculating_VTEs_log_%Y%m%d_%H%M%S.txt")
+log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/trajectory_analysis_log_%Y%m%d_%H%M%S.txt")
 handler = logging.FileHandler(log_file)
 handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 logger.addHandler(handler)
 
-# pylint: disable=broad-exception-caught, invalid-name, logging-fstring-interpolation
+# pylint: disable=broad-exception-caught, invalid-name, logging-fstring-interpolation, report-call-issue
+
+TRAJ_ID: str = ""
+REPEATS: int = 0
 
 ### AUXILIARY FUNCTIONS ------
+def update_traj_id(traj_id):
+    global TRAJ_ID
+    TRAJ_ID = traj_id
+    
+def add_repeats():
+    global REPEATS
+    REPEATS += 1
+
+def reset_repeats():
+    global REPEATS
+    REPEATS = 0
+
 def type_to_choice(trial_type, correct):
     """
     gets the arm the rat went down when given trial_type and whether the rat got the choice correct
@@ -107,6 +123,110 @@ def type_to_choice(trial_type, correct):
 
     return choice
 
+def get_trajectory(df, start, end, hull):
+    """
+    gets all the x and y points within a trajectory given the start point and hull within which the trajectory is
+    
+    Args:
+        x (int array): x coordinates from which to cut trajectory out of
+        y (int array): y coordinates from which to cut trajectory out of
+        end (int): index of dataframe corresponding to start of the next trajectory
+        start (int): index of dataframe corresponding to start of trajectory
+        hull (scipy.spatial ConvexHull): hull within which trajectory is
+        traj_id (str): trajectory id
+    
+    Returns:
+        (int array): all x points for trajectory
+        (int array): all y points for trajectory
+    """
+    
+    # cut out the trajectory for each trial
+    # look through points starting at trial start time to see when it goes into different hulls
+    past_inside = False # this checks if any point has ever been inside hull for this iteration of loop
+    trajectory_x = []
+    trajectory_y = []
+    
+    count = 0
+    index = 0
+    start_time = None
+    end_time = None
+    while True: # x has been filtered so is not an appropriate length now
+        # getting x and y
+        if count == 0:
+            corresponding_row = df[df[("times")] == start]
+            if corresponding_row.empty:
+                logging.info(f"trial started and cannot find x and y values - {start} for {TRAJ_ID}")
+                index = bisect.bisect_right(df[("times")].values, start)
+                if index >= len(df):
+                    logging.warning(f"idx is larger than length of dataframe for {TRAJ_ID}")
+                    break
+                
+                corresponding_row = df.iloc[index]
+                x_val = corresponding_row["x"]
+                y_val = corresponding_row["y"]
+                time = corresponding_row["times"]
+            else:
+                index = df[df[("times")] == start].index[0]
+                x_val = corresponding_row["x"].values[0]
+                y_val = corresponding_row["y"].values[0]
+                time = corresponding_row["times"].values[0]
+        else:
+            index += 1
+            if index >= len(df):
+                break
+            corresponding_row = df.iloc[index]
+            x_val = corresponding_row["x"]
+            y_val = corresponding_row["y"]
+            time = corresponding_row["times"]
+            if time == end or time > end:
+                logging.error(f"no trajectory found for {TRAJ_ID}")
+                add_repeats()
+                return None, None, None
+            else: # sometimes not a perfect fit, so see if it fits between this time and next
+                if index + 1 < len(df):
+                    next_row = df.iloc[index + 1]
+                else:
+                    continue
+                next_time = next_row["times"]
+                if time < end < next_time:
+                    logging.error(f"no trajectory found for {TRAJ_ID}")
+                    add_repeats()
+                    return None, None, None
+            
+        # check to make sure x and y aren't arrays
+        if isinstance(x_val, list):
+            x_val = x_val[0]
+        
+        if isinstance(y_val, list):
+            y_val = y_val[0]
+        
+        point = (x_val, y_val)
+        inside = helper.is_point_in_hull(point, hull) # check if still inside desired hull
+        
+        if inside:
+            if past_inside is False: # first time inside the centre
+                past_inside = True
+                start_time = time
+            trajectory_x.append(x_val)
+            trajectory_y.append(y_val)
+        else:
+            if past_inside:
+                end_time = time
+                break # ok so now it has exited the centre hull
+        
+        count += 1
+        if count > 5000:
+            logging.debug(f"{TRAJ_ID} past 5000 counts")
+            break
+        
+    # get the time spent in the centre
+    if end_time is not None and start_time is not None:
+        time_diff = end_time - start_time
+    else:
+        time_diff = None
+        logger.debug(f"time not available for {TRAJ_ID}")
+    
+    return trajectory_x, trajectory_y, time_diff
 
 
 ### CALCULATING HEAD VELOCITY VALUES ----------------
@@ -171,7 +291,7 @@ def derivative(values, sr, d, m): # assumes each value is separated by regular t
                         window_len -= 1
                         slope = slope_
                         logging.info("model too far from actual results for "
-                                     f"{helper.CURRENT_RAT} on {helper.CURRENT_DAY}")
+                                     f"{TRAJ_ID}")
                         break
             
             if not can_increase_window:
@@ -301,9 +421,24 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     helper.update_day(day)
     DLC_df, SS_log, timestamps, trial_starts = helper.initial_processing(data_structure, rat_ID, day)
     
-    # check if timestamps is ascending bc annoying trodes code & files
-    if not np.all(timestamps[:-1] <= timestamps[1:]):
-        raise helper.CorruptionError(rat_ID, day, timestamps)
+    # check if timestamps is ascending bc annoying trodes code & filesa
+    not_ascending_count = 0
+    stagnant_count = 0
+    for i, timestamp in enumerate(timestamps):
+        if i > 0 and i + 1 < len(timestamps):
+            if timestamp > timestamps[i + 1]:
+                not_ascending_count += 1
+                logging.error(f"timestamps not ascending for {rat_ID} on {day} for {timestamp}")
+            elif i > 0 and timestamp == timestamps[i + 1]:
+                stagnant_count += 1
+                logging.warning(f"stagnant at {timestamp} {timestamps[i + 1]}")
+            else:
+                stagnant_count = 0
+        else:
+            continue
+        
+        if not_ascending_count > 2 or stagnant_count > 30:
+            raise helper.CorruptionError(rat_ID, day, timestamps)
     
     # define zones
     centre_hull = creating_zones.get_centre_hull(DLC_df)
@@ -317,14 +452,38 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     _, _, performance = performance_analysis.get_session_performance(SS_log) # a list of whether the trials resulted in a correct or incorrect choice
     same_len = helper.check_equal_length(performance, list(trial_starts.keys())) # check if there are the same number of trials for perf and trial_starts
     
-    for i, (trial_start, trial_type) in enumerate(trial_starts.items()): # where trial type is a string of a number corresponding to trial type
+    reset_repeats()
+    last_trajectory_x = None
+    
+    trial_start_keys = list(trial_starts.keys())
+    for i, trial_start in enumerate(trial_start_keys): # where trial type is a string of a number corresponding to trial type
         count += 1
         traj_id = rat_ID + "_" + day + "_" + str(count)
+        update_traj_id(traj_id)
+        
+        trial_type = trial_starts[trial_start]
         
         # cut out the trajectory for each trial
-        trajectory_x, trajectory_y, traj_len = helper.get_trajectory(DLC_df, trial_start, centre_hull, traj_id)
+        if i + 1 < len(trial_start_keys):
+            trial_end = trial_start_keys[i + 1]
+        else:
+            trial_end = timestamps[-1] # if not available, get last time possible
+        
+        trajectory_x, trajectory_y, traj_len = get_trajectory(DLC_df, trial_start, trial_end, centre_hull)
         if not trajectory_x: # empty list, happens for the last trajectory
             continue
+        
+        # check if trajectory is too short
+        if len(trajectory_x) < 5:
+            continue
+        
+        # check if there's a repeat trajectory
+        if last_trajectory_x is not None:
+            if last_trajectory_x == trajectory_x:
+                store_data[-1]["Length"] = traj_len
+                continue
+        
+        last_trajectory_x = trajectory_x
         
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
@@ -332,7 +491,10 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         
         # get the choice arm from the trial type and performance
         if same_len or len(performance) < i:
-            choice = type_to_choice(trial_type, performance[i])
+            try: # weird error with one specific day
+                choice = type_to_choice(trial_type, performance[i])
+            except IndexError:
+                continue
         elif len(performance) >= i:
             logging.debug(f"performance not capturing every trial for {rat_ID} on {day}")
             continue
@@ -357,11 +519,16 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         # plot and save if desired
         if save is not None:
             trajectory = (trajectory_x, trajectory_y)
-            plotting.plot_trajectory(DLC_df["x"], DLC_df["y"], trajectory, title=f"{rat_ID}_{day}_{traj_id}", save=save, traj_id=traj_id)
+            plotting.plot_trajectory(DLC_df["x"], DLC_df["y"], trajectory, title=traj_id, save=save, traj_id=traj_id)
     
-    df = pd.DataFrame(store_data)
-    file_path = os.path.join(save, "trajectories.csv")
-    df.to_csv(file_path)
+    # check if there are too many repeats
+    if REPEATS > 10:
+        print(f"more than 10 repeats for {rat_ID} on {day}")
+    else:
+        df = pd.DataFrame(store_data)
+        file_path = os.path.join(save, "trajectories.csv")
+        df.to_csv(file_path)
+    
     plt.close()
     
     return IdPhi_values, trajectories

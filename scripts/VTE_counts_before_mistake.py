@@ -7,7 +7,7 @@ from src import plotting
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
-trial_performance = {}
+until_next_mistake = {}
 for rat in os.listdir(base_path):
     if ".DS_Store" in rat:
         continue
@@ -25,15 +25,26 @@ for rat in os.listdir(base_path):
 
                 file_path = os.path.join(root, file)
                 trajectory_csv = pd.read_csv(file_path)
+                trajectory_reversed = trajectory_csv.iloc[::-1] # reverse for before mistake
                 
-                for index, row in trajectory_csv.iterrows():
+                last_mistake = None
+                trials_until_mistake = None
+                for index, row in trajectory_reversed.iterrows():
                     traj_id = row["ID"]
+                    parts = traj_id.split("_")
+                    traj_number = parts[2]
                     is_correct = row["Correct"]
                     
-                    if is_correct:
-                        trial_performance[traj_id] = True
-                    else:
-                        trial_performance[traj_id] = False
+                    if last_mistake is not None:
+                        trials_until_mistake = last_mistake - int(traj_number)
+                    
+                    if not is_correct:
+                        last_mistake = int(traj_number)
+                        until_next_mistake[traj_id] = 0
+
+                    if trials_until_mistake is not None:
+                        until_next_mistake[traj_id] = trials_until_mistake
+
 
 trues = []
 falses = []
@@ -51,40 +62,24 @@ for rat in os.listdir(base_path):
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
             VTE_threshold = mean_zIdPhi + std_zIdPhi
             
-            # sort by trajectory ID
-            zIdPhi_csv[["rat", "day", "traj_ID"]] = zIdPhi_csv["ID"].str.extract(r"(\w+)_Day(\d+)_([\d]+)")
-            zIdPhi_csv["traj_ID"] = zIdPhi_csv["traj_ID"].astype(int)
-            
-            zIdPhi_sorted = zIdPhi_csv.sort_values(by=["day", "traj_ID"])
-            
             # go through each day independently
-            grouped_by_day = zIdPhi_sorted.groupby("Day")
+            grouped_by_day = zIdPhi_csv.groupby("Day")
             for day, group in grouped_by_day:
                 last_mistake = None
                 since_last_mistake = None
                 for index, row in group.iterrows():
                     traj_id = row["ID"]
-                    parts = traj_id.split("_")
-                    traj_number = parts[2]
                     is_VTE = row["zIdPhi"] > VTE_threshold
-
-                    if traj_id in trial_performance: # get performance
-                        is_correct = trial_performance[traj_id]
+                    
+                    try:
+                        trials_until_mistake = until_next_mistake[traj_id]
+                    except KeyError:
+                        print(f"{traj_id} not found in trials_until_mistake")
+                    
+                    if is_VTE:
+                        trues.append(trials_until_mistake)
                     else:
-                        print(f"traj id {traj_id} not found in zIdPhi file")
-                        continue
-                    
-                    # check for number of trials since last mistake
-                    if last_mistake is not None:
-                        since_last_mistake = int(traj_number) - last_mistake
-                    
-                    if not is_correct: # update
-                        last_mistake = int(traj_number)
-                    
-                    if is_VTE and since_last_mistake is not None:
-                        trues.append(since_last_mistake)
-                    elif not is_VTE and since_last_mistake is not None:
-                        falses.append(since_last_mistake)
+                        falses.append(trials_until_mistake)
             
 trues_count_no_trials = {value: trues.count(value) for value in set(trues)} # how many trues for specific # trials
 falses_count_no_trials = {value: falses.count(value) for value in set(falses)}
@@ -105,5 +100,5 @@ for no_trials in trues_count_no_trials.keys():
 
 x_ticks = VTE_vs_last_mistake.keys()
 data = VTE_vs_last_mistake.values()
-plotting.create_bar_plot(data, x_ticks, "VTEs after Mistakes",
-                         "Number of Trials Prior a Mistake Occurred", "Proportion of VTE Trials")
+plotting.create_bar_plot(data, x_ticks, "VTEs before Mistakes",
+                         "Number of Trials Before a Mistake will Occur", "Proportion of VTE Trials")
