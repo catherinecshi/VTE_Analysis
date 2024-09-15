@@ -57,7 +57,7 @@ for rat in os.listdir(base_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             for index, row in zIdPhi_csv.iterrows():
                 traj_id = row["ID"]
@@ -77,12 +77,12 @@ for rat in os.listdir(base_path):
 
 # make figure for counts of durations
 plotting.create_frequency_histogram(traj_lens, xlim=(0,6), title="Time Spent in Centre Zone",
-                                    xlabel="Time (s)", ylabel="Counts")
+                                    binwidth=0.25, xlabel="Time (s)", ylabel="Counts")
 plotting.create_frequency_histogram(correct_traj_lens, label1="Correct Trials", xlim=(0,6),
                                     list2=incorrect_traj_lens, label2="Incorrect Trials",
                                     title="Time Spent in Centre Zone during Correct vs Incorrect Trials",
-                                    xlabel="Time (s)", ylabel="Counts")
+                                    binwidth=0.25, xlabel="Time (s)", ylabel="Counts")
 plotting.create_frequency_histogram(VTE_lengths, label1="VTE Trials", xlim=(0,6),
                                     list2=non_VTE_lengths, label2="Non-VTE Trials",
                                     title="Time Spent in Centre Zone during VTE vs Non-VTE Trials",
-                                    xlabel="Time (s)", ylabel="Counts")
+                                    binwidth=0.25, xlabel="Time (s)", ylabel="Counts")

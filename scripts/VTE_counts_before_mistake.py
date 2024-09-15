@@ -7,7 +7,7 @@ from src import plotting
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
-until_next_mistake = {}
+until_next_mistake = {} # {traj_id: # trials until next mistake}
 for rat in os.listdir(base_path):
     if ".DS_Store" in rat:
         continue
@@ -35,8 +35,9 @@ for rat in os.listdir(base_path):
                     traj_number = parts[2]
                     is_correct = row["Correct"]
                     
-                    if last_mistake is not None:
-                        trials_until_mistake = last_mistake - int(traj_number)
+                    if last_mistake is not None: 
+                        # get the number of trials until the next mistake
+                        trials_until_mistake = last_mistake - int(traj_number) # temp variable
                     
                     if not is_correct:
                         last_mistake = int(traj_number)
@@ -46,7 +47,7 @@ for rat in os.listdir(base_path):
                         until_next_mistake[traj_id] = trials_until_mistake
 
 
-trues = []
+trues = [] # trials until mistake for VTE trials
 falses = []
 for rat in os.listdir(base_path):
     rat_path = os.path.join(base_path, rat)
@@ -60,7 +61,7 @@ for rat in os.listdir(base_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             # go through each day independently
             grouped_by_day = zIdPhi_csv.groupby("Day")
@@ -84,11 +85,17 @@ for rat in os.listdir(base_path):
 trues_count_no_trials = {value: trues.count(value) for value in set(trues)} # how many trues for specific # trials
 falses_count_no_trials = {value: falses.count(value) for value in set(falses)}
 
-VTE_vs_last_mistake = {}
+VTE_vs_last_mistake = {} # {number of trials until mistake: VTE_proportion}
 for no_trials in trues_count_no_trials.keys():
     if no_trials in falses_count_no_trials:
         trues_count = trues_count_no_trials[no_trials]
         falses_count = falses_count_no_trials[no_trials]
+        
+        # make sure there is enough trials for statistical analysis
+        if trues_count + falses_count < 10:
+            continue
+        elif no_trials > 40:
+            continue
         
         VTE_proportion = trues_count / (trues_count + falses_count)
         VTE_vs_last_mistake[no_trials] = VTE_proportion

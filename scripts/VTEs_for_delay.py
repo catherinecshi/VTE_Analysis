@@ -41,8 +41,8 @@ for rat in os.listdir(vte_path):
             
             grouped_by_day = zIdPhi_df.groupby(by="Day")
             for day, day_group in grouped_by_day:
-                vte_trials = day_group[day_group["zIdPhi"] >= 1]
-                non_vte_trials = day_group[day_group["zIdPhi"] < 1]
+                vte_trials = day_group[day_group["zIdPhi"] >= 1.5]
+                non_vte_trials = day_group[day_group["zIdPhi"] < 1.5]
                 no_vtes = len(vte_trials)
                 no_non_vtes = len(non_vte_trials)
                 perc_vtes = (no_vtes / (no_vtes + no_non_vtes)) * 100

@@ -79,7 +79,7 @@ def create_line_plot(x, y, sem, title="", xlabel="", ylabel=""):
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
     plt.legend()
-    plt.grid(True)
+    plt.grid(False)
     plt.show()
 
 def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
@@ -92,13 +92,13 @@ def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
     
     plt.show()
 
-def create_frequency_histogram(list1, label1="", list2=None, label2="", xlim=None, title="", xlabel="", ylabel=""):
+def create_frequency_histogram(list1, label1="", list2=None, label2="", binwidth=None, xlim=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    sns.histplot(data=list1, kde=True, color='red', label=label1)
+    sns.histplot(data=list1, kde=True, color='red', label=label1, binwidth=binwidth)
     
     # Plot the second dataset if provided
     if list2 is not None:
-        sns.histplot(data=list2, kde=True, color='blue', label=label2)
+        sns.histplot(data=list2, kde=True, color='blue', label=label2, binwidth=binwidth)
     
     plt.legend()
     

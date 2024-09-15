@@ -49,7 +49,7 @@ for rat in os.listdir(base_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             # sort by trajectory ID
             zIdPhi_csv[["rat", "day", "traj_ID"]] = zIdPhi_csv["ID"].str.extract(r"(\w+)_Day(\d+)_([\d]+)")
@@ -94,6 +94,12 @@ for no_trials in trues_count_no_trials.keys():
     if no_trials in falses_count_no_trials:
         trues_count = trues_count_no_trials[no_trials]
         falses_count = falses_count_no_trials[no_trials]
+        
+        # make sure there is enough trials for statistical analysis
+        if trues_count + falses_count < 10:
+            continue
+        elif no_trials > 40:
+            continue
         
         VTE_proportion = trues_count / (trues_count + falses_count)
         VTE_vs_last_mistake[no_trials] = VTE_proportion

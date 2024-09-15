@@ -52,7 +52,7 @@ for rat in os.listdir(base_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             # sort by trajectory ID
             zIdPhi_csv[["rat", "day", "traj_ID"]] = zIdPhi_csv["ID"].str.extract(r"(\w+)_Day(\d+)_([\d]+)")
@@ -122,7 +122,7 @@ for rat in os.listdir(base_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             # sort by trajectory ID
             zIdPhi_csv[["rat", "day", "traj_ID"]] = zIdPhi_csv["ID"].str.extract(r"(\w+)_Day(\d+)_([\d]+)")

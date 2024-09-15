@@ -1,0 +1,76 @@
+import os
+import re
+import numpy as np
+import pandas as pd
+
+from src import helper
+from src import plotting
+from src import performance_analysis
+
+base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
+
+VTE_trajectories = []
+VTE_infos = []
+for rat in os.listdir(base_path):
+    if ".DS_Store" in rat:
+        continue
+    
+    rat_path = os.path.join(base_path, rat)
+    for root, _, files in os.walk(rat_path):
+        for file in files:
+            if "zIdPhi" not in file:
+                continue
+
+            file_path = os.path.join(root, file)
+            zIdPhi_csv = pd.read_csv(file_path)
+            
+            mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
+            std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
+            
+            # sort by trajectory ID
+            zIdPhi_csv[["rat", "day", "traj_ID"]] = zIdPhi_csv["ID"].str.extract(r"(\w+)_Day(\d+)_([\d]+)")
+            zIdPhi_csv["traj_ID"] = zIdPhi_csv["traj_ID"].astype(int)
+            
+            zIdPhi_sorted = zIdPhi_csv.sort_values(by=["day", "traj_ID"])
+            
+            # go through each day independently
+            grouped_by_day = zIdPhi_sorted.groupby("Day")
+            for day, group in grouped_by_day:
+                VTE_count = 0
+                for index, row in group.iterrows():
+                    traj_id = row["ID"]
+                    traj_number = traj_id.split("_")[2]
+                    is_VTE = row["zIdPhi"] > VTE_threshold
+                    
+                    if is_VTE:
+                        VTE_trajectories.append(traj_id)
+                        VTE_count += 1
+                
+                if VTE_count > 40:
+                    print(rat, day)
+                
+                match = re.search(r"\d+", day)
+                if match:
+                    day_number = int(match.group())
+                else:
+                    print(f"no day number found for {rat} on {day}")
+                    continue
+                VTE_info = {"rat": rat, "day": day_number, "VTEs": VTE_count}
+                VTE_infos.append(VTE_info)
+
+VTE_df = pd.DataFrame(VTE_infos)
+     
+all_rats_performances = performance_analysis.create_all_rats_performance()
+performance_changes = performance_analysis.create_all_perf_changes(all_rats_performances)
+performance_changes["perf_change"] = performance_changes["perf_change"].abs()
+
+VTEs_vs_learning = pd.merge(VTE_df, performance_changes)
+
+plotting.create_box_and_whisker_plot(VTEs_vs_learning, "VTEs", "perf_change",
+                                     "Absolute Change in Performance against VTEs",
+                                     "VTE Count", "Absolute Change in Performance")
+
+plotting.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
+                             "Absolute Change in Performance against VTEs", "VTE Count",
+                             "ABsolute CHange in Performance")

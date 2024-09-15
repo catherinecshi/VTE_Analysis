@@ -632,7 +632,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     ax.set_xticklabels(trial_types)
     ax.set_xlabel("Trial Type")
     ax.set_ylabel("Number of Days Until Criteria")
-    ax.set_title("Days until Criteria by Trial Type (80%)")
+    ax.set_title("Days until Criteria by Trial Type (75%)")
     ax.legend(title="Rat ID")
     plt.show()
 
@@ -822,6 +822,10 @@ def days_until_criteria(all_rats_performances):
     all_days_until_criteria = {}
     
     for rat, rat_data in all_rats_performances.groupby("rat"):
+        # skip BP06 bc its recording didn't start until day 7
+        if rat == "BP06":
+            continue
+        
         # each trial type
         trial_learned: dict[int, int] = {}
         trial_starts = np.zeros(5)
@@ -857,16 +861,10 @@ def days_until_criteria(all_rats_performances):
                     if trial_learned[trial_type] == 0:
                         trial_learned[trial_type] += 1
                     elif trial_learned[trial_type] == 1: # second >0.75 in a row
-                        if trial_type == 1:
-                            day -= (trial_starts[0] - 1) # - 1 bc starts at 0
-                        elif trial_type == 2:
-                            day -= (trial_starts[1] - 1)
-                        elif trial_type == 3:
-                            day -= (trial_starts[2] - 1)
-                        elif trial_type == 4:
-                            day -= (trial_starts[3] - 1)
-                        elif trial_type == 5:
-                            day -= (trial_starts[4] - 1)
+                        if trial_type in day_learned:
+                            continue
+                        
+                        day -= (trial_starts[trial_type - 1] - 1)
                         
                         if day < 2: # something has gone wrong
                             print(f"{rat} on day{day} for {trial_type} has day < 2")
@@ -881,8 +879,6 @@ def days_until_criteria(all_rats_performances):
                 trial_learned[trial_type] = 0
         
         all_days_until_criteria[rat] = day_learned
-    
-    plot_days_until_criteria(all_days_until_criteria)
     
     return all_days_until_criteria # returns {ratID: {trial_type:day}} where day is day it was learned
 

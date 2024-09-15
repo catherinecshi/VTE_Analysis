@@ -26,7 +26,7 @@ for rat in os.listdir(vte_path):
             
             mean_zIdPhi = np.mean(zIdPhi_csv["zIdPhi"])
             std_zIdPhi = np.std(zIdPhi_csv["zIdPhi"])
-            VTE_threshold = mean_zIdPhi + std_zIdPhi
+            VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             for index, row in zIdPhi_csv.iterrows():
                 zIdPhi = row["zIdPhi"]
