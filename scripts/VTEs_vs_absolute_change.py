@@ -47,8 +47,9 @@ for rat in os.listdir(base_path):
                         VTE_trajectories.append(traj_id)
                         VTE_count += 1
                 
-                if VTE_count > 40:
+                if VTE_count > 20:
                     print(rat, day)
+                    continue
                 
                 match = re.search(r"\d+", day)
                 if match:
@@ -73,4 +74,4 @@ plotting.create_box_and_whisker_plot(VTEs_vs_learning, "VTEs", "perf_change",
 
 plotting.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
                              "Absolute Change in Performance against VTEs", "VTE Count",
-                             "ABsolute CHange in Performance")
+                             "Absolute Change in Performance")

@@ -381,6 +381,36 @@ def string_to_int_trial_types(string_trial):
         logging.warning(f"no string trial - {string_trial}")
         return None
 
+def choice_to_correctness(trial_type, choice):
+    """takes trial type and choice and returns whether it was a correct trial"""
+    if trial_type == 1:
+        if choice == "A":
+            correct = True
+        else:
+            correct = False
+    elif trial_type == 2:
+        if choice == "B":
+            correct = True
+        else:
+            correct = False
+    elif trial_type == 3:
+        if choice == "C":
+            correct = True
+        else:
+            correct = False
+    elif trial_type == 4:
+        if choice == "D":
+            correct = True
+        else:
+            correct = False
+    elif trial_type == 5:
+        if choice == "E":
+            correct = True
+        else:
+            correct = False
+    
+    return correct
+
 
 ### IF POINT IN SPACE --------------
 def is_point_in_ellipse(x, y, ellipse_params):

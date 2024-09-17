@@ -91,6 +91,9 @@ for rat in os.listdir(values_path):
         print(f"error with groupby for {rat}")
     else:
         print("grouping successful")
+    
+    # only calculate z score of trials where the length is within a certain range
+    
         
     many_z_df = pd.DataFrame()
     for choice, choice_group in grouped_by_choice:

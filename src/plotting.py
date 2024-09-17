@@ -31,10 +31,10 @@ def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
     plt.figure(figsize=(10, 6))
     plt.scatter(x, y, color="green", alpha=0.4)
     
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.grid(True)
+    plt.title(title, fontsize=25)
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
+    plt.grid(False)
     
     if save:
         save_path = f"{save}/scatter_plot.jpg"
@@ -63,9 +63,9 @@ def create_bar_plot(data, x_ticks, title="", x_label="", y_label=""):
     plt.figure(figsize=(10, 6))
     plt.bar(x_ticks, data)
     
-    plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
+    plt.title(title, fontsize=25)
+    plt.xlabel(x_label, fontsize=18)
+    plt.ylabel(y_label, fontsize=18)
     
     plt.tight_layout()
     plt.show()
@@ -105,9 +105,9 @@ def create_frequency_histogram(list1, label1="", list2=None, label2="", binwidth
     if xlim is not None:
         plt.xlim(xlim)
     
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.title(title, fontsize=25)
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
     plt.show()
     
 
@@ -115,11 +115,12 @@ def create_box_and_whisker_plot(df, x, y, title="", xlabel="", ylabel=""):
     filtered_df = df.groupby(x).filter(lambda group: len(group[y]) >= 5)
     
     plt.figure(figsize=(10, 6))
-    filtered_df.boxplot(column=y, by=x)
+    filtered_df.boxplot(column=y, by=x, grid=False)
     
-    plt.title(title, fontsize=16)
-    plt.xlabel(xlabel, fontsize=14)
-    plt.ylabel(ylabel, fontsize=14)
+    plt.suptitle("")
+    plt.title(title, fontsize=25)
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
     
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
@@ -394,7 +395,10 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
     plt.title(title)
     
     if label:
-        rounded_label = helper.round_to_sig_figs(label, 3)
+        if isinstance(label, float):
+            rounded_label = helper.round_to_sig_figs(label, 3)
+        else:
+            rounded_label = label
         legend_elements = [Line2D([0], [0], color="blue", lw=2, label=rounded_label)]
         ax.legend(handles=legend_elements, loc="upper right", bbox_to_anchor=(1.15, 1))
     
