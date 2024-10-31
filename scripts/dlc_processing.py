@@ -180,7 +180,9 @@ def check_too_filtered(df, coords_x, coords_y, tracking, save=None):
     unlikely_x = unlikely_data[(tracking, "x")]
     unlikely_y = unlikely_data[(tracking, "y")]
     
-    plotting.create_populational_scatter_plot(coords_x, coords_y, unlikely_x, unlikely_y, save=save)
+    x_values = [coords_x, unlikely_x]
+    y_values = [coords_y, unlikely_y]
+    plotting.create_populational_scatter_plot(x_values, y_values, save=save)
 
 DATA_PATH = os.path.join(helper.BASE_PATH, "data", "VTE_Data")
 DATA_STRUCTURE = data_processing.load_data_structure(DATA_PATH)

@@ -80,22 +80,27 @@ def calculate_sem(data):
 sem_by_day = learning_during_volatility_df.groupby("days_since_new_arm")["perf_change"].apply(calculate_sem).reset_index()
 sem_by_day.columns = ["days_since_new_arm", "sem"]
 
-# Merge SEM values back into the main dataframe
-merged_df = pd.merge(learning_during_volatility_df, sem_by_day, on="days_since_new_arm", how="left")
+mean_by_day = learning_during_volatility_df.groupby("days_since_new_arm")["perf_change"].mean().reset_index()
+mean_by_day.columns = ["days_since_new_arm", "mean_perf_change"]
 
-plotting.create_box_and_whisker_plot(learning_during_volatility_df, x="days_since_new_arm", y="perf_change",
-                                    title="Learning during Volatility",
+# Merge SEM values back into the main dataframe
+merged_df = pd.merge(mean_by_day, sem_by_day, on="days_since_new_arm", how="left")
+
+"""plotting.create_box_and_whisker_plot(learning_during_volatility_df, x="days_since_new_arm", y="perf_change",
+                                    xlim=15, title="Learning during Volatility",
                                     xlabel="Number of Days Since New Arm Added",
                                     ylabel="Change in Performance since Last Session")
 
 plotting.create_histogram(learning_during_volatility_df, "days_since_new_arm", "perf_change",
                           title="Learning during Volatility",
                           xlabel="Number of Days Since New Arm Added",
-                          ylabel="Change in Performance since Last Session")
+                          ylabel="Change in Performance since Last Session")"""
 
-plotting.create_line_plot(learning_during_volatility_df["days_since_new_arm"],
-                          learning_during_volatility_df["perf_change"],
+plotting.create_line_plot(merged_df["days_since_new_arm"],
+                          merged_df["mean_perf_change"],
                           merged_df["sem"],
+                          xlim=(0, 8),
+                          ylim=(-10, 20),
                           title="Learning during Volatility",
                           xlabel="Number of Days Since New Arm Added",
-                          ylabel="Change in Performance since Last Session")
+                          ylabel="Change in Performance\nsince Last Session (%)")

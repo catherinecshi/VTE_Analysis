@@ -27,6 +27,7 @@ data_path = os.path.join(base_path, "data", "VTE_Data")
 data_structure = data_processing.load_data_structure(data_path)
 
 vte_path = os.path.join(base_path, "processed_data", "VTE_data")
+"""
 for rat in os.listdir(vte_path):
     rat_path = os.path.join(vte_path, rat)
     if not os.path.isdir(rat_path):
@@ -50,6 +51,7 @@ for rat in os.listdir(vte_path):
                 _, _ = trajectory_analysis.quantify_VTE(data_structure, rat, day, save=save_path)
             except Exception as error:
                 print(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")
+"""
 
 values_path = os.path.join(base_path, "processed_data", "VTE_values")
 
@@ -74,32 +76,41 @@ for rat in os.listdir(values_path):
                 file_path = os.path.join(root, file)
                 traj_info = pd.read_csv(file_path, header=0)
                 
-                if all(col in traj_info.columns for col in ["IdPhi", "Choice", "ID", "Trial Type"]):
+                if all(col in traj_info.columns for col in ["IdPhi", "Choice", "ID", "Trial Type", "Length"]):
                     IdPhi_values = traj_info["IdPhi"]
                     choices = traj_info["Choice"]
                     traj_ids = traj_info["ID"]
                     trial_type = traj_info["Trial Type"]
-                    rows = {"ID": traj_ids, "Day": day, "Choice": choices, "Trial_Type": trial_type, "IdPhi": IdPhi_values}
+                    length = traj_info["Length"]
+                    rows = {"ID": traj_ids, "Day": day, "Choice": choices, "Trial_Type": trial_type, "IdPhi": IdPhi_values, "Length": length}
                     df = pd.DataFrame(rows)
                     big_df = pd.concat([big_df, df], ignore_index=True)
                 else:
                     print(f"missing columns in {rat} on {day}")
     
+    # get the 95 percentile of traj len to use as threshold
+    if "Length" not in big_df.columns:
+        print(f"{rat} does not have length")
+        continue
+    
+    filtered_df = big_df.loc[big_df["Length"] <= 4]
+    excluded_df = big_df.loc[big_df["Length"] > 4].copy()
+    
     try:
-        grouped_by_choice = big_df.groupby(by="Choice")
+        grouped_by_choice = filtered_df.groupby(by="Choice")
     except Exception:
         print(f"error with groupby for {rat}")
     else:
         print("grouping successful")
-    
-    # only calculate z score of trials where the length is within a certain range
-    
         
     many_z_df = pd.DataFrame()
     for choice, choice_group in grouped_by_choice:
         zIdPhis = zscore(choice_group["IdPhi"])
         choice_group["zIdPhi"] = zIdPhis
         many_z_df = pd.concat([many_z_df, choice_group], ignore_index=True)
+        
+    excluded_df["zIdPhi"] = 0
+    final_df = pd.concat([many_z_df, excluded_df], ignore_index=True)
     
     big_z_df_path = os.path.join(rat_path, "zIdPhis.csv")
-    many_z_df.to_csv(big_z_df_path, index=False)
+    final_df.to_csv(big_z_df_path, index=False)

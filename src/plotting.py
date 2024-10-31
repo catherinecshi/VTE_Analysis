@@ -13,6 +13,9 @@ from scipy.spatial import ConvexHull
 
 from src import helper
 
+#matplotlib setup
+import matplotlib
+matplotlib.use("Agg")
 
 ### GENERIC PLOTS ------------
 def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
@@ -42,10 +45,12 @@ def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
     else:
         plt.show()
 
-def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", ylabel="", save=None):
+def create_populational_scatter_plot(x_vals, y_vals, labels=None, title="", xlabel="", ylabel="", save=None):
     plt.figure(figsize=(10, 6))
-    plt.scatter(x_1, y_1, color="green", alpha=0.4)
-    plt.scatter(x_2, y_2, color="red", alpha=0.4)
+    
+    colors = ["green", "red", "blue", "orange", "purple", "pink"]
+    for i, _ in enumerate(x_vals):
+        plt.scatter(x_vals[i], y_vals[i], color=colors[i], alpha=0.4, label=labels[i])
     
     plt.title(title)
     plt.xlabel(xlabel)
@@ -59,27 +64,93 @@ def create_populational_scatter_plot(x_1, y_1, x_2, y_2, title="", xlabel="", yl
     else:
         plt.show()
 
-def create_bar_plot(data, x_ticks, title="", x_label="", y_label=""):
+def create_bar_plot(data, x_ticks, xlim=None, ylim=None, significance_pairs=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    plt.bar(x_ticks, data)
+    bars = plt.bar(x_ticks, data)
     
-    plt.title(title, fontsize=25)
-    plt.xlabel(x_label, fontsize=18)
-    plt.ylabel(y_label, fontsize=18)
+    plt.title(title, fontsize=30)
+    plt.xlabel(xlabel, fontsize=24)
+    plt.ylabel(ylabel, fontsize=24)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    
+    if xlim:
+        plt.xlim(xlim)
+    
+    if ylim:
+        plt.ylim(ylim)
+        
+    if significance_pairs:
+        bar_positions = [bar.get_x() + bar.get_width() / 2 for bar in bars]  # Get center positions of bars
+        bar_heights = [bar.get_height() for bar in bars]  # Get heights of the bars
+        
+        max_height = max(bar_heights)  # To adjust the height of the significance lines
+        
+        # Significance between first and second bars
+        if significance_pairs[0]:
+            plt.plot([bar_positions[0], bar_positions[1]], [max_height * 1.05, max_height * 1.05], color='black')
+            plt.text((bar_positions[0] + bar_positions[1]) / 2, max_height * 1.07, '*', ha='center', va='bottom', fontsize=24)
+        
+        # Significance between second and third bars
+        if significance_pairs[1]:
+            plt.plot([bar_positions[1], bar_positions[2]], [max_height * 1.15, max_height * 1.15], color='black')
+            plt.text((bar_positions[1] + bar_positions[2]) / 2, max_height * 1.17, '*', ha='center', va='bottom', fontsize=24)
+        
+        # Significance between first and third bars
+        if significance_pairs[2]:
+            plt.plot([bar_positions[0], bar_positions[2]], [max_height * 1.25, max_height * 1.25], color='black')
+            plt.text((bar_positions[0] + bar_positions[2]) / 2, max_height * 1.27, '*', ha='center', va='bottom', fontsize=24)
     
     plt.tight_layout()
     plt.show()
 
-def create_line_plot(x, y, sem, title="", xlabel="", ylabel=""):
+def create_line_plot(x, y, sem, xlim=None, ylim=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    plt.errorbar(x, y, yerr=sem, fmt="-o", capsize=5)
-    plt.title(title, fontsize=24)
-    plt.xlabel(xlabel, fontsize=20)
-    plt.ylabel(ylabel, fontsize=20)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
+    
+     # split into two lines if any label or title is too long
+    max_title_length = 40
+    if len(title) > max_title_length:
+        title = "\n".join([title[:max_title_length], title[max_title_length:]])
+    
+    max_label_length = 50
+    if len(xlabel) > max_label_length:
+        xlabel = "\n".join([xlabel[:max_label_length], xlabel[max_label_length:]])
+    
+    if len(ylabel) > max_label_length:
+        ylabel = "\n".join([ylabel[:max_label_length], ylabel[max_label_length:]])
+    
+    plt.errorbar(x, y, yerr=sem, fmt="-o", capsize=5, linewidth=5)
+    plt.title(title, fontsize=30)
+    plt.xlabel(xlabel, fontsize=24)
+    plt.ylabel(ylabel, fontsize=24)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    
+    if xlim:
+        plt.xlim(xlim)
+    
+    if ylim:
+        plt.ylim(ylim)
+    
     plt.legend()
     plt.grid(False)
+    plt.tight_layout()
+    plt.show()
+
+def plot_cumulative_frequency(data, title="", xlabel="", ylabel=""):
+    sorted_data = np.sort(data)
+    
+    # x label
+    cum_freq = np.arange(1, len(sorted_data) + 1) / len(sorted_data)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(sorted_data, cum_freq, marker=".", linestyle="-", color="b")
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    
+    plt.grid(True)
     plt.show()
 
 def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
@@ -92,13 +163,44 @@ def create_histogram(df, x, y, title="", xlabel="", ylabel=""):
     
     plt.show()
 
-def create_frequency_histogram(list1, label1="", list2=None, label2="", binwidth=None, xlim=None, title="", xlabel="", ylabel=""):
+def create_frequency_histogram(list1, label1="", list2=None, label2="", binwidth=None, stat="density", xlim=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    sns.histplot(data=list1, kde=True, color='red', label=label1, binwidth=binwidth)
+    sns.histplot(data=list1, kde=True, color="blue", label=label1, binwidth=binwidth, stat=stat)
     
     # Plot the second dataset if provided
     if list2 is not None:
-        sns.histplot(data=list2, kde=True, color='blue', label=label2, binwidth=binwidth)
+        sns.histplot(data=list2, kde=True, color="red", label=label2, binwidth=binwidth, stat=stat)
+    
+    plt.legend(fontsize=24)
+    
+    if xlim is not None:
+        plt.xlim(xlim)
+        
+    # split into two lines if any label or title is too long
+    max_title_length = 40
+    if len(title) > max_title_length:
+        title = "\n".join([title[:max_title_length], title[max_title_length:]])
+    
+    max_label_length = 30
+    if len(xlabel) > max_label_length:
+        xlabel = "\n".join([xlabel[:max_label_length], xlabel[max_label_length:]])
+    
+    if len(ylabel) > max_label_length:
+        ylabel = "\n".join([ylabel[:max_label_length], ylabel[max_label_length:]])
+    
+    plt.title(title, fontsize=30)
+    plt.xlabel(xlabel, fontsize=24)
+    plt.ylabel(ylabel, fontsize=24)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.show()
+
+def create_multiple_frequency_histograms(dictionary, binwidth=None, stat="density", xlim=None, title="", xlabel="", ylabel=""):
+    plt.figure(figsize=(10, 6))
+    
+    colors = ["red", "blue", "green", "orange", "purple", "pink"]
+    for i, (key, value) in enumerate(dictionary.items()):
+        sns.histplot(data=value, kde=True, color=colors[i], label=key, binwidth=binwidth, stat=stat)
     
     plt.legend()
     
@@ -111,8 +213,12 @@ def create_frequency_histogram(list1, label1="", list2=None, label2="", binwidth
     plt.show()
     
 
-def create_box_and_whisker_plot(df, x, y, title="", xlabel="", ylabel=""):
+def create_box_and_whisker_plot(df, x, y, xlim=None, title="", xlabel="", ylabel=""):
     filtered_df = df.groupby(x).filter(lambda group: len(group[y]) >= 5)
+    
+    if xlim:
+        unique_x_values = filtered_df[x].unique()[:xlim]
+        filtered_df = filtered_df[filtered_df[x].isin(unique_x_values)]
     
     plt.figure(figsize=(10, 6))
     filtered_df.boxplot(column=y, by=x, grid=False)
@@ -346,7 +452,7 @@ def plot_trajectory(x, y, trajectories, title="", save=None, label=None, traj_id
     else:
         plt.show()
     
-def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interval=20, title="", label=None, save=None):
+def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interval=20, traj_id="", title="", label=None, save=None):
     """
     creates and displays an animation of a trajectory over the backdrop of x and y coordinates
 
@@ -404,8 +510,9 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
     
     # save or display
     if save:
-        save_path = f"{save}/trajectory_animation.gif"
+        save_path = os.path.join(save, f"{traj_id}_trajectory_animation.gif")
         ani.save(save_path, writer="pillow")
+        plt.close()
     else:
         plt.show() 
 

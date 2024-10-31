@@ -797,7 +797,7 @@ def create_all_perf_changes_by_trials(all_rats_performances):
             perf_change_in_trial = trial_performance.diff()
             for i, (_, row) in enumerate(trial_group.iterrows()):
                 if i == 0:
-                    all_rat_perf.append({"rat": rat, "day":row["day"], "trial_type":trial_type, "perf_change": trial_performance.iloc[0] - 0.5})
+                    all_rat_perf.append({"rat": rat, "day":row["day"], "trial_type":trial_type, "perf_change": trial_performance.iloc[0] - 50})
                 else:
                     all_rat_perf.append({"rat": rat, "day":row["day"], "trial_type":trial_type, "perf_change":perf_change_in_trial.iloc[i]})
             

@@ -47,15 +47,15 @@ for rat in os.listdir(base_path):
                         traj_id = row["ID"]
                         parts = traj_id.split("_")
                         traj_number = parts[2]
-                        larger_numbers = [num for num in mistakes if num > int(traj_number)]
+                        larger_numbers = [num for num in mistakes if num < int(traj_number)]
                         
                         if int(traj_number) in mistakes:
                             until_next_mistake[traj_id] = 0
                         elif larger_numbers:
-                            closest_number = min(larger_numbers)
+                            closest_number = max(larger_numbers)
                             if (closest_number - int(traj_number)) == 0:
                                 print(traj_id)
-                            until_next_mistake[traj_id] = closest_number - int(traj_number)
+                            until_next_mistake[traj_id] = int(traj_number) - closest_number
 
 
 trues = [] # trials until mistake for VTE trials
@@ -221,8 +221,6 @@ for z_score in z_scores:
     else:
         significance.append(False)
 
-# get chi square test
-
 def create_bar_plot(data, x_ticks, xlim=None, ylim=None, pvals=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
     plt.bar(x_ticks, data)
@@ -250,6 +248,6 @@ def create_bar_plot(data, x_ticks, xlim=None, ylim=None, pvals=None, title="", x
 x_ticks = VTE_vs_last_mistake.keys()
 data = VTE_vs_last_mistake.values()
 create_bar_plot(data, x_ticks, xlim=(-0.5, 2.5), pvals=p_vals,
-                title="VTEs before Mistakes",
-                xlabel="Number of Trials Before a Mistake will Occur",
+                title="VTEs after Mistakes",
+                xlabel="Number of Trials After a Mistake will Occur",
                 ylabel=r"% of VTE Trials")
