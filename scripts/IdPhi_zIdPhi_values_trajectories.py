@@ -1,6 +1,7 @@
-    """generates jpgs and/or gifs for trajectories i have manually sorted VTEs on.
-        shows idphi, zidphi, traj_id and choice with trajectory
-    """
+"""
+generates jpgs and/or gifs for trajectories i have manually sorted VTEs on.
+shows idphi, zidphi, traj_id and choice with trajectory
+"""
 
 import os
 import ast

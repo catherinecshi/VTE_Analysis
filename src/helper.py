@@ -24,19 +24,24 @@ general auxillary functions for multiple purposes:
         - check_equal_length
         - start_check
         - trial_type_equivalency
+        - check_difference
+    - file manipulation
+        - add_row_to_csv
     - startup
         - initial_processing
 """
 
 import os
 import re
+import csv
 import math
 import bisect
 import logging
-import pandas as pd
 import numpy as np
-from scipy.spatial.qhull import Delaunay
+import pandas as pd
 from datetime import datetime
+from itertools import combinations
+from scipy.spatial.qhull import Delaunay
 
 ### LOGGING
 logger = logging.getLogger() # creating logging object
@@ -542,6 +547,55 @@ def trial_type_equivalency(trial_type_i, trial_type_j):
         return True
     else:
         return False
+
+def check_difference(list, threshold):
+    """check if values in a list are within a certain range of each other
+
+    Args:
+        list (int/float list): list of values with the dfferences to check
+        threshold (int): acceptable range for values within each other
+
+    Returns:
+        bool: returns True if there are points that are more than threshold away from each other
+    """
+    
+    for a, b in combinations(list, 2):
+        if abs(a - b) > threshold:
+            return True
+
+    return False # if none are found
+
+
+### FILE MANIPULATION ---------
+def add_row_to_csv(file_path, row_data, headers=None):
+    """appends a single row to a csv file
+       creates the files with the headers provided if it doesn't exist already
+
+    Args:
+        file_path (str): file path of the csv file
+        row_data (dict): dictionary with {column header: value}
+        headers (str list, optional): list of headers - shoudl correspond to dict. Defaults to None.
+    """
+    # infer headers if not provided
+    if headers is None:
+        headers = list(row_data.keys())
+    
+    # check if the file exists
+    file_exists = False
+    try:
+        with open(file_path, "r"):
+            file_exists = True
+    except FileNotFoundError:
+        pass
+    
+    with open(file_path, "a", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=headers)
+        
+        # write headers if file is being crated
+        if not file_exists and headers:
+            writer.writeheader()
+        
+        writer.writerow(row_data)
 
 
 ### STARTUP -------

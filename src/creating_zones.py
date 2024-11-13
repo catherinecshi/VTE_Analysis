@@ -814,6 +814,5 @@ def get_centre_hull(df):
     # load hull
     densest_cluster_points = np.load(hull_path)
     hull = ConvexHull(densest_cluster_points)
-    print(hull_path)
     
     return hull

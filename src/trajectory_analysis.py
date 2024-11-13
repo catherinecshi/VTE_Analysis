@@ -11,7 +11,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import zscore
 from datetime import datetime
-from collections import OrderedDict
 
 from src import plotting
 from src import creating_zones
@@ -230,7 +229,7 @@ def get_trajectory(df, start, end, hull):
 
 
 ### CALCULATING HEAD VELOCITY VALUES ----------------
-def derivative(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
+def derivative_old(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
     """
     Estimates the derivative for a sequence of values sampled at regular intervals
 
@@ -319,18 +318,86 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     m = 20 # window size
     
     # derivatives
-    dx = derivative(trajectory_x, sr, d, m)
-    dy = derivative(trajectory_y, sr, d, m)
+    #dx = derivative(trajectory_x, sr, d, m)
+    #dy = derivative(trajectory_y, sr, d, m)
+    dx = derivative(trajectory_x, sr)
+    dy = derivative(trajectory_y, sr)
     
     # calculate + unwrap angular velocity
     Phi = np.arctan2(dy, dx)
     Phi = np.unwrap(Phi)
-    dPhi = derivative(Phi, sr, d, m)
+    #dPhi = derivative(Phi, sr, d, m)
+    dPhi = derivative(Phi, sr)
+    # dPhi = (trajectory_x * dx - trajectory_y * dy) / (trajectory_x^2 + trajectory_y^2)
     
     # integrate change in angular velocity
-    IdPhi = np.trapz(np.abs(dPhi))
+    IdPhi = sum(np.abs(dPhi))
     
     return IdPhi
+
+def derivative(xD, dT, window=1, postSmoothing=0.5, display=False):
+    """
+    Python translation of the sj_dxdt function for velocity estimation.
+    
+    Parameters:
+        xD (np.array): Position vector.
+        dT (float): Time step.
+        window (float): Window size in seconds.
+        postSmoothing (float): Smoothing window in seconds (0 means no smoothing).
+        display (bool): Whether to print progress dots.
+    
+    Returns:
+        dx (np.array): Estimated velocity (dx/dt) of position vector xD.
+    """
+    
+    # Calculate maximum window size in terms of steps
+    nW = min(int(np.ceil(window / dT)), len(xD)) # creates smaller windows if traj is esp long
+    #nW = window
+    nX = len(xD)
+    
+    # Initialize MSE and slope (b) matrices
+    mse = np.zeros((nX, nW)) # approximate how well a straight line fits onto the data
+    mse[:, :2] = np.inf
+    b = np.zeros((nX, nW))
+    
+    # NaN vector for padding
+    nanvector = np.full(nW, np.nan)
+    
+    # Loop over window sizes from 3 to nW
+    for iN in range(2, nW):
+        if display:
+            print('.', end='')
+        
+        # Calculate slope (b) for each window size iN
+        b[:, iN] = np.concatenate((nanvector[:iN], xD[:-iN])) - xD
+        b[:, iN] /= iN
+        
+        # Calculate MSE for the given window size iN
+        for iK in range(1, iN + 1):
+            q = np.concatenate((nanvector[:iK], xD[:-iK])) - xD + b[:, iN] * iK
+            mse[:, iN] += q ** 2
+        
+        # Average the MSE for each window size
+        mse[:, iN] /= iN
+    
+    if display:
+        print('!')
+
+    # Select the window with the smallest MSE for each point
+    nSelect = np.nanargmin(mse, axis=1)
+    dx = np.full_like(xD, np.nan, dtype=float)
+    
+    # Calculate dx for each point using the optimal window size
+    for iX in range(nX):
+        dx[iX] = -b[iX, nSelect[iX]] / dT 
+    
+    # Apply post-smoothing if specified
+    if postSmoothing > 0:
+        nS = int(np.ceil(postSmoothing / dT))
+        dx = np.convolve(dx, np.ones(nS) / nS, mode='same')
+    
+    return dx
+
 
 def calculate_zIdPhi(IdPhi_values, trajectories=None, x=None, y=None):
     """
@@ -440,6 +507,9 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         if not_ascending_count > 2 or stagnant_count > 30:
             raise helper.CorruptionError(rat_ID, day, timestamps)
     
+    # file path for excluded trajectories
+    excluded_path = os.path.join(helper.BASE_PATH, "processed_data", "excluded_trajectories", f"{rat_ID}_excluded_trajectories.csv")
+    
     # define zones
     centre_hull = creating_zones.get_centre_hull(DLC_df)
     
@@ -470,24 +540,8 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
             trial_end = timestamps[-1] # if not available, get last time possible
         
         trajectory_x, trajectory_y, traj_len = get_trajectory(DLC_df, trial_start, trial_end, centre_hull)
-        if not trajectory_x: # empty list, happens for the last trajectory
+        if not trajectory_x or not trajectory_y: # empty list, happens for the last trajectory
             continue
-        
-        # check if trajectory is too short
-        if len(trajectory_x) < 5:
-            continue
-        
-        # check if there's a repeat trajectory
-        if last_trajectory_x is not None:
-            if last_trajectory_x == trajectory_x:
-                store_data[-1]["Length"] = traj_len
-                continue
-        
-        last_trajectory_x = trajectory_x
-        
-        # calculate Idphi of this trajectory
-        IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
-        #plotting.plot_trajectory_animation(DLC_df["x"], DLC_df["y"], trajectory_x, trajectory_y, title=traj_id)
         
         # get the choice arm from the trial type and performance
         if same_len or len(performance) < i:
@@ -498,6 +552,54 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         elif len(performance) >= i:
             logging.debug(f"performance not capturing every trial for {rat_ID} on {day}")
             continue
+        
+        # check if trajectory is too short
+        if len(trajectory_x) < 5:
+            skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                        "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "<5 Points"}
+            helper.add_row_to_csv(excluded_path, skip_row)
+            continue
+        
+        # check if too short or long
+        try:
+            if traj_len < 0.3:
+                skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                        "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "Too Short"}
+                helper.add_row_to_csv(excluded_path, skip_row)
+                continue
+            
+            if traj_len > 3.5:
+                skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                        "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "Too Long"}
+                helper.add_row_to_csv(excluded_path, skip_row)
+                continue
+        except TypeError:
+            logging.error(f"Length not available for {traj_id}")
+        
+        # check if there's a repeat trajectory
+        if last_trajectory_x is not None:
+            if last_trajectory_x == trajectory_x:
+                store_data[-1]["Length"] = traj_len
+                skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                        "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "Repeat"}
+                helper.add_row_to_csv(excluded_path, skip_row)
+                continue
+        
+        # check if it's just the rat staying in one place for forever
+        staying_x = helper.check_difference(trajectory_x, threshold=10)
+        staying_y = helper.check_difference(trajectory_y, threshold=10)
+        
+        if not staying_x or not staying_y:
+            skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
+                        "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "Staying"}
+            helper.add_row_to_csv(excluded_path, skip_row)
+            continue # skip this trajectory if the rat is just staying in place
+        
+        last_trajectory_x = trajectory_x
+        
+        # calculate Idphi of this trajectory
+        IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
+        #plotting.plot_trajectory_animation(DLC_df["x"], DLC_df["y"], trajectory_x, trajectory_y, title=traj_id)
         
         # store IdPhi according to which arm the rat went down
         if choice not in IdPhi_values:
@@ -523,7 +625,7 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     
     # check if there are too many repeats
     if REPEATS > 10:
-        print(f"more than 10 repeats for {rat_ID} on {day}")
+        logging.warning(f"more than 10 repeats for {rat_ID} on {day}")
     else:
         df = pd.DataFrame(store_data)
         file_path = os.path.join(save, "trajectories.csv")
