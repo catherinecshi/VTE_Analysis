@@ -5,15 +5,15 @@ import pandas as pd
 from src import helper
 from src import plotting
 
-dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "cleaned_dlc", "TH605", "Day11_coordinates.csv")
+rat = "TH605"
+day = "Day11"
+
+dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "cleaned_dlc", rat, f"{day}_coordinates.csv")
 dlc_pd = pd.read_csv(dlc_path)
 all_x = dlc_pd["x"]
 all_y = dlc_pd["y"]
 
-rat = "TH605"
-day = "Day11"
-
-zidphi_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values", "TH605", "zIdPhis.csv")
+zidphi_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values", rat, "zIdPhis.csv")
 zidphi_pd = pd.read_csv(zidphi_path)
 zidphis = {}
 for index, row in zidphi_pd.iterrows():
@@ -24,7 +24,7 @@ for index, row in zidphi_pd.iterrows():
     zidphis[Id] = zidphi_val
 
 print(zidphis)
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values", "TH605", "Day11", "trajectories.csv")
+vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values", rat, day, "trajectories.csv")
 vte_pd = pd.read_csv(vte_path)
 for index, row in vte_pd.iterrows():
     traj_id = row["ID"]
@@ -47,5 +47,8 @@ for index, row in vte_pd.iterrows():
     else:
         zIdPhi = helper.round_to_sig_figs(zIdPhi)
         label = "IdPhi: " + str(IdPhi) + " zIdPhi: " + str(zIdPhi) + " for choice: " + choice
-    jpg_path = os.path.join(helper.BASE_PATH, "processed_data", "IdPhi_zIdPhi_values", "TH605_Day11")
+    
+    jpg_path = os.path.join(helper.BASE_PATH, "processed_data", "IdPhi_zIdPhi_values", f"{rat}_{day}")
+    os.makedirs(jpg_path, exist_ok=True) # Create directory if it doesn't exist
+    
     plotting.plot_trajectory(all_x, all_y,(x_vals, y_vals), title=label, traj_id=traj_id, save=jpg_path)

@@ -8,6 +8,7 @@ import scipy.stats as stats
 import statsmodels.api as sm
 
 from src import helper
+from src import plotting
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -96,6 +97,16 @@ for rat in os.listdir(base_path):
             
 trues_count_no_trials = {value: trues.count(value) for value in set(trues)} # how many trues for specific # trials
 falses_count_no_trials = {value: falses.count(value) for value in set(falses)}
+
+x_ticks_many = []
+data_many = []
+for key in trues_count_no_trials.keys():
+    x_ticks_many.append(key)
+    data_many.append(trues_count_no_trials[key] / (trues_count_no_trials[key] + falses_count_no_trials[key]))
+
+plotting.create_bar_plot(data_many, x_ticks_many, xlim=(-0.5, 9.5), ylim=(0, 0.1),
+                         title="VTE Proportion for Number of Trials Before Mistake",
+                         xlabel="Number of Trials Before Mistake", ylabel="Proportion of VTEs")
 
 VTE_vs_last_mistake = {} # {number of trials until mistake: VTE_proportion}
 n_0 = None

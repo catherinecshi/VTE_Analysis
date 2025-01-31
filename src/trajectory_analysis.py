@@ -206,8 +206,8 @@ def get_trajectory(df, start, end, hull):
             if past_inside is False: # first time inside the centre
                 past_inside = True
                 start_time = time
-            trajectory_x.append(x_val)
-            trajectory_y.append(y_val)
+            trajectory_x.append(x_val / 5) # divide by 5 to convert from pixels to cm
+            trajectory_y.append(y_val / 5)
         else:
             if past_inside:
                 end_time = time
@@ -314,8 +314,8 @@ def calculate_IdPhi(trajectory_x, trajectory_y):
     
     # parameters - need to change
     sr = 0.03 # sampling rate
-    d = 0.05 # position noise boundary
-    m = 20 # window size
+    #d = 0.05 # position noise boundary
+    #m = 20 # window size
     
     # derivatives
     #dx = derivative(trajectory_x, sr, d, m)

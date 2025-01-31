@@ -52,4 +52,4 @@ for trial_type in VTE_trials.keys():
 
 x_ticks = ["AB", "BC", "CD", "DE", "EF"] # trial types
 data = VTEs_for_trial_type.values() # number of VTEs
-plotting.create_bar_plot(data, x_ticks, "VTE Proportion for Trial Type", "Trial Types", "Proportion of VTEs")
+plotting.create_bar_plot(data, x_ticks, title="VTE Proportion for Trial Type", xlabel="Trial Types", ylabel="Proportion of VTEs")

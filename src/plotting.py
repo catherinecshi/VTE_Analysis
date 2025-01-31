@@ -14,8 +14,8 @@ from scipy.spatial import ConvexHull
 from src import helper
 
 #matplotlib setup
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 
 ### GENERIC PLOTS ------------
 def create_scatter_plot(x, y, title="", xlabel="", ylabel="", save=None):
@@ -64,9 +64,18 @@ def create_populational_scatter_plot(x_vals, y_vals, labels=None, title="", xlab
     else:
         plt.show()
 
-def create_bar_plot(data, x_ticks, xlim=None, ylim=None, significance_pairs=None, title="", xlabel="", ylabel=""):
+def create_bar_plot(data, x_ticks, errors=None, xlim=None, ylim=None, significance_pairs=None, title="", xlabel="", ylabel=""):
     plt.figure(figsize=(10, 6))
-    bars = plt.bar(x_ticks, data)
+    
+    # Convert proportions to percentages
+    data_percentages = [d * 100 for d in data]
+    if errors:
+        errors_percentages = [e * 100 for e in errors]
+    
+    if errors:
+        bars = plt.bar(x_ticks, data_percentages, yerr=errors_percentages, capsize=5)
+    else:
+        bars = plt.bar(x_ticks, data_percentages)
     
     plt.title(title, fontsize=30)
     plt.xlabel(xlabel, fontsize=24)
@@ -78,7 +87,8 @@ def create_bar_plot(data, x_ticks, xlim=None, ylim=None, significance_pairs=None
         plt.xlim(xlim)
     
     if ylim:
-        plt.ylim(ylim)
+        # Convert proportion limits to percentage limits
+        plt.ylim((ylim[0] * 100, ylim[1] * 100))
         
     if significance_pairs:
         bar_positions = [bar.get_x() + bar.get_width() / 2 for bar in bars]  # Get center positions of bars
@@ -515,7 +525,6 @@ def plot_trajectory_animation(x, y, trajectory_x=None, trajectory_y=None, interv
         plt.close()
     else:
         plt.show() 
-
 
 
 ### SPECIALIZED PLOTS -------

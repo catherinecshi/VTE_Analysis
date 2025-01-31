@@ -72,8 +72,8 @@ absolute_VTEs_vs_learning = pd.merge(VTE_df, absolute_changes)
 
 # plot general change
 plotting.create_box_and_whisker_plot(VTEs_vs_learning, "VTEs", "perf_change",
-                                     "Change in Performance against VTEs",
-                                     "VTE Count", "Change in Performance")
+                                     title="Change in Performance against VTEs",
+                                     xlabel="VTE Count", ylabel="Change in Performance")
 
 plotting.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
                              "Change in Performance against VTEs", "VTE Count",
@@ -81,8 +81,8 @@ plotting.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_ch
 
 # plot absolute change
 plotting.create_box_and_whisker_plot(absolute_VTEs_vs_learning, "VTEs", "perf_change",
-                                     "Absolute Change in Performance against VTEs",
-                                     "VTE Count", "Absolute Change in Performance")
+                                     title="Absolute Change in Performance against VTEs",
+                                     xlabel="VTE Count", ylabel="Absolute Change in Performance")
 
 plotting.create_scatter_plot(absolute_VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
                              "Absolute Change in Performance against VTEs", "VTE Count",

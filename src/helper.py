@@ -12,6 +12,7 @@ general auxillary functions for multiple purposes:
         - get_ss_trial_starts
         - get_video_trial_starts
         - get_trajectory
+        - get_sem
     - conversions
         - round_to_sig_figs
         - ss_trials_to_video
@@ -302,25 +303,40 @@ def get_video_trial_starts(timestamps, SS_df): # gets indices for x/y where tria
     
     return video_trial_info
 
-
+def get_sem(successes, totals):
+    """
+    Calculate standard error of mean for proportions.
+    
+    Parameters:
+    successes (int): Number of successes (VTE trials in this case)
+    totals (int): Total number of trials
+    
+    Returns:
+    float: Standard error of the mean
+    """
+    p = successes / totals if totals > 0 else 0
+    sem = np.sqrt((p * (1 - p)) / totals) if totals > 0 else 0
+    return sem
 
 ### CONVERSIONS ----------
-def round_to_sig_figs(num, sig_figs = 3):
+def round_to_sig_figs(num, sig_figs=3):
     """
-    round a number to a specific number of significant figures
-
-    Args:
-        num (float): number to be rounded
-        sig_figs (int): the number of significant figures desired. Defaults to 3
-
-    Returns:
-        float: the rounded number
-    """
+    Round a number to a specified number of significant figures
     
-    if num == 0:
+    Args:
+        num (float): number to round
+        sig_figs (int, optional): number of significant figures. Defaults to 3.
+    
+    Returns:
+        float: rounded number
+    """
+    if np.isnan(num):  # Add check for NaN
+        return num
+    
+    if num == 0:  # Add check for zero
         return 0
-    else:
-        return round(num, sig_figs - int(math.floor(math.log10(abs(num)))) - 1)
+        
+    return round(num, sig_figs - int(math.floor(math.log10(abs(num)))) - 1)
 
 def ss_trial_starts_to_video(timestamps, SS_times):
     """

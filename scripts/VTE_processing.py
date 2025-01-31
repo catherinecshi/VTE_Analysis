@@ -1,5 +1,6 @@
 import os
 import logging
+import numpy as np
 import pandas as pd
 from datetime import datetime
 from scipy.stats import zscore
@@ -104,9 +105,13 @@ for rat in os.listdir(values_path):
         
     zscored_df = pd.DataFrame()
     for choice, choice_group in grouped_by_choice:
-        zIdPhis = zscore(choice_group["IdPhi"])
-        choice_group["zIdPhi"] = zIdPhis
-        zscored_df = pd.concat([zscored_df, choice_group], ignore_index=True)
+        if len(choice_group) > 1:
+            zIdPhis = zscore(choice_group["IdPhi"])
+            choice_group["zIdPhi"] = zIdPhis
+            zscored_df = pd.concat([zscored_df, choice_group], ignore_index=True)
+        else:
+            logging.warning(f"Skipping choice {choice} for {rat} - insufficient samples ({len(choice_group)})")
+            continue
 
     df_path = os.path.join(rat_path, "zIdPhis.csv")
     zscored_df.to_csv(df_path, index=False)

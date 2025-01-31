@@ -102,8 +102,8 @@ non_VTEs_proportion = non_VTEs_correct / (non_VTEs_correct + non_VTEs_incorrect)
 data = [VTEs_proportion, non_VTEs_proportion]
 x_ticks = ["VTEs", "non-VTEs"]
 
-plotting.create_bar_plot(data, x_ticks, "VTE Influence on Next Trial Accuracy",
-                         "VTEs/Non-VTEs", "Likelihood of Getting Next Trial Correct")
+plotting.create_bar_plot(data, x_ticks, title="VTE Influence on Next Trial Accuracy",
+                         xlabel="VTEs/Non-VTEs", ylabel="Likelihood of Getting Next Trial Correct")
 
 # For analysis of trials before VTE trials
 VTEs_correct = 0
@@ -172,5 +172,7 @@ non_VTEs_proportion = non_VTEs_correct / (non_VTEs_correct + non_VTEs_incorrect)
 data = [VTEs_proportion, non_VTEs_proportion]
 x_ticks = ["VTEs", "non-VTEs"]
 
-plotting.create_bar_plot(data, x_ticks, "Previous Trial Performance Influence on VTE Probability",
-                         "VTEs/Non-VTEs", "Likelihood of Previous Trial Being Correct")
+print("running updated code")
+
+plotting.create_bar_plot(data, x_ticks, title="Previous Trial Performance Influence on VTE Probability",
+                         xlabel="VTEs/Non-VTEs", ylabel="Likelihood of Previous Trial Being Correct")
