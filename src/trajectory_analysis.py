@@ -13,7 +13,7 @@ from scipy.stats import zscore
 from datetime import datetime
 
 from src import plotting
-from src import creating_zones
+from src import creating_zones_exp
 from src import helper
 from src import performance_analysis
 
@@ -44,6 +44,26 @@ def add_repeats():
 def reset_repeats():
     global REPEATS
     REPEATS = 0
+    
+def check_timestamps(timestamps):
+    not_ascending_count = 0
+    stagnant_count = 0
+    for i, timestamp in enumerate(timestamps):
+        if i > 0 and i + 1 < len(timestamps):
+            if timestamp > timestamps[i + 1]:
+                not_ascending_count += 1
+                logging.error(f"timestamps not ascending for {TRAJ_ID} for {timestamp}")
+            elif i > 0 and timestamp == timestamps[i + 1]:
+                stagnant_count += 1
+                logging.warning(f"stagnant at {timestamp} {timestamps[i + 1]}")
+            else:
+                stagnant_count = 0
+        else:
+            continue
+        
+        if not_ascending_count > 2 or stagnant_count > 30:
+            rat_ID, day = TRAJ_ID.split("_")
+            raise helper.CorruptionError(rat_ID, day, timestamps)
 
 def type_to_choice(trial_type, correct):
     """
@@ -229,138 +249,58 @@ def get_trajectory(df, start, end, hull):
 
 
 ### CALCULATING HEAD VELOCITY VALUES ----------------
-def derivative_old(values, sr, d, m): # assumes each value is separated by regular time intervals -> sr
+def calculate_IdPhi(trajectory_x, trajectory_y, sr=0.03):
     """
-    Estimates the derivative for a sequence of values sampled at regular intervals
-
-    Args:
-        values (numpy int array): 1D array of data points
-        sr (float): sampling rate - time interval between consecutive data points
-        d (float): threshold for quality of linear approximation
-        m (int): maximum window length for differentiation
-
-    Returns:
-        numpy.ndarray: 1D array of estimated slopes (derivatives) with the same length as input 'values'
-        
-    Procedure:
-        1. Initialise v_est with zeroes
-            - store estimated slopes
-        2. for each value in values, adjust window length in an infinite loop
-            - make window 1 bigger until window > m (max length) or value index is bigger than window length
-                - then make window 1 smaller & break loop
-            - take the difference between the current value of values and the first value of window
-            - if window > 1, check how well slope fits values in window
-                - compute c for y = mx + c
-                - for each point in window
-                    - calculate deviation (delta)
-                    - if delta > 2 * d, can_increase_window = False, window - 1, and go back to the last slope
-            - assign calculated slope to v_est[i]
-    """
-    
-    v_est = np.zeros_like(values) # initialise slope array with zeroes / velocity estimates
-    
-    # start from second element for differentiation
-    for i in range(1, len(values)):
-        window_len = 0
-        can_increase_window = True
-
-        while True: # infinite loop
-            window_len += 1
-            
-            if window_len > m or i - window_len < 0: # reached end of window / safety check
-                window_len -= 1
-                break
-            
-            # calculate slope from values[i] to values[i - window_len]
-            slope_ = v_est[i - 1] # save previous slope / i changed from original code to be v_est[i - 1] instead of v_est[i]
-            slope = (values[i] - values[i - window_len]) / (window_len * sr)
-            
-            if window_len > 1:
-                # y = mx + c where c -> y-intercept, values[i] -> y, slope -> m, i * sr -> x (time at point i)
-                c = values[i] - slope * i * sr
-
-                # check every point
-                for j in range(1, window_len):
-                    # diff between actual point and position calculated by model at every point up to i
-                    delta = values[i - j] - (c + slope * (i - j) * sr)
-                    
-                    # use delta to assess quality of linear approximation -> 2 * d is threshold
-                    if abs(delta) > 2 * d: # if model too far from actuality, excludes the problematic point in model
-                        can_increase_window = False
-                        window_len -= 1
-                        slope = slope_
-                        logging.info("model too far from actual results for "
-                                     f"{TRAJ_ID}")
-                        break
-            
-            if not can_increase_window:
-                break # exit while loop if window cannot be increased
-        
-        v_est[i] = slope
-    
-    return v_est
-
-def calculate_IdPhi(trajectory_x, trajectory_y):
-    """
-    calculating IdPhi value given trajectory
+    calculating IdPhi value given trajectory.
 
     Args:
         trajectory_x (np int array): x values for trajectory
         trajectory_y (np int array): y values for trajectory
+        sr (float): sampling rate. assumes 0.03
 
     Returns:
         float: numerical integration of change of angular velocity values (IdPhi)
     """
     
-    # parameters - need to change
-    sr = 0.03 # sampling rate
-    #d = 0.05 # position noise boundary
-    #m = 20 # window size
-    
-    # derivatives
-    #dx = derivative(trajectory_x, sr, d, m)
-    #dy = derivative(trajectory_y, sr, d, m)
+    # derivatives - estimates velocity for each point in time in trajectory
     dx = derivative(trajectory_x, sr)
     dy = derivative(trajectory_y, sr)
     
-    # calculate + unwrap angular velocity
+    # triangulate the change in x and y together
     Phi = np.arctan2(dy, dx)
     Phi = np.unwrap(Phi)
-    #dPhi = derivative(Phi, sr, d, m)
     dPhi = derivative(Phi, sr)
-    # dPhi = (trajectory_x * dx - trajectory_y * dy) / (trajectory_x^2 + trajectory_y^2)
     
-    # integrate change in angular velocity
+    # integrate change in angular velocity sum for each trajectory
     IdPhi = sum(np.abs(dPhi))
     
     return IdPhi
 
 def derivative(xD, dT, window=1, postSmoothing=0.5, display=False):
     """
-    Python translation of the sj_dxdt function for velocity estimation.
+    calculates derivate/velocity. translated from sj_dxdt in citadel.
     
     Parameters:
-        xD (np.array): Position vector.
-        dT (float): Time step.
+        xD (np array): Position vector
+        dT (float): Time step
         window (float): Window size in seconds.
-        postSmoothing (float): Smoothing window in seconds (0 means no smoothing).
-        display (bool): Whether to print progress dots.
+        postSmoothing (float): Smoothing window in seconds (0 means no smoothing)
+        display (bool): Whether to print progress dots
     
     Returns:
-        dx (np.array): Estimated velocity (dx/dt) of position vector xD.
+        dx (np.array): Estimated velocity (dx/dt) of position vector xD
     """
     
     # Calculate maximum window size in terms of steps
     nW = min(int(np.ceil(window / dT)), len(xD)) # creates smaller windows if traj is esp long
-    #nW = window
     nX = len(xD)
     
     # Initialize MSE and slope (b) matrices
-    mse = np.zeros((nX, nW)) # approximate how well a straight line fits onto the data
+    mse = np.zeros((nX, nW)) # MSE approximates how well a straight line fits onto the data
     mse[:, :2] = np.inf
-    b = np.zeros((nX, nW))
+    b = np.zeros((nX, nW)) # this is the same b as y = bx + c
     
-    # NaN vector for padding
+    # nan vector for padding
     nanvector = np.full(nW, np.nan)
     
     # Loop over window sizes from 3 to nW
@@ -368,11 +308,11 @@ def derivative(xD, dT, window=1, postSmoothing=0.5, display=False):
         if display:
             print('.', end='')
         
-        # Calculate slope (b) for each window size iN
+        # Calculate slope (b) for current window size iN
         b[:, iN] = np.concatenate((nanvector[:iN], xD[:-iN])) - xD
         b[:, iN] /= iN
         
-        # Calculate MSE for the given window size iN
+        # Calculate MSE for the current window size iN
         for iK in range(1, iN + 1):
             q = np.concatenate((nanvector[:iK], xD[:-iK])) - xD + b[:, iN] * iK
             mse[:, iN] += q ** 2
@@ -383,7 +323,7 @@ def derivative(xD, dT, window=1, postSmoothing=0.5, display=False):
     if display:
         print('!')
 
-    # Select the window with the smallest MSE for each point
+    # Select the window with the smallest MSE for each point - best fit line
     nSelect = np.nanargmin(mse, axis=1)
     dx = np.full_like(xD, np.nan, dtype=float)
     
@@ -397,61 +337,6 @@ def derivative(xD, dT, window=1, postSmoothing=0.5, display=False):
         dx = np.convolve(dx, np.ones(nS) / nS, mode='same')
     
     return dx
-
-
-def calculate_zIdPhi(IdPhi_values, trajectories=None, x=None, y=None):
-    """
-    calculates the zIdPhi values when given the IdPhi values, and zscores according to which arm the rat went down
-    takes trajectories as well for visualising purposes
-
-    Args:
-        IdPhi_values (dict): {choice: IdPhi} where choice is where the rat went down, and IdPhi is the head velocity value
-        trajectories (dict): {choice: (trajectory_x, trajectory_y)}
-
-    Returns:
-        (dict): {choice: zIdPhi}
-    """
-    
-    # calculate zIdPhi according to trial types
-    zIdPhi_values = {}
-    highest_zIdPhi = None
-    highest_trajectories = None
-    lowest_zIdPhi = None
-    lowest_trajectories = None
-    
-    # this z scores according to choice arm
-    for choice, IdPhis in IdPhi_values.items():
-        zIdPhis = zscore(IdPhis) # zscored within the sample of same choices within a session
-        zIdPhi_values[choice] = zIdPhis
-        
-        if trajectories:
-            for i, zIdPhi in enumerate(zIdPhis): # this is to get the highest and lowest zidphi for plotting vte/non
-                if highest_zIdPhi:
-                    if zIdPhi > highest_zIdPhi:
-                        highest_zIdPhi = zIdPhi
-                        highest_trajectories = trajectories[choice][i]
-                else:
-                    highest_zIdPhi = zIdPhi
-                    highest_trajectories = trajectories[choice][i]
-                
-                if lowest_zIdPhi:
-                    if zIdPhi < lowest_zIdPhi and len(trajectories[choice][i]) > 2:
-                        lowest_zIdPhi = zIdPhi
-                        lowest_trajectories = trajectories[choice][i]
-                else:
-                    lowest_zIdPhi = zIdPhi
-                    lowest_trajectories = trajectories[choice][i]
-    
-    if trajectories and x and y:
-        plotting.plot_zIdPhi(zIdPhi_values)
-        
-        highest_trajectory_x, highest_trajectory_y = highest_trajectories
-        lowest_trajectory_x, lowest_trajectory_y = lowest_trajectories
-        
-        plotting.plot_trajectory_animation(x, y, highest_trajectory_x, highest_trajectory_y, title = "Highest zIdPhi Trajectory", label = highest_zIdPhi)
-        plotting.plot_trajectory_animation(x, y, lowest_trajectory_x, lowest_trajectory_y, title = "Lowest zIdPhi Trajectory", label = lowest_zIdPhi)
-    
-    return zIdPhi_values
 
 
 
@@ -489,29 +374,13 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     DLC_df, SS_log, timestamps, trial_starts = helper.initial_processing(data_structure, rat_ID, day)
     
     # check if timestamps is ascending bc annoying trodes code & filesa
-    not_ascending_count = 0
-    stagnant_count = 0
-    for i, timestamp in enumerate(timestamps):
-        if i > 0 and i + 1 < len(timestamps):
-            if timestamp > timestamps[i + 1]:
-                not_ascending_count += 1
-                logging.error(f"timestamps not ascending for {rat_ID} on {day} for {timestamp}")
-            elif i > 0 and timestamp == timestamps[i + 1]:
-                stagnant_count += 1
-                logging.warning(f"stagnant at {timestamp} {timestamps[i + 1]}")
-            else:
-                stagnant_count = 0
-        else:
-            continue
-        
-        if not_ascending_count > 2 or stagnant_count > 30:
-            raise helper.CorruptionError(rat_ID, day, timestamps)
+    check_timestamps(timestamps)
     
     # file path for excluded trajectories
     excluded_path = os.path.join(helper.BASE_PATH, "processed_data", "excluded_trajectories", f"{rat_ID}_excluded_trajectories.csv")
     
     # define zones
-    centre_hull = creating_zones.get_centre_hull(DLC_df)
+    centre_hull = creating_zones_exp.get_centre_hull(DLC_df)
     
     # store IdPhi and trajectory values
     IdPhi_values = {}

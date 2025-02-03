@@ -1,3 +1,18 @@
+"""
+Main script for creating zones to find VTEs in.
+
+Define polygons (convex hulls) by the user clicking on points. Those polygons are used further
+in the pipeline to define the starts and ends of trajectories. The polygons are automatically
+assumed to be reusable across different days for the same rat. The user will be able to
+specify if the same polygons fit across different days.
+
+To use, run the code after passing in your own folder paths you want to save everything to.
+    - dlc_path -> folder with all the dlc files.
+        - assumes dlc_path > rat > day.csv
+        - assumes there is a "x" and "y" column
+    - hull_path -> folder you want to save the zone polygons into
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -13,6 +28,17 @@ from src import helper
 # pylint: disable=import-error
 
 def click_on_map(x_coords, y_coords):
+    """
+    Creates the plot and the clicker that takes clicks as inputs.
+    
+    Args:
+        x_coords (float array): X coords
+        y_coords (float array): Y coords
+    
+    Returns:
+        Array of (x, y) coordinates of where the user clicked
+    """
+    
     _, ax = plt.subplots()
     ax.scatter(x_coords, y_coords, color="red", marker=".", alpha=0.3)
     klicker = clicker(ax, ["vertex"])
@@ -21,12 +47,28 @@ def click_on_map(x_coords, y_coords):
     return klicker.get_positions()["vertex"]
 
 def make_hull(x_coords, y_coords, hull_points, reused=False):
+    """
+    creates a polygon (convex hull) based on the points from click_on_map
+    it then presents a plot of the convex hull to verify with the user
+    if the coordinates used is a different day than the one the polygon was
+    created in, then the user is prompted about whether the polygon actually
+    fits onto the coordinates.
+    
+    Args:
+        x_coords (float array): X coordinates
+        y_coords (float array): Y coordinates
+        hull_points (array): Points to construct hull from
+        reused (bool): Whether it is the same day as the one hull was created from
+    """
+    
     convex_hull = None
 
     def continue_plot(event=None):
+        """Callback for accepting the hull"""
         plt.close()
     
     def replot(event=None):
+        """Callback for rejecting the hull"""
         nonlocal convex_hull
         convex_hull = None
 
@@ -39,14 +81,15 @@ def make_hull(x_coords, y_coords, hull_points, reused=False):
         print("Not enough points to construct hull")
         return None
     
+    # create and plot the polygon
     convex_hull = ConvexHull(hull_points)
-    
     for simplex in convex_hull.simplices:
         ax.plot(hull_points[simplex, 0], hull_points[simplex, 1], "k-")
         
     hull_polygon = Polygon(hull_points[convex_hull.vertices], closed=True, edgecolor="k", fill=False)
     plt.gca().add_patch(hull_polygon)
     
+    # display buttons if this is a different day that the one used to create polygon
     if reused:
         axes1 = plt.axes([0.8, 0.05, 0.1, 0.075])
         btn1 = Button(axes1, "Good")
@@ -68,7 +111,7 @@ for rat in os.listdir(dlc_path):
         continue
 
     rat_path = os.path.join(dlc_path, rat)
-    reused_hull = None
+    reused_hull = None # reset
     for root, _, files in os.walk(rat_path):
         for f in files:
             if not "coordinates" in f:
