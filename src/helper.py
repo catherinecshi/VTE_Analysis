@@ -314,7 +314,7 @@ def get_sem(successes, totals):
     Returns:
     float: Standard error of the mean
     """
-    p = successes / totals if totals > 0 else 0
+    p = successes / totals if totals.any() > 0 else 0
     sem = np.sqrt((p * (1 - p)) / totals) if totals > 0 else 0
     return sem
 

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from src import helper
 from src import plotting
+from src import statistics
 from src import data_processing
 from src import performance_analysis
 
@@ -59,6 +60,69 @@ for rat in os.listdir(vte_path):
 vtes_during_volatility_df = pd.DataFrame(vtes_during_volatility)
 vtes_during_volatility_df.to_csv(os.path.join(vte_path, "vtes_during_volatility.csv"))
 
+def prepare_vte_data_for_anova(vtes_volatility, min_day=0, max_day=5):
+    """
+    Prepares VTE data for one-way ANOVA analysis by grouping percentage of VTEs by number of days.
+    Filters data to include only specified range of days.
+    
+    Parameters:
+        vtes_during_volatility (list): List of dictionaries containing VTE data
+        min_day (int): Minimum number of days to include (inclusive)
+        max_day (int): Maximum number of days to include (inclusive)
+        
+    Returns:
+        tuple: (data_groups, group_labels)
+        - data_groups: List of arrays containing perc_vtes for each no_days group
+        - group_labels: List of labels for each group
+    """
+    # Convert list of dictionaries to DataFrame
+    df = pd.DataFrame(vtes_volatility)
+    
+    # Filter for specified day range
+    df = df[(df['no_days'] >= min_day) & (df['no_days'] <= max_day)]
+    
+    # Group by number of days
+    grouped_data = df.groupby('no_days')['perc_vtes'].apply(list).to_dict()
+    
+    # Sort by number of days
+    sorted_days = sorted(grouped_data.keys())
+    
+    # Create data groups and labels
+    data_groups = [grouped_data[day] for day in sorted_days]
+    group_labels = [f'Day {day}' for day in sorted_days]
+    
+    return data_groups, group_labels
+
+def analyze_vte_anova(vtes_volatility, min_day=0, max_day=5):
+    """
+    Performs one-way ANOVA analysis on VTE data and creates a visualization.
+    
+    Parameters:
+        vtes_during_volatility (list): List of dictionaries containing VTE data
+        min_day (int): Minimum number of days to include (inclusive)
+        max_day (int): Maximum number of days to include (inclusive)
+    
+    Returns:
+        tuple: (fig, ax, stats_results)
+    """
+    # Prepare data for ANOVA
+    data_groups, group_labels = prepare_vte_data_for_anova(
+        vtes_volatility,
+        min_day=min_day,
+        max_day=max_day
+    )
+    
+    # Run ANOVA and create plot
+    fig, ax, stats_results = statistics.plot_one_way_anova_line(
+        data_groups,
+        group_labels=group_labels,
+        title=f'VTE Percentage by Days Since New Arm',
+        xlabel='Days Since New Arm',
+        ylabel='VTE Percentage (%)'
+    )
+    
+    return fig, ax, stats_results
+
 # Calculate the mean and SEM for each day
 mean_perc_vtes = vtes_during_volatility_df.groupby("no_days")["perc_vtes"].mean()
 sem_perc_vtes = vtes_during_volatility_df.groupby("no_days")["perc_vtes"].sem()
@@ -101,6 +165,9 @@ create_combined_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
 
 
 plotting.create_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
-                          xlim=(0, 8), title="VTEs during Volatility",
+                          xlim=(0, 5), title="VTEs during Volatility",
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="% VTE Trials")
+
+fig, ax, stats_results = analyze_vte_anova(vtes_during_volatility, min_day=0, max_day=5)
+plt.show()
