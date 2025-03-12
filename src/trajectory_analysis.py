@@ -13,8 +13,8 @@ from scipy.stats import zscore
 from datetime import datetime
 
 from src import plotting
-from src import creating_zones_exp
 from src import helper
+from src import creating_zones_exp
 from src import performance_analysis
 
 ### LOGGING
@@ -226,8 +226,8 @@ def get_trajectory(df, start, end, hull):
             if past_inside is False: # first time inside the centre
                 past_inside = True
                 start_time = time
-            trajectory_x.append(x_val / 5) # divide by 5 to convert from pixels to cm
-            trajectory_y.append(y_val / 5)
+            trajectory_x.append(x_val)
+            trajectory_y.append(y_val)
         else:
             if past_inside:
                 end_time = time
@@ -437,7 +437,7 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
                 helper.add_row_to_csv(excluded_path, skip_row)
                 continue
             
-            if traj_len > 3.5:
+            if traj_len > 4:
                 skip_row = {"ID": traj_id, "X Values": trajectory_x, "Y Values": trajectory_y, "Correct": performance[i],
                         "Choice": choice, "Trial Type": trial_type, "Length": traj_len, "Reason": "Too Long"}
                 helper.add_row_to_csv(excluded_path, skip_row)
@@ -466,9 +466,13 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         
         last_trajectory_x = trajectory_x
         
+        # convert from pixels into cm
+        trajectory_x = [x / 5 for x in trajectory_x]
+        trajectory_y = [y / 5 for y in trajectory_y]
+        
         # calculate Idphi of this trajectory
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
-        #plotting.plot_trajectory_animation(DLC_df["x"], DLC_df["y"], trajectory_x, trajectory_y, title=traj_id)
+        #plotting.plot_trajectory_animation((DLC_df["x"] / 5), (DLC_df["y"] / 5), trajectory_x, trajectory_y, title=traj_id)
         
         # store IdPhi according to which arm the rat went down
         if choice not in IdPhi_values:

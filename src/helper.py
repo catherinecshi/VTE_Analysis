@@ -17,6 +17,8 @@ general auxillary functions for multiple purposes:
         - round_to_sig_figs
         - ss_trials_to_video
         - string_to_int_trial_type
+        - get_other_element
+        - letter_to_indices
     - if point is in zone
         - is_point_in_ellipse
         - is_point_in_hull
@@ -431,6 +433,54 @@ def choice_to_correctness(trial_type, choice):
             correct = False
     
     return correct
+
+def get_other_element(first_element, is_correct):
+    """takes one element and whether that elemnet was correct and returns the other element"""
+    
+    if is_correct:
+        if first_element == "A":
+            return "B"
+        elif first_element == "B":
+            return "C"
+        elif first_element == "C":
+            return "D"
+        elif first_element == "D":
+            return "E"
+        elif first_element == "E":
+            return "F"
+        elif first_element == "F":
+            print("F is element and trial is correct - something wrong")
+            return None
+    else:
+        if first_element == "A":
+            print("A is element yet trial is wrong - something is wrong")
+            return None
+        elif first_element == "B":
+            return "A"
+        elif first_element == "C":
+            return "B"
+        elif first_element == "D":
+            return "C"
+        elif first_element == "E":
+            return "D"
+        elif first_element == "F":
+            return "E"
+
+def letter_to_indices(letter):
+    if letter == "A":
+        return 0
+    elif letter == "B":
+        return 1
+    elif letter == "C":
+        return 2
+    elif letter == "D":
+        return 3
+    elif letter == "E":
+        return 4
+    elif letter == "F":
+        return 5
+    else:
+        print("letter not from a - f??")
 
 
 ### IF POINT IN SPACE --------------
