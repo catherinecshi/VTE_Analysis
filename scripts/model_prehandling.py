@@ -55,7 +55,9 @@ for rat in os.listdir(base_path):
                     # get everything else for the df
                     traj_id = row["ID"]
                     length = row["Length"]
-                    day_df.append({"ID": traj_id, 
+                    day_number = extract_day_number(day)
+                    day_df.append({"ID": traj_id,
+                                   "Day": day_number, 
                                    "first": first_index, 
                                    "second": second_index, 
                                    "correct": correct,

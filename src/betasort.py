@@ -217,6 +217,95 @@ class Betasort:
         
         return chosen_idx, reward
     
+def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95):
+    """
+    uses real data from participants to update values for stimulus position and uncertainty
+    takes all data from one rat and separately updates the model as elements get added
+    
+    Parameters:
+        - all_data_df : DataFrame
+            - data for all days for a single rat
+        - rat : String
+            - the rat
+        - tau : float
+            - noise parameter
+        - xi : float
+            - recall parameter
+    
+    Returns:
+        - final_model : Betasort
+            - final betasort model for all days
+        - all_models : Dict
+            - dictionary of models for each day
+    """
+    # sort data by day
+    all_data_df = all_data_df.sort_values('Day')
+    
+    all_models = {}
+    
+    # track global stimuli states
+    global_U = {}
+    global_L = {}
+    global_R = {}
+    global_N = {}
+    
+    # process each day separately
+    for day, day_data in all_data_df.groupby('Day'):
+        # Extract relevant data
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        rewards = day_data["correct"].values
+        
+        # Identify which stimuli are present on this day
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
+        
+        # Initialize a new model for this day
+        model = Betasort(n_stimuli, rat, day)
+        
+        # Transfer state from previous days
+        for stim_idx in range(n_stimuli):
+            if stim_idx in global_U:
+                model.U[stim_idx] = global_U[stim_idx]
+                model.L[stim_idx] = global_L[stim_idx]
+                model.R[stim_idx] = global_R[stim_idx]
+                model.N[stim_idx] = global_N[stim_idx]
+        
+        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.position_history = [model.get_all_positions()]
+        model.U_history = [model.U.copy()]
+        model.L_history = [model.L.copy()]
+        
+        # process the trials for today
+        participant_choices = np.column_stack((chosen_idx, unchosen_idx))
+        n_trials = len(participant_choices)
+        
+        for t in range(n_trials):
+            chosen_idx, unchosen_idx = participant_choices[t]
+            reward = rewards[t]
+            
+            # Validate indices (just in case)
+            if not (0 <= chosen_idx < n_stimuli) or not (0 <= unchosen_idx < n_stimuli):
+                print(f"Day {day}, Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {unchosen_idx}")
+                continue
+                
+            # Update model
+            model.update(chosen_idx, unchosen_idx, reward)
+        
+        # store all the stuff for this day
+        all_models[day] = model
+
+        # update global states
+        for stim_idx in range(n_stimuli):
+            global_U[stim_idx] = model.U[stim_idx]
+            global_L[stim_idx] = model.L[stim_idx]
+            global_R[stim_idx] = model.R[stim_idx]
+            global_N[stim_idx] = model.N[stim_idx]
+    
+    # return the models
+    final_day = max(all_models.keys())
+    return all_models[final_day], all_models
+
 def analyze_real_data(participant_choices, feedback, n_stimuli, rat, day, tau=0.05, xi=0.95):
     """
     uses real data from participants to update values for stimulus position and uncertainty
@@ -253,6 +342,97 @@ def analyze_real_data(participant_choices, feedback, n_stimuli, rat, day, tau=0.
         model.update(chosen_idx, other_idx, reward)
         
     return model
+
+def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99):
+    # sort data by day
+    all_data_df = all_data_df.sort_values('Day')
+    
+    all_models = {}
+    
+    # track global stimuli states
+    global_U = {}
+    global_L = {}
+    global_R = {}
+    global_N = {}
+    
+    # store match rates for each day
+    match_rates = []
+    
+    # process each day separately
+    for day, day_data in all_data_df.groupby('Day'):
+        # Extract relevant data
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        rewards = day_data["correct"].values
+        
+        # Identify which stimuli are present on this day
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
+        
+        # Initialize a new model for this day
+        model = Betasort(n_stimuli, rat, day)
+        
+        # Transfer state from previous days
+        for stim_idx in range(n_stimuli):
+            if stim_idx in global_U:
+                model.U[stim_idx] = global_U[stim_idx]
+                model.L[stim_idx] = global_L[stim_idx]
+                model.R[stim_idx] = global_R[stim_idx]
+                model.N[stim_idx] = global_N[stim_idx]
+        
+        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.position_history = [model.get_all_positions()]
+        model.U_history = [model.U.copy()]
+        model.L_history = [model.L.copy()]
+        
+        # process the trials for today
+        participant_choices = np.column_stack((chosen_idx, unchosen_idx))
+        n_trials = len(participant_choices)
+        matches = np.zeros(n_trials)
+        
+        for t in range(n_trials):
+            chosen_idx, other_idx = participant_choices[t]
+            reward = rewards[t]
+            
+            # Validate indices (just in case)
+            if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
+                print(f"Day {day}, Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {other_idx}")
+                continue
+                
+            # Update model
+            model.update(chosen_idx, other_idx, reward)
+            
+            # run multiple simulations to get choice probability
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen_idx, other_idx])
+                model_choices[sim] = model_choice
+            
+            # see how well the model matches up with real choices
+            model_match_rate = np.mean(model_choices == chosen_idx)
+            matches[t] = model_match_rate
+
+            # update model based on actual feedback
+            reward = 1 if chosen_idx < other_idx else 0
+            model.update(chosen_idx, other_idx, reward)
+        
+        # calculate cumulative match rate
+        cumulative_match_rate = np.mean(matches)
+        match_rates.append(cumulative_match_rate)
+        
+        # store all the stuff for this day
+        all_models[day] = model
+
+        # update global states
+        for stim_idx in range(n_stimuli):
+            global_U[stim_idx] = model.U[stim_idx]
+            global_L[stim_idx] = model.L[stim_idx]
+            global_R[stim_idx] = model.R[stim_idx]
+            global_N[stim_idx] = model.N[stim_idx]
+    
+    # return the models
+    final_day = max(all_models.keys())
+    return all_models[final_day], all_models, match_rates
 
 def compare_model_to_rats(participant_choices, n_stimuli, rat, day, tau=0.05, xi=0.95, n_simulations=100):
     """
@@ -339,10 +519,18 @@ def find_optimal_parameters(participant_data, n_stimuli, rat, day, n_simulations
     """
     
     if xi_values is None:
-        xi_values = np.arange(0.75, 0.99, 0.01)
-    
+        xi_values_coarse = np.arange(0.75, 0.99 + 0.01, 0.01)
+        xi_values_fine = np.arange(0.99, 1.0 + 0.001, 0.001)
+        
+        # Concatenate arrays and remove any duplicates (0.99 appears in both)
+        xi_values = np.unique(np.concatenate([xi_values_coarse, xi_values_fine]))
+
     if tau_values is None:
-        tau_values = np.arange(0.01, 0.25, 0.01)
+        tau_values_fine = np.arange(0.001, 0.01 + 0.001, 0.001)
+        tau_values_coarse = np.arange(0.01, 0.25 + 0.01, 0.01)
+        
+        # Concatenate arrays and remove any duplicates (0.01 appears in both)
+        tau_values = np.unique(np.concatenate([tau_values_fine, tau_values_coarse]))
     
     param_performances = {}
     
@@ -359,6 +547,40 @@ def find_optimal_parameters(participant_data, n_stimuli, rat, day, n_simulations
     best_params = max(param_performances, key=param_performances.get)
     best_xi, best_tau = best_params
     best_performance = param_performances[best_params]
+    
+    return best_xi, best_tau, best_performance, param_performances
+
+def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_values=None, tau_values=None):
+    if xi_values is None:
+        xi_values_coarse = np.arange(0.75, 0.99 + 0.01, 0.01)
+        xi_values_fine = np.arange(0.99, 1.0 + 0.001, 0.001)
+        
+        # Concatenate arrays and remove any duplicates (0.99 appears in both)
+        xi_values = np.unique(np.concatenate([xi_values_coarse, xi_values_fine]))
+
+    if tau_values is None:
+        tau_values_fine = np.arange(0.001, 0.01 + 0.001, 0.001)
+        tau_values_coarse = np.arange(0.01, 0.25 + 0.01, 0.01)
+        
+        # Concatenate arrays and remove any duplicates (0.01 appears in both)
+        tau_values = np.unique(np.concatenate([tau_values_fine, tau_values_coarse]))
+    
+    param_performances = {}
+    
+    # for each parameter combination
+    for xi in xi_values:
+        for tau in tau_values:
+            # start a fresh model with these parameters
+            _, _, matches_rate = compare_model_to_one_rat(all_data_df, rat, tau=tau, xi=xi)
+            
+            param_performances[(xi, tau)] = matches_rate # store rate
+    
+    # find best parameter combination
+    avg_performances = {params: np.mean(day_rates) for params, day_rates in param_performances.items()}
+    
+    best_params = max(avg_performances, key=avg_performances.get)
+    best_xi, best_tau = best_params
+    best_performance = avg_performances[best_params]
     
     return best_xi, best_tau, best_performance, param_performances
 
@@ -601,8 +823,8 @@ def parameter_performance_heatmap(param_performances):
     plt.title('Parameter Performance Heatmap')
     
     # set tick labels
-    plt.xticks(range(len(tau_list)), [f"{t:.2f}" for t in tau_list])
-    plt.yticks(range(len(xi_list)), [f"{x:.2f}" for x in xi_list])
+    plt.xticks(range(len(tau_list)), [f"{t:.3f}" for t in tau_list])
+    plt.yticks(range(len(xi_list)), [f"{x:.3f}" for x in xi_list])
     
     # text annotations with values
     for i, xi in enumerate(xi_list):
