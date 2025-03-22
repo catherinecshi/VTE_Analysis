@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 
@@ -168,6 +169,186 @@ class Betasort:
         self.U_history.append(self.U.copy())
         self.L_history.append(self.L.copy())
     
+    def real_data_update(self, chosen, unchosen, reward, probability):
+        """
+        implements first updating policy
+        
+        Parameters:
+            - chosen : int
+                - index of chosen stimulus
+            - unchosen : int
+                - index of unchosen stimulus
+            - reward : int
+                - 1 for reward and 0 otherwise
+            - probability : float
+                - probability of how much the simulated data matches up with the real choice
+                - used to update the model proportionally
+        """
+        
+        # update trial count
+        self.trial += 1
+        
+        # relax
+        self.R = self.R * self.xi
+        self.N = self.N * self.xi
+        
+        # estimate trial reward rate
+        E = self.R / (self.R + self.N)
+        xi_R = E / (E + 1) + 0.5
+        
+        # relax some more :)
+        self.U = self.U * xi_R * self.xi
+        self.L = self.L * xi_R * self.xi
+
+        # dynamic version of updating values by checking how much model matches with real data
+        V = self.U / (self.U + self.L)
+        non_likelihood = 1 - probability
+
+        if reward == 1:
+            # update reward rate
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            # update both trial and inferred stimuli position
+            # essentially, this configuration led to the correct choice so let's keep doing it
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+            
+            # radical new moves
+            self.U[chosen] = self.U[chosen] + V[chosen] # * probability
+            #self.U[unchosen] = self.U[unchosen] + V[unchosen] * non_likelihood
+            #self.L[chosen] = self.L[chosen] + (1 - V[chosen]) * probability
+            self.L[unchosen] = self.L[unchosen] + (1 - V[unchosen]) # * non_likelihood
+            
+            # radical new moves 2
+            # self.U = self.U + V * probability
+            # self.L = self.L + (1 - V) * probability
+        # elif reward == 1: # change above to make sure that it says reward == 1 and probability < 0.5 or arbitrary threshold - maybe check?
+            # self.R[unchosen] = self.R[unchosen] + 1
+            # self.R[chosen] = self.R[chosen] + 1
+            
+            # self.U = self.U + V
+            # self.L = self.L + (1 - V)
+        else:
+            # update reward rate
+            self.N[unchosen] = self.N[unchosen] + 1
+            self.N[chosen] = self.N[chosen] + 1
+            
+            # shift unchosen up, chosen down
+            self.U[unchosen] = self.U[unchosen] + 1
+            self.L[chosen] = self.L[chosen] + 1
+            
+            # process other stimuli (implicit inference)
+            for j in range(self.n_stimuli):
+                if j != chosen and j != unchosen:
+                    if V[j] > V[chosen] and V[j] < V[unchosen]:
+                        # j fell between chosen and unchosen (consolidate)
+                        self.U[j] = self.U[j] + V[j]
+                        self.L[j] = self.L[j] + (1 - V[j])
+                    elif V[j] < V[unchosen]:
+                        # shift j down
+                        self.L[j] = self.L[j] + 1
+                    elif V[j] > V[chosen]:
+                        # shift j up
+                        self.U[j] = self.U[j] + 1
+
+        #print("after", self.U, self.L)
+        
+        # store updated uncertainties and positions upper and lower
+        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
+        self.position_history.append(self.get_all_positions())
+        self.U_history.append(self.U.copy())
+        self.L_history.append(self.L.copy())
+        
+    def thresholding_update(self, chosen, unchosen, reward, probability, threshold):
+        """
+        implements first updating policy
+        
+        Parameters:
+            - chosen : int
+                - index of chosen stimulus
+            - unchosen : int
+                - index of unchosen stimulus
+            - reward : int
+                - 1 for reward and 0 otherwise
+            - probability : float
+                - probability of how much the simulated data matches up with the real choice
+                - used to update the model proportionally
+            - threshold : float
+                - threshold for above which consolidation is done
+        """
+        
+        # update trial count
+        self.trial += 1
+        
+        # relax
+        self.R = self.R * self.xi
+        self.N = self.N * self.xi
+        
+        # estimate trial reward rate
+        E = self.R / (self.R + self.N)
+        xi_R = E / (E + 1) + 0.5
+        
+        # relax some more :)
+        self.U = self.U * xi_R * self.xi
+        self.L = self.L * xi_R * self.xi
+
+        # dynamic version of updating values by checking how much model matches with real data
+        V = self.U / (self.U + self.L)
+        non_likelihood = 1 - probability
+
+        if reward == 1 and probability < threshold:
+            # update reward rate
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            # update both trial and inferred stimuli position
+            # essentially, this configuration led to the correct choice so let's keep doing it
+            #self.U = self.U + V
+            #self.L = self.L + (1 - V)
+            
+            # radical new moves
+            self.U[chosen] = self.U[chosen] + probability
+            #self.U[unchosen] = self.U[unchosen] + V[unchosen] * non_likelihood
+            #self.L[chosen] = self.L[chosen] + (1 - V[chosen]) * probability
+            self.L[unchosen] = self.L[unchosen] + probability
+        elif reward == 1: 
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+        else:
+            # update reward rate
+            self.N[unchosen] = self.N[unchosen] + 1
+            self.N[chosen] = self.N[chosen] + 1
+            
+            # shift unchosen up, chosen down
+            self.U[unchosen] = self.U[unchosen] + 1
+            self.L[chosen] = self.L[chosen] + 1
+            
+            # process other stimuli (implicit inference)
+            for j in range(self.n_stimuli):
+                if j != chosen and j != unchosen:
+                    if V[j] > V[chosen] and V[j] < V[unchosen]:
+                        # j fell between chosen and unchosen (consolidate)
+                        self.U[j] = self.U[j] + V[j]
+                        self.L[j] = self.L[j] + (1 - V[j])
+                    elif V[j] < V[unchosen]:
+                        # shift j down
+                        self.L[j] = self.L[j] + 1
+                    elif V[j] > V[chosen]:
+                        # shift j up
+                        self.U[j] = self.U[j] + 1
+
+        #print("after", self.U, self.L)
+        
+        # store updated uncertainties and positions upper and lower
+        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
+        self.position_history.append(self.get_all_positions())
+        self.U_history.append(self.U.copy())
+        self.L_history.append(self.L.copy())
+    
     def simulate_trials(self, chosen_idx, other_idx, n_simulations=100):
         """
         simulate n_simulations trials to get a rate at which one element would be picked over another
@@ -217,7 +398,7 @@ class Betasort:
         
         return chosen_idx, reward
     
-def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95):
+def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.5):
     """
     uses real data from participants to update values for stimulus position and uncertainty
     takes all data from one rat and separately updates the model as elements get added
@@ -343,7 +524,7 @@ def analyze_real_data(participant_choices, feedback, n_stimuli, rat, day, tau=0.
         
     return model
 
-def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99):
+def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99, threshold=0.5):
     # sort data by day
     all_data_df = all_data_df.sort_values('Day')
     
@@ -363,7 +544,7 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
         # Extract relevant data
         chosen_idx = day_data["first"].values
         unchosen_idx = day_data["second"].values
-        rewards = day_data["correct"].values
+        #rewards = day_data["correct"].values
         
         # Identify which stimuli are present on this day
         present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
@@ -392,16 +573,13 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
         
         for t in range(n_trials):
             chosen_idx, other_idx = participant_choices[t]
-            reward = rewards[t]
+            #reward = rewards[t]
             
             # Validate indices (just in case)
             if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
                 print(f"Day {day}, Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {other_idx}")
                 continue
-                
-            # Update model
-            model.update(chosen_idx, other_idx, reward)
-            
+
             # run multiple simulations to get choice probability
             model_choices = np.zeros(n_simulations)
             for sim in range(n_simulations):
@@ -414,7 +592,8 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
 
             # update model based on actual feedback
             reward = 1 if chosen_idx < other_idx else 0
-            model.update(chosen_idx, other_idx, reward)
+            #model.update(chosen_idx, other_idx, reward)
+            model.thresholding_update(chosen_idx, other_idx, reward, model_match_rate, threshold=0.7)
         
         # calculate cumulative match rate
         cumulative_match_rate = np.mean(matches)
@@ -492,7 +671,6 @@ def compare_model_to_rats(participant_choices, n_stimuli, rat, day, tau=0.05, xi
     cumulative_match_rate = np.mean(matches)
     
     return matches, cumulative_match_rate, model
-
 
 def find_optimal_parameters(participant_data, n_stimuli, rat, day, n_simulations=100, xi_values=None, tau_values=None):
     """
@@ -583,6 +761,86 @@ def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_valu
     best_performance = avg_performances[best_params]
     
     return best_xi, best_tau, best_performance, param_performances
+
+def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, tau_values=None, thresholds=None):
+    if xi_values is None:
+        xi_values = np.arange(0.8, 1, 0.001)
+
+    if tau_values is None:
+        tau_values = np.arange(0, 0.3, 0.001)
+    
+    if thresholds is None:
+        thresholds = np.arange(0.3, 0.7, 0.01)
+    
+    param_performances = {}
+    all_xi = []
+    all_tau = []
+    all_threshold = []
+    all_performances = []
+    all_days = []
+    
+    # list of unique days for labeling later
+    unique_days = sorted(all_data_df['Day'].unique())
+    num_days = len(unique_days)
+    
+    # for each parameter combination
+    for xi in xi_values:
+        for tau in tau_values:
+            for threshold in thresholds:
+                # start a fresh model with these parameters
+                try:
+                    _, _, matches_rate = compare_model_to_one_rat(all_data_df, 
+                                                                  rat, 
+                                                                  tau=tau, 
+                                                                  xi=xi, 
+                                                                  threshold=threshold)
+                    
+                    param_performances[(xi, tau, threshold)] = matches_rate # store rate
+                    
+                    # add list for dataframe
+                    for day_idx, day in enumerate(unique_days):
+                        all_xi.append(xi)
+                        all_tau.append(tau)
+                        all_threshold.append(threshold)
+                        all_days.append(day)
+                        all_performances.append(matches_rate[day_idx])
+                
+                except Exception as e:
+                    print(f"Error with parameters xi={xi}, tau={tau}, threshold={threshold}: {e}")
+                    continue
+    
+    # create dataframe
+    results_df = pd.DataFrame({
+        'xi': all_xi,
+        'tau': all_tau,
+        'threshold': all_threshold,
+        'day': all_days,
+        'match_rate': all_performances
+    })
+    
+    # find best parameter combination
+    avg_performances = {}
+    for params, day_rates in param_performances.items():
+        avg_performances[params] = np.mean(day_rates)
+    
+    # add a column for average performances across days
+    avg_df = results_df.groupby(['xi', 'tau', 'threshold'])['match_rate'].mean().reset_index()
+    avg_df['day'] = 'average'
+    avg_df = avg_df.rename(columns={'match_rate': 'avg_match_rate'})
+    
+    # separate dataframe for just the summary
+    summary_df = pd.DataFrame({
+        'best_xi': [best_xi],
+        'best_tau': [best_tau],
+        'best_threshold': [best_threshold],
+        'best_performance': [best_performance]
+    })
+    
+    best_params = max(avg_performances, key=avg_performances.get)
+    best_xi, best_tau, best_threshold = best_params
+    best_performance = avg_performances[best_params]
+    
+    return best_xi, best_tau, best_threshold, best_performance, param_performances, results_df, summary_df
 
 def plot_uncertainty(model, stimulus_labels=None):
     """
@@ -834,6 +1092,140 @@ def parameter_performance_heatmap(param_performances):
     
     plt.tight_layout()
     plt.show()
+
+def parameter_performance_heatmap_with_threshold(param_performances, title=None, fixed_param=None, fixed_value=None):
+    """
+    Create a heatmap of parameter performances
+    
+    Parameters:
+        - param_performances: Dictionary of performance metrics
+        - title: Optional title for the plot
+        - fixed_param: Which parameter to fix (0 for xi, 1 for tau, 2 for threshold)
+        - fixed_value: The value to fix the parameter at
+    
+    Returns:
+        - fig, ax: Figure and axes objects
+    """
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Extract parameter values
+    params_structure = list(param_performances.keys())[0]
+    
+    if len(params_structure) == 3:  # (xi, tau, threshold)
+        # We need to fix one parameter to visualize in 2D
+        if fixed_param is None:
+            fixed_param = 2  # Default to fixing threshold
+            
+        # Get unique values for each parameter
+        xi_values = sorted(set(p[0] for p in param_performances.keys()))
+        tau_values = sorted(set(p[1] for p in param_performances.keys()))
+        threshold_values = sorted(set(p[2] for p in param_performances.keys()))
+        
+        if fixed_param == 0:  # Fix xi
+            if fixed_value is None:
+                fixed_value = xi_values[len(xi_values) // 2]  # Use middle value
+            
+            # Filter for fixed xi
+            filtered_params = {(tau, thresh): perf 
+                              for (xi, tau, thresh), perf in param_performances.items() 
+                              if xi == fixed_value}
+            
+            # Use tau and threshold as axes
+            x_label = 'Threshold'
+            y_label = 'Tau (noise parameter)'
+            x_values = threshold_values
+            y_values = tau_values
+            
+            if title is None:
+                title = f'Parameter Performance (Xi = {fixed_value:.3f})'
+                
+        elif fixed_param == 1:  # Fix tau
+            if fixed_value is None:
+                fixed_value = tau_values[len(tau_values) // 2]
+                
+            # Filter for fixed tau
+            filtered_params = {(xi, thresh): perf 
+                              for (xi, tau, thresh), perf in param_performances.items() 
+                              if tau == fixed_value}
+            
+            # Use xi and threshold as axes
+            x_label = 'Threshold'
+            y_label = 'Xi (recall parameter)'
+            x_values = threshold_values
+            y_values = xi_values
+            
+            if title is None:
+                title = f'Parameter Performance (Tau = {fixed_value:.3f})'
+                
+        else:  # Fix threshold (default)
+            if fixed_value is None:
+                fixed_value = threshold_values[len(threshold_values) // 2]
+                
+            # Filter for fixed threshold
+            filtered_params = {(xi, tau): perf 
+                              for (xi, tau, thresh), perf in param_performances.items() 
+                              if thresh == fixed_value}
+            
+            # Use xi and tau as axes
+            x_label = 'Tau (noise parameter)'
+            y_label = 'Xi (recall parameter)'
+            x_values = tau_values
+            y_values = xi_values
+            
+            if title is None:
+                title = f'Parameter Performance (Threshold = {fixed_value:.3f})'
+    else:
+        # Just (xi, tau) keys
+        filtered_params = param_performances
+        x_label = 'Tau (noise parameter)'
+        y_label = 'Xi (recall parameter)'
+        x_values = sorted(set(p[1] for p in param_performances.keys()))
+        y_values = sorted(set(p[0] for p in param_performances.keys()))
+        
+        if title is None:
+            title = 'Parameter Performance Heatmap'
+    
+    # Create performance matrix for heatmap
+    performance_matrix = np.zeros((len(y_values), len(x_values)))
+    
+    # Fill the performance matrix
+    for i, y_val in enumerate(y_values):
+        for j, x_val in enumerate(x_values):
+            key = (y_val, x_val)
+            if key in filtered_params:
+                perf_value = filtered_params[key]
+                if isinstance(perf_value, (list, np.ndarray)):
+                    performance_matrix[i, j] = np.mean(perf_value)
+                else:
+                    performance_matrix[i, j] = perf_value
+    
+    # Plot heatmap
+    im = ax.imshow(performance_matrix, interpolation='nearest', cmap='viridis')
+    fig.colorbar(im, ax=ax, label='Match Rate')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+    
+    # Set tick labels (limit number of ticks for readability)
+    max_ticks = 10
+    xtick_indices = np.linspace(0, len(x_values)-1, min(max_ticks, len(x_values))).astype(int)
+    ytick_indices = np.linspace(0, len(y_values)-1, min(max_ticks, len(y_values))).astype(int)
+    
+    ax.set_xticks(xtick_indices)
+    ax.set_xticklabels([f"{x_values[i]:.3f}" for i in xtick_indices])
+    ax.set_yticks(ytick_indices)
+    ax.set_yticklabels([f"{y_values[i]:.3f}" for i in ytick_indices])
+    
+    # Add text annotations if there aren't too many cells
+    if len(y_values) * len(x_values) <= 100:
+        for i, y_val in enumerate(y_values):
+            for j, x_val in enumerate(x_values):
+                ax.text(j, i, f"{performance_matrix[i, j]:.3f}",
+                        ha="center", va="center", 
+                        color="w" if performance_matrix[i, j] < 0.7 else "black")
+    
+    plt.tight_layout()
+    return fig, ax
 
 def plot_best_parameters(best_model):
     plot_positions(best_model)
