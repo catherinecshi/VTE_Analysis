@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
+from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 
 class Betasort:
     """
@@ -34,6 +36,8 @@ class Betasort:
         
         # store history for later plotting
         self.uncertainty_history = [self.get_all_stimulus_uncertainties()]
+        self.relational_uncertainty_history = [self.get_all_relational_uncertainties()]
+        self.ROC_uncertainty_history = [self.get_all_ROC_uncertainties()]
         self.position_history = [self.get_all_positions()]
         self.U_history = [self.U.copy()]
         self.L_history = [self.L.copy()]
@@ -82,6 +86,81 @@ class Betasort:
     def get_all_stimulus_uncertainties(self):
         """Get uncertainty values for all stimuli"""
         return np.array([self.get_uncertainty_stimulus(i) for i in range(self.n_stimuli)])
+    
+    def get_uncertainty_relation(self, chosen_idx, other_idx, n_samples=1000):
+        """
+        Calculates the uncertainty about the relationship between two stimuli
+        
+        Parameters:
+            - chosen_idx (int): index of first stimulus
+            - other_idx (int): index of second stimulus
+            - n_samples (int): number of Monte Carlo samples
+            
+        Returns:
+            - (float): uncertainty value between 0 and 1 (0=certain, 1=maximally uncertain)
+        """
+        # Get Beta distribution parameters
+        a1 = self.U[chosen_idx] + 1
+        b1 = self.L[chosen_idx] + 1
+        a2 = self.U[other_idx] + 1
+        b2 = self.L[other_idx] + 1
+        
+        # Generate samples from both distributions
+        samples1 = np.random.beta(a1, b1, n_samples)
+        samples2 = np.random.beta(a2, b2, n_samples)
+        
+        # Calculate probability that samples1 > samples2
+        prob_greater = np.mean(samples1 > samples2)
+        
+        # Convert to uncertainty measure (0 = certain, 1 = maximally uncertain)
+        uncertainty = 1 - 2 * abs(prob_greater - 0.5)
+        
+        return uncertainty
+    
+    def get_all_relational_uncertainties(self):
+        """get probabilistic uncertainties for all adjacent pairs of stimulus"""
+        return np.array([self.get_uncertainty_relation(i, i+1) for i in range(self.n_stimuli-1)])
+
+    def get_uncertainty_relation_ROC(self, chosen_idx, other_idx, n_samples=10000):
+        """
+        Calculates the uncertainty about the relationship between two stimuli using ROC analysis
+        
+        Parameters:
+            - stimulus_idx1 (int): index of first stimulus
+            - stimulus_idx2 (int): index of second stimulus
+            - n_samples (int): number of samples for ROC calculation
+            
+        Returns:
+            - (float): uncertainty value between 0 and 1 (0=certain, 1=maximally uncertain)
+        """
+        # Get Beta distribution parameters
+        a1 = self.U[chosen_idx] + 1
+        b1 = self.L[chosen_idx] + 1
+        a2 = self.U[other_idx] + 1
+        b2 = self.L[other_idx] + 1
+        
+        # Generate samples from both distributions
+        samples1 = np.random.beta(a1, b1, n_samples)
+        samples2 = np.random.beta(a2, b2, n_samples)
+        
+        # Calculate AUC (Area Under the ROC Curve)
+        # This is equivalent to the probability that a randomly selected
+        # value from samples1 exceeds a randomly selected value from samples2
+        auc = 0
+        for i in range(n_samples):
+            auc += np.mean(samples1[i] > samples2)
+        auc /= n_samples
+        
+        # Convert AUC to uncertainty measure
+        # AUC of 0.5 represents maximum uncertainty (distributions completely overlap)
+        # AUC of 0 or 1 represents minimum uncertainty (distributions completely separated)
+        uncertainty = 1 - 2 * abs(auc - 0.5)
+        
+        return uncertainty
+    
+    def get_all_ROC_uncertainties(self):
+        """get probabilistic uncertainties for all adjacent pairs of stimulus"""
+        return np.array([self.get_uncertainty_relation_ROC(i, i+1) for i in range(self.n_stimuli-1)])
     
     def get_all_positions(self):
         """Get estimated positions for all stimuli"""
@@ -345,6 +424,8 @@ class Betasort:
         
         # store updated uncertainties and positions upper and lower
         self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
+        self.relational_uncertainty_history.append(self.get_all_relational_uncertainties())
+        self.ROC_uncertainty_history.append(self.get_all_ROC_uncertainties())
         self.position_history.append(self.get_all_positions())
         self.U_history.append(self.U.copy())
         self.L_history.append(self.L.copy())
@@ -453,6 +534,8 @@ def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.5):
                 model.N[stim_idx] = global_N[stim_idx]
         
         model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.relational_uncertainty_history = [model.get_all_relational_uncertainties()]
+        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
         model.position_history = [model.get_all_positions()]
         model.U_history = [model.U.copy()]
         model.L_history = [model.L.copy()]
@@ -562,6 +645,8 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
                 model.N[stim_idx] = global_N[stim_idx]
         
         model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.relational_uncertainty_history = [model.get_all_relational_uncertainties()]
+        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
         model.position_history = [model.get_all_positions()]
         model.U_history = [model.U.copy()]
         model.L_history = [model.L.copy()]
@@ -593,7 +678,7 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
             # update model based on actual feedback
             reward = 1 if chosen_idx < other_idx else 0
             #model.update(chosen_idx, other_idx, reward)
-            model.thresholding_update(chosen_idx, other_idx, reward, model_match_rate, threshold=0.7)
+            model.thresholding_update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
         
         # calculate cumulative match rate
         cumulative_match_rate = np.mean(matches)
@@ -671,6 +756,155 @@ def compare_model_to_rats(participant_choices, n_stimuli, rat, day, tau=0.05, xi
     cumulative_match_rate = np.mean(matches)
     
     return matches, cumulative_match_rate, model
+
+def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulations=100):
+    """Run binomial test on shtuff"""
+    
+    all_data_df = all_data_df.sort_values('Day')
+    
+    session_results = {}
+    for day, day_data in all_data_df.groupby('Day'):
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1
+        
+        # initialize model with current parameters
+        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
+        
+        model_correct = np.zeros(len(chosen_idx))
+        rat_correct = np.zeros(len(chosen_idx))
+        for t in range(len(chosen_idx)):
+            reward = 1 if chosen_idx[t] < unchosen_idx[t] else 0
+            sim_correct = np.zeros(n_simulations)
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen_idx[t], unchosen_idx[t]])
+                model_choices[sim] = model_choice
+                sim_correct[sim] = 1 if model_choice == min(chosen_idx[t], unchosen_idx[t]) else 0
+            
+            # see how well the model matches up with real choices
+            current_model_match_rate = np.mean(model_choices == chosen_idx[t])
+            
+            model_correct[t] = np.mean(sim_correct)
+            rat_correct[t] = reward
+            model.thresholding_update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
+        
+        # binomial test
+        n_matches = int(np.sum(rat_correct))
+        n_trials = len(rat_correct)
+        model_correct_rate = np.mean(model_correct)
+        p_value = stats.binomtest(n_matches, n_trials, p=model_correct_rate)
+        
+        session_results[day] = {
+            'matches': n_matches,
+            'trials': n_trials,
+            'match_rate': n_matches/n_trials,
+            'p_value': p_value,
+            'model_rate': model_correct_rate,
+            'significant': p_value.pvalue < 0.05
+        }
+    
+    return session_results
+
+def t_test_model_vs_real_choices(all_data_df, rat, tau=0.05, xi=0.95, n_simulations=100):
+    """
+    Perform t-tests to compare model choices with real choices across sessions.
+    
+    Parameters:
+        - all_data_df : DataFrame
+            - data for all days for a single rat
+        - rat : String
+            - the rat ID
+        - tau, xi : model parameters
+        - n_simulations : number of simulations per trial
+        
+    Returns:
+        - session_results : dict
+            - contains test results for each day
+        - overall_results : dict
+            - contains test results across all days
+    """
+    all_data_df = all_data_df.sort_values('Day')
+    
+    session_results = {}
+    all_model_choices = []
+    all_real_choices = []
+    
+    for day, day_data in all_data_df.groupby('Day'):
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1
+        
+        # Initialize model for this day
+        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
+        
+        # Track model choices and rat choices for this day
+        day_model_choices = []
+        day_real_choices = []
+        
+        for t in range(len(chosen_idx)):
+            # Get the rat's choice
+            real_choice = chosen_idx[t]
+            
+            # Simulate model choice multiple times and take the most frequent choice
+            model_choices_count = {chosen_idx[t]: 0, unchosen_idx[t]: 0}
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen_idx[t], unchosen_idx[t]])
+                model_choices[sim] = model_choice
+                model_choices_count[model_choice] += 1
+            
+            current_model_match_rate = np.mean(model_choices == chosen_idx[t])
+            
+            # Determine the model's preferred choice
+            model_choice = chosen_idx[t] if model_choices_count[chosen_idx[t]] > model_choices_count[unchosen_idx[t]] else unchosen_idx[t]
+            
+            # Store choices (as binary: 1 if model matches rat, 0 if different)
+            match = 1 if model_choice == real_choice else 0
+            
+            day_model_choices.append(model_choice)
+            day_real_choices.append(real_choice)
+            all_model_choices.append(model_choice)
+            all_real_choices.append(real_choice)
+            
+            # Update model based on actual feedback
+            reward = 1 if chosen_idx[t] < unchosen_idx[t] else 0
+            model.thresholding_update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
+        
+        # Convert to arrays
+        day_model_choices = np.array(day_model_choices)
+        day_real_choices = np.array(day_real_choices)
+        
+        # Perform paired t-test for this day
+        # (comparing whether the model and rat chose the same stimulus)
+        matches = (day_model_choices == day_real_choices).astype(int)
+        t_stat, p_value = stats.ttest_1samp(matches, 0.5)  # Test if match rate is significantly different from chance
+        
+        session_results[day] = {
+            'n_trials': len(matches),
+            'match_rate': np.mean(matches),
+            't_statistic': t_stat,
+            'p_value': p_value,
+            'significant': p_value < 0.05
+        }
+    
+    # Overall test across all days
+    all_matches = (np.array(all_model_choices) == np.array(all_real_choices)).astype(int)
+    overall_t_stat, overall_p_value = stats.ttest_1samp(all_matches, 0.5)
+    
+    overall_results = {
+        'n_trials': len(all_matches),
+        'match_rate': np.mean(all_matches),
+        't_statistic': overall_t_stat,
+        'p_value': overall_p_value,
+        'significant': overall_p_value < 0.05
+    }
+    
+    return session_results, overall_results
 
 def find_optimal_parameters(participant_data, n_stimuli, rat, day, n_simulations=100, xi_values=None, tau_values=None):
     """
@@ -764,13 +998,13 @@ def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_valu
 
 def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, tau_values=None, thresholds=None):
     if xi_values is None:
-        xi_values = np.arange(0.8, 1, 0.001)
+        xi_values = np.arange(0.9, 1, 0.001)
 
     if tau_values is None:
-        tau_values = np.arange(0, 0.3, 0.001)
+        tau_values = np.arange(0, 0.1, 0.001)
     
     if thresholds is None:
-        thresholds = np.arange(0.3, 0.7, 0.01)
+        thresholds = np.arange(0.4, 0.7, 0.01)
     
     param_performances = {}
     all_xi = []
@@ -842,7 +1076,77 @@ def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, 
     
     return best_xi, best_tau, best_threshold, best_performance, param_performances, results_df, summary_df
 
-def plot_uncertainty(model, stimulus_labels=None):
+def model_performance_objective(params, *args):
+    # unpack parameters
+    xi, tau, threshold = params
+    all_data, rat = args
+    
+    # evaluate model with these parameters
+    _, _, match_rates = compare_model_to_one_rat(
+        all_data, rat,
+        tau=tau, xi=xi, threshold=threshold
+    )
+    
+    # return negative match rate since we're minimizing
+    return -np.mean(match_rates)
+
+def minimize_parameters(all_data, rat):
+    #initial_params = [0.95, 0.05, 0.5] # xi, tau, threhsold
+    
+    result = differential_evolution(
+        model_performance_objective,
+        bounds=[(0.75, 1.0), (0.001, 0.25), (0.3, 0.7)],
+        args=(all_data, rat),
+        popsize=15,            # Population size (default is 15x number of parameters)
+        mutation=(0.5, 1.0),   # Range for mutation scaling factor
+        recombination=0.7,     # Probability of recombination for each parameter
+        disp=True              # Show progress
+    )
+    
+    best_xi, best_tau, best_threshold = result.x
+    best_performance = -result.fun
+    
+    return best_xi, best_tau, best_threshold, best_performance
+
+def check_transitive_inference(model, n_simulations=100):
+    """
+    check over all decision probabilities for each possible choice
+    
+    Parameters:
+    - model : Betasort
+        - finished model
+    - n_simulations : Int
+        - number of simulations for model
+    
+    Returns:
+    - results : {(int, int) : float}
+        - chosen_idx, other_idx : % of getting it correct
+    """
+    
+    # check its probabiltiies on what it would choose in transitive inference choices
+    results = {}
+    
+    for chosen_idx in range(0, 4): # max out at 3
+        for other_idx in range(chosen_idx + 1, 5):
+            # skip same element
+            if chosen_idx == other_idx:
+                continue
+            
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen_idx, other_idx])
+                model_choices[sim] = model_choice
+            
+            # see how well the model matches up with real choices
+            model_match_rate = np.mean(model_choices == chosen_idx)
+            
+            results[(chosen_idx, other_idx)] = model_match_rate
+            
+    return results
+
+
+
+def plot_stimulus_uncertainty(model, stimulus_labels=None):
     """
     plot uncertainty over trials
     
@@ -869,6 +1173,133 @@ def plot_uncertainty(model, stimulus_labels=None):
     plt.title("Trial-by-Trial Uncertainty from Betasort Model")
     plt.legend()
     plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+    
+def plot_relational_uncertainty(model, stimulus_labels=None):
+    """
+    Plot probabilistic-based relational uncertainties between stimuli pairs
+    
+    Parameters:
+        - model : Betasort
+            - fitted model with uncertainty history
+        - stimulus_labels : list, optional
+            - labels for stimuli
+    """
+    if stimulus_labels is None:
+        stimulus_labels = [f"Stimulus {i}-{i+1}" for i in range(model.n_stimuli-1)]
+        
+    # convert history to array
+    uncertainty_array = np.array(model.relational_uncertainty_history)
+    
+    # plot
+    plt.figure(figsize=(12, 8))
+    
+    for i in range(model.n_stimuli-1):
+        plt.plot(uncertainty_array[:, i], label=stimulus_labels[i])
+    
+    plt.xlabel("Trial")
+    plt.ylabel("Uncertainty (Variance)")
+    plt.title("Trial-by-Trial Probabilistic Uncertainty from Betasort Model")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+def plot_ROC_uncertainty(model, stimulus_labels=None):
+    """
+    Plot probabilistic-based relational uncertainties between stimuli pairs
+    
+    Parameters:
+        - model : Betasort
+            - fitted model with uncertainty history
+        - stimulus_labels : list, optional
+            - labels for stimuli
+    """
+    if stimulus_labels is None:
+        stimulus_labels = [f"Stimulus {i}-{i+1}" for i in range(model.n_stimuli-1)]
+        
+    # convert history to array
+    uncertainty_array = np.array(model.ROC_uncertainty_history)
+    
+    # plot
+    plt.figure(figsize=(12, 8))
+    
+    for i in range(model.n_stimuli-1):
+        plt.plot(uncertainty_array[:, i], label=stimulus_labels[i])
+    
+    plt.xlabel("Trial")
+    plt.ylabel("Uncertainty (Variance)")
+    plt.title("Trial-by-Trial ROC Uncertainty from Betasort Model")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+def plot_relational_uncertainty_history(model, uncertainty_type='both', stimulus_labels=None, figsize=(15, 10)):
+    """
+    Plot the history of relational uncertainties between stimuli pairs
+    
+    Parameters:
+        - model : Betasort
+            - fitted model with prob_uncertainty_relation_history and roc_uncertainty_relation_history
+        - uncertainty_type : str
+            - 'both', 'prob', or 'roc' to specify which uncertainty measure to plot
+        - stimulus_labels : list, optional
+            - labels for stimuli
+        - figsize : tuple
+            - figure size for the plot
+    """
+    if stimulus_labels is None:
+        stimulus_labels = [f"Stimulus {i}" for i in range(model.n_stimuli)]
+    
+    # Determine which uncertainty types to plot
+    plot_prob = uncertainty_type in ['both', 'prob']
+    plot_roc = uncertainty_type in ['both', 'roc']
+    
+    # Create subplot layout based on what we're plotting
+    if plot_prob and plot_roc:
+        fig, axes = plt.subplots(2, 1, figsize=figsize, sharex=True)
+        prob_ax, roc_ax = axes
+    else:
+        fig, ax = plt.subplots(figsize=figsize)
+        if plot_prob:
+            prob_ax = ax
+        else:
+            roc_ax = ax
+    
+    # Plot probability-based relational uncertainty
+    if plot_prob:
+        # Assuming model.prob_uncertainty_relation_history is a dict with keys as (stim1, stim2) tuples
+        for pair, uncertainty_history in model.prob_uncertainty_relation_history.items():
+            i, j = pair
+            label = f"{stimulus_labels[i]} vs {stimulus_labels[j]}"
+            prob_ax.plot(uncertainty_history, label=label)
+        
+        prob_ax.set_ylabel("Uncertainty (Probability)")
+        prob_ax.set_title("Probability-Based Relational Uncertainty")
+        prob_ax.grid(True, alpha=0.3)
+        prob_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    # Plot ROC-based relational uncertainty
+    if plot_roc:
+        # Assuming model.roc_uncertainty_relation_history is a dict with keys as (stim1, stim2) tuples
+        for pair, uncertainty_history in model.roc_uncertainty_relation_history.items():
+            i, j = pair
+            label = f"{stimulus_labels[i]} vs {stimulus_labels[j]}"
+            roc_ax.plot(uncertainty_history, label=label)
+        
+        roc_ax.set_ylabel("Uncertainty (ROC)")
+        roc_ax.set_title("ROC-Based Relational Uncertainty")
+        roc_ax.grid(True, alpha=0.3)
+        roc_ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    # Set common x-axis label
+    if plot_prob and plot_roc:
+        axes[-1].set_xlabel("Trial")
+    else:
+        plt.xlabel("Trial")
+    
     plt.tight_layout()
     plt.show()
     
@@ -1224,7 +1655,7 @@ def parameter_performance_heatmap_with_threshold(param_performances, title=None,
                         ha="center", va="center", 
                         color="w" if performance_matrix[i, j] < 0.7 else "black")
     
-    plt.tight_layout()
+    plot_stimulus_uncertainty()
     return fig, ax
 
 def plot_best_parameters(best_model):

@@ -82,7 +82,38 @@ for rat in os.listdir(data_path):
                 betasort.plot_boundaries_history(model)
             """
             
+            #best_tau, best_xi, best_threshold, best_performance = betasort.minimize_parameters(file_csv, rat)
+            #print(best_tau)
+            #print(best_xi)
+            #print(best_threshold)
+            #print(best_performance)
+            
+            # check how well it matches up with the transitive inference results
+            #model, _, _ = betasort.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.6)
+            #results = betasort.check_transitive_inference(model)
+            #print(results)
+            
+            # also check with binomial test
+            binomial_results = betasort.binomial_analysis_by_session(file_csv, rat)
+            print(binomial_results)
+            
+            # t test
+            t_test_results_session, t_test_results_overall = betasort.t_test_model_vs_real_choices(file_csv, rat)
+            print(t_test_results_session)
+            print(t_test_results_overall)
+            
+            #betasort.plot_stimulus_uncertainty(model)
+            #betasort.plot_relational_uncertainty(model)
+            #betasort.plot_ROC_uncertainty(model)
+            #betasort.plot_positions(model)
+            #betasort.plot_beta_distributions(model)
+            #betasort.plot_boundaries_history(model)
+            
+            # compare against 
+            
+            
             # check the heatmaps
+            """
             best_xi, best_tau, best_threshold, best_performance, param_performances, results_df, summary_df = betasort.find_optimal_threshold(file_csv, rat)
             print(f"Best parameters: xi={best_xi:.3f}, tau={best_tau:.3f}, avg_performance={best_performance:.3f}")
 
@@ -167,7 +198,7 @@ for rat in os.listdir(data_path):
                 )
                 
                 plot_and_save(
-                    betasort.plot_uncertainty, 
+                    betasort.plot_stimulus_uncertainty, 
                     all_day_models[day], 
                     day_plots_dir, 
                     f"{rat}_day{day}", 
@@ -189,3 +220,4 @@ for rat in os.listdir(data_path):
                     f"{rat}_day{day}", 
                     stimulus_labels
                 )
+                """
