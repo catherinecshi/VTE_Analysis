@@ -1,9 +1,13 @@
+import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
+
+# pylint: disable=global-statement, logging-fstring-interpolation, consider-using-enumerate
 
 class Betasort:
     """
@@ -27,6 +31,11 @@ class Betasort:
         self.trial = 0
         self.tau = tau
         self.xi = xi
+        
+        # unexpected uncertainty
+        self.seen_stimuli = set()
+        self.unexpected_uncertainty = 0
+        self.unexpected_uncertainty_decay = 0.9
 
         # initialise memory arrays
         self.U = np.ones(n_stimuli) # upper parameter
@@ -38,6 +47,7 @@ class Betasort:
         self.uncertainty_history = [self.get_all_stimulus_uncertainties()]
         self.relational_uncertainty_history = [self.get_all_relational_uncertainties()]
         self.ROC_uncertainty_history = [self.get_all_ROC_uncertainties()]
+        self.unexpected_uncertainty_history = [0]
         self.position_history = [self.get_all_positions()]
         self.U_history = [self.U.copy()]
         self.L_history = [self.L.copy()]
@@ -171,173 +181,6 @@ class Betasort:
             else:
                 positions[i] = self.U[i] / (self.U[i] + self.L[i])
         return positions
-
-    def update(self, chosen, unchosen, reward):
-        """
-        implements first updating policy
-        
-        Parameters:
-            - chosen : int
-                - index of chosen stimulus
-            - unchosen : int
-                - index of unchosen stimulus
-            - reward : int
-                - 1 for reward and 0 otherwise
-            - threshold : float
-                - the threshold for which the the model simulation rate of likely choice must be above
-                  for consolidation to happen
-        """
-        # update trial count
-        self.trial += 1
-        #print(self.rat, self.day, self.trial)
-        #print("before", self.U, self.L, chosen, unchosen, reward)
-        #print(self.R, self.N)
-        
-        # relax
-        self.R = self.R * self.xi
-        self.N = self.N * self.xi
-        
-        # estimate trial reward rate
-        E = self.R / (self.R + self.N)
-        xi_R = E / (E + 1) + 0.5
-        
-        # relax some more :)
-        self.U = self.U * xi_R * self.xi
-        self.L = self.L * xi_R * self.xi
-
-        # estimate sitmulus positions
-        V = self.U / (self.U + self.L)
-
-        if reward == 1:
-            # update reward rate
-            self.R[unchosen] = self.R[unchosen] + 1
-            self.R[chosen] = self.R[chosen] + 1
-            
-            # update both trial and inferred stimuli position
-            # essentially, this configuration led to the correct choice so let's keep doing it
-            self.U = self.U + V
-            self.L = self.L + (1 - V)
-        else:
-            # update reward rate
-            self.N[unchosen] = self.N[unchosen] + 1
-            self.N[chosen] = self.N[chosen] + 1
-            
-            # shift unchosen up, chosen down
-            self.U[unchosen] = self.U[unchosen] + 1
-            self.L[chosen] = self.L[chosen] + 1
-            
-            # process other stimuli (implicit inference)
-            for j in range(self.n_stimuli):
-                if j != chosen and j != unchosen:
-                    if V[j] > V[chosen] and V[j] < V[unchosen]:
-                        # j fell between chosen and unchosen (consolidate)
-                        self.U[j] = self.U[j] + V[j]
-                        self.L[j] = self.L[j] + (1 - V[j])
-                    elif V[j] < V[unchosen]:
-                        # shift j down
-                        self.L[j] = self.L[j] + 1
-                    elif V[j] > V[chosen]:
-                        # shift j up
-                        self.U[j] = self.U[j] + 1
-
-        #print("after", self.U, self.L)
-        
-        # store updated uncertainties and positions upper and lower
-        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
-        self.position_history.append(self.get_all_positions())
-        self.U_history.append(self.U.copy())
-        self.L_history.append(self.L.copy())
-    
-    def real_data_update(self, chosen, unchosen, reward, probability):
-        """
-        implements first updating policy
-        
-        Parameters:
-            - chosen : int
-                - index of chosen stimulus
-            - unchosen : int
-                - index of unchosen stimulus
-            - reward : int
-                - 1 for reward and 0 otherwise
-            - probability : float
-                - probability of how much the simulated data matches up with the real choice
-                - used to update the model proportionally
-        """
-        
-        # update trial count
-        self.trial += 1
-        
-        # relax
-        self.R = self.R * self.xi
-        self.N = self.N * self.xi
-        
-        # estimate trial reward rate
-        E = self.R / (self.R + self.N)
-        xi_R = E / (E + 1) + 0.5
-        
-        # relax some more :)
-        self.U = self.U * xi_R * self.xi
-        self.L = self.L * xi_R * self.xi
-
-        # dynamic version of updating values by checking how much model matches with real data
-        V = self.U / (self.U + self.L)
-        non_likelihood = 1 - probability
-
-        if reward == 1:
-            # update reward rate
-            self.R[unchosen] = self.R[unchosen] + 1
-            self.R[chosen] = self.R[chosen] + 1
-            
-            # update both trial and inferred stimuli position
-            # essentially, this configuration led to the correct choice so let's keep doing it
-            self.U = self.U + V
-            self.L = self.L + (1 - V)
-            
-            # radical new moves
-            self.U[chosen] = self.U[chosen] + V[chosen] # * probability
-            #self.U[unchosen] = self.U[unchosen] + V[unchosen] * non_likelihood
-            #self.L[chosen] = self.L[chosen] + (1 - V[chosen]) * probability
-            self.L[unchosen] = self.L[unchosen] + (1 - V[unchosen]) # * non_likelihood
-            
-            # radical new moves 2
-            # self.U = self.U + V * probability
-            # self.L = self.L + (1 - V) * probability
-        # elif reward == 1: # change above to make sure that it says reward == 1 and probability < 0.5 or arbitrary threshold - maybe check?
-            # self.R[unchosen] = self.R[unchosen] + 1
-            # self.R[chosen] = self.R[chosen] + 1
-            
-            # self.U = self.U + V
-            # self.L = self.L + (1 - V)
-        else:
-            # update reward rate
-            self.N[unchosen] = self.N[unchosen] + 1
-            self.N[chosen] = self.N[chosen] + 1
-            
-            # shift unchosen up, chosen down
-            self.U[unchosen] = self.U[unchosen] + 1
-            self.L[chosen] = self.L[chosen] + 1
-            
-            # process other stimuli (implicit inference)
-            for j in range(self.n_stimuli):
-                if j != chosen and j != unchosen:
-                    if V[j] > V[chosen] and V[j] < V[unchosen]:
-                        # j fell between chosen and unchosen (consolidate)
-                        self.U[j] = self.U[j] + V[j]
-                        self.L[j] = self.L[j] + (1 - V[j])
-                    elif V[j] < V[unchosen]:
-                        # shift j down
-                        self.L[j] = self.L[j] + 1
-                    elif V[j] > V[chosen]:
-                        # shift j up
-                        self.U[j] = self.U[j] + 1
-
-        #print("after", self.U, self.L)
-        
-        # store updated uncertainties and positions upper and lower
-        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
-        self.position_history.append(self.get_all_positions())
-        self.U_history.append(self.U.copy())
-        self.L_history.append(self.L.copy())
         
     def thresholding_update(self, chosen, unchosen, reward, probability, threshold):
         """
@@ -374,22 +217,14 @@ class Betasort:
 
         # dynamic version of updating values by checking how much model matches with real data
         V = self.U / (self.U + self.L)
-        non_likelihood = 1 - probability
 
         if reward == 1 and probability < threshold:
             # update reward rate
             self.R[unchosen] = self.R[unchosen] + 1
             self.R[chosen] = self.R[chosen] + 1
             
-            # update both trial and inferred stimuli position
-            # essentially, this configuration led to the correct choice so let's keep doing it
-            #self.U = self.U + V
-            #self.L = self.L + (1 - V)
-            
             # radical new moves
             self.U[chosen] = self.U[chosen] + probability
-            #self.U[unchosen] = self.U[unchosen] + V[unchosen] * non_likelihood
-            #self.L[chosen] = self.L[chosen] + (1 - V[chosen]) * probability
             self.L[unchosen] = self.L[unchosen] + probability
         elif reward == 1: 
             self.R[unchosen] = self.R[unchosen] + 1
@@ -420,12 +255,112 @@ class Betasort:
                         # shift j up
                         self.U[j] = self.U[j] + 1
 
-        #print("after", self.U, self.L)
-        
         # store updated uncertainties and positions upper and lower
         self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
         self.relational_uncertainty_history.append(self.get_all_relational_uncertainties())
         self.ROC_uncertainty_history.append(self.get_all_ROC_uncertainties())
+        self.position_history.append(self.get_all_positions())
+        self.U_history.append(self.U.copy())
+        self.L_history.append(self.L.copy())
+    
+    def UU_update(self, chosen, unchosen, reward, probability, threshold):
+        """
+        implements first updating policy
+        
+        Parameters:
+            - chosen : int
+                - index of chosen stimulus
+            - unchosen : int
+                - index of unchosen stimulus
+            - reward : int
+                - 1 for reward and 0 otherwise
+            - probability : float
+                - probability of how much the simulated data matches up with the real choice
+                - used to update the model proportionally
+            - threshold : float
+                - threshold for above which consolidation is done
+        """
+        
+        # update trial count
+        self.trial += 1
+        
+        # unexpected uncertainty based on whether new stimuli encountered
+        new_stimuli_encountered = False
+        
+        if chosen not in self.seen_stimuli:
+            self.seen_stimuli.add(chosen)
+            new_stimuli_encountered = True
+        
+        if unchosen not in self.seen_stimuli:
+            self.seen_stimuli.add(unchosen)
+            new_stimuli_encountered = True
+        
+        # update unexpected uncertainty
+        if new_stimuli_encountered:
+            self.unexpected_uncertainty = 1.0
+        else:
+            self.unexpected_uncertainty *= self.unexpected_uncertainty_decay
+        
+        # unexpected uncertainty causes more forgetting
+        effective_xi = self.xi * (1 - 0.5 * self.unexpected_uncertainty)
+        
+        # relax
+        self.R = self.R * effective_xi
+        self.N = self.N * effective_xi
+        
+        # estimate trial reward rate
+        E = self.R / (self.R + self.N)
+        xi_R = E / (E + 1) + 0.5
+        
+        # relax some more :)
+        self.U = self.U * xi_R * effective_xi
+        self.L = self.L * xi_R * effective_xi
+
+        # dynamic version of updating values by checking how much model matches with real data
+        V = self.U / (self.U + self.L)
+
+        if reward == 1 and probability < threshold:
+            # update reward rate
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            # radical new moves
+            self.U[chosen] = self.U[chosen] + probability
+            self.L[unchosen] = self.L[unchosen] + probability
+        elif reward == 1: 
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+        else:
+            # update reward rate
+            self.N[unchosen] = self.N[unchosen] + 1
+            self.N[chosen] = self.N[chosen] + 1
+            
+            # shift unchosen up, chosen down
+            self.U[unchosen] = self.U[unchosen] + 1
+            self.L[chosen] = self.L[chosen] + 1
+            
+            # process other stimuli (implicit inference)
+            for j in range(self.n_stimuli):
+                if j != chosen and j != unchosen:
+                    if V[j] > V[chosen] and V[j] < V[unchosen]:
+                        # j fell between chosen and unchosen (consolidate)
+                        self.U[j] = self.U[j] + V[j]
+                        self.L[j] = self.L[j] + (1 - V[j])
+                    elif V[j] < V[unchosen]:
+                        # shift j down
+                        self.L[j] = self.L[j] + 1
+                    elif V[j] > V[chosen]:
+                        # shift j up
+                        self.U[j] = self.U[j] + 1
+
+        # store updated uncertainties and positions upper and lower
+        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
+        self.relational_uncertainty_history.append(self.get_all_relational_uncertainties())
+        self.ROC_uncertainty_history.append(self.get_all_ROC_uncertainties())
+        self.unexpected_uncertainty_history.append(self.unexpected_uncertainty)
         self.position_history.append(self.get_all_positions())
         self.U_history.append(self.U.copy())
         self.L_history.append(self.L.copy())
@@ -570,43 +505,6 @@ def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.5):
     final_day = max(all_models.keys())
     return all_models[final_day], all_models
 
-def analyze_real_data(participant_choices, feedback, n_stimuli, rat, day, tau=0.05, xi=0.95):
-    """
-    uses real data from participants to update values for stimulus position and uncertainty
-    
-    Parameters:
-        - participant_choices : array-like, shape (n_trials, 2)
-            - each row contains [chosen_idx, unchosen_idx] for each trial
-        - feedback : array-like, n_trials long
-            - binary array of feedback (1 for reward and 0 for none) for each trial
-        - n_stimuli : int
-            - number of stimuli in sequence
-        - tau : float
-            - noise parameter
-        - xi : float
-            - recall parameter controlling memory decay
-    
-    Returns:
-        - model : Betasort
-            - fitted model with uncertainty history
-    """
-    
-    model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
-    n_trials = len(participant_choices)
-    
-    # run through each trial
-    for t in range(n_trials):
-        chosen_idx, other_idx = participant_choices[t]
-        reward = feedback[t]
-        
-        if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
-            print(f"Trial {t}: Invalid indicies - chosen {chosen_idx} unchosen {other_idx}")
-        
-        # update model based on actual choice and feedback
-        model.update(chosen_idx, other_idx, reward)
-        
-    return model
-
 def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99, threshold=0.5):
     # sort data by day
     all_data_df = all_data_df.sort_values('Day')
@@ -697,65 +595,6 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
     # return the models
     final_day = max(all_models.keys())
     return all_models[final_day], all_models, match_rates
-
-def compare_model_to_rats(participant_choices, n_stimuli, rat, day, tau=0.05, xi=0.95, n_simulations=100):
-    """
-    compares real choices to model predictions
-    
-    Parameters:
-        - participant_choices : array-like, shape (n_trials, 2)
-            - each row contians [chosen_idx, unchosen_idx] for each trial
-        - n_stimuli: int
-            - number of stimuli in sequence
-        - tau : float
-            - noise parameter
-        - xi : float
-            - recall parameter controlling memory decay
-        - n_simulations : int
-            - number of simulations to run per trial for model predictions
-    
-    Returns:
-        - match_rates : array
-            - trial-by-trial match rates between model and human choices
-        - cumulative_match_rate : float
-            - overall match rates across all trials
-        - model : Betasort
-            - the model after the final update
-    """
-    
-    model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
-    n_trials = len(participant_choices)
-    
-    # track matches between model and human
-    matches = np.zeros(n_trials)
-    
-    # for each trial
-    for t in range(n_trials):
-        chosen_idx, other_idx = participant_choices[t]
-        
-        # check if the indices are valid
-        if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
-            print(f"Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {other_idx}")
-            continue
-
-        # run multiple simulations to get choice probability
-        model_choices = np.zeros(n_simulations)
-        for sim in range(n_simulations):
-            model_choice = model.choose([chosen_idx, other_idx])
-            model_choices[sim] = model_choice
-        
-        # see how well the model matches up with real choices
-        model_match_rate = np.mean(model_choices == chosen_idx)
-        matches[t] = model_match_rate
-
-        # update model based on actual feedback
-        reward = 1 if chosen_idx < other_idx else 0
-        model.update(chosen_idx, other_idx, reward)
-    
-    # calculate cumulative match rate
-    cumulative_match_rate = np.mean(matches)
-    
-    return matches, cumulative_match_rate, model
 
 def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulations=100):
     """Run binomial test on shtuff"""
@@ -879,6 +718,8 @@ def t_test_model_vs_real_choices(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
         day_model_choices = np.array(day_model_choices)
         day_real_choices = np.array(day_real_choices)
         
+        # make matches the match_model_rate
+        # paired 2 way t test in fuure (MAKE SURE PAIRED)
         # Perform paired t-test for this day
         # (comparing whether the model and rat chose the same stimulus)
         matches = (day_model_choices == day_real_choices).astype(int)
@@ -905,62 +746,6 @@ def t_test_model_vs_real_choices(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
     }
     
     return session_results, overall_results
-
-def find_optimal_parameters(participant_data, n_stimuli, rat, day, n_simulations=100, xi_values=None, tau_values=None):
-    """
-    Find the optimal parameter values to fit model onto the data
-    
-    Parameters:
-        - participant_data : array-like
-            - array of [chosen_idx, unchosen_idx] pairs
-        - feedback : array-like
-            - array of 1s and 0s depending on reward or not
-        - n_stimuli : int
-            - number of stimuli in the hierarhcy
-        - rat, day : identifiers
-        - n_simulations : int
-            - number of simulations for each model prediction
-        - xi_values, tau_values : array-like, defaults to None
-            - parameter values to test
-        
-    Returns:
-        - best_params : dict
-            - best parameters found
-        - param_performances : dict
-            - performances on each parameter combination
-    """
-    
-    if xi_values is None:
-        xi_values_coarse = np.arange(0.75, 0.99 + 0.01, 0.01)
-        xi_values_fine = np.arange(0.99, 1.0 + 0.001, 0.001)
-        
-        # Concatenate arrays and remove any duplicates (0.99 appears in both)
-        xi_values = np.unique(np.concatenate([xi_values_coarse, xi_values_fine]))
-
-    if tau_values is None:
-        tau_values_fine = np.arange(0.001, 0.01 + 0.001, 0.001)
-        tau_values_coarse = np.arange(0.01, 0.25 + 0.01, 0.01)
-        
-        # Concatenate arrays and remove any duplicates (0.01 appears in both)
-        tau_values = np.unique(np.concatenate([tau_values_fine, tau_values_coarse]))
-    
-    param_performances = {}
-    
-    # for each parameter combination
-    for xi in xi_values:
-        for tau in tau_values:
-            # start a fresh model with these parameters
-            _, matches_rate, _ = compare_model_to_rats(participant_data, n_stimuli, rat, day, tau=tau, xi=xi, 
-                                                       n_simulations=n_simulations)
-            
-            param_performances[(xi, tau)] = matches_rate # store rate
-    
-    # find best parameter combination
-    best_params = max(param_performances, key=param_performances.get)
-    best_xi, best_tau = best_params
-    best_performance = param_performances[best_params]
-    
-    return best_xi, best_tau, best_performance, param_performances
 
 def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_values=None, tau_values=None):
     if xi_values is None:
@@ -1144,8 +929,217 @@ def check_transitive_inference(model, n_simulations=100):
             
     return results
 
+def analyze_vte_uncertainty(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.6, n_simulations=100):
+    """Analyze how VTEs correlate with different types of uncertainty
+
+    Args:
+        all_data_df (DataFrame): rodent choice data
+        vte_data (DataFrame): VTE data:
+        
+        rat (string): identifier
+        tau, xi, threshold (float): model parameters
+
+    Returns:
+        pair_vte_data: DataFrame wtih paired VTE & uncertainty
+        all_models: Dictionary of models for each day
+    """
+    pair_vte_data = []
+    
+    all_models = {}
+    global_U, global_L, global_R, global_N = {}, {}, {}, {}
+    
+    for day, day_data in all_data_df.groupby('Day'):
+        # extract relevant data from choice dataset
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        rewards = day_data["correct"].values
+        traj_nums = day_data["ID"].values
+        vtes = day_data["VTE"].values
+        
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1
+        
+        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
+        
+        # transfer states from previous day
+        for stim_idx in range(n_stimuli):
+            if stim_idx in global_U:
+                model.U[stim_idx] = global_U[stim_idx]
+                model.L[stim_idx] = global_L[stim_idx]
+                model.R[stim_idx] = global_R[stim_idx]
+                model.N[stim_idx] = global_N[stim_idx]
+            else:
+                print(f"stim idx {stim_idx} not found in global updates dict?? {global_U} on day {day}")
+            
+        # Initialize histories
+        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.relational_uncertainty_history = [model.get_all_relational_uncertainties()]
+        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
+        model.position_history = [model.get_all_positions()]
+        model.U_history = [model.U.copy()]
+        model.L_history = [model.L.copy()]
+        
+        for t in range(len(chosen_idx)):
+            traj_num = traj_nums[t]
+            chosen = chosen_idx[t]
+            unchosen = unchosen_idx[t]
+            reward = rewards[t]
+            vte = vtes[t]
+            
+            # get uncertainty before updates - uncertainty at time of choice
+            # individual stimulus uncertainties
+            stim1_uncertainty = model.get_uncertainty_stimulus(min(chosen, unchosen))
+            stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
+            
+            # Get relational uncertainty between the specific pair
+            pair_relational_uncertainty = model.get_uncertainty_relation(min(chosen, unchosen), max(chosen, unchosen))
+            pair_roc_uncertainty = model.get_uncertainty_relation_ROC(min(chosen, unchosen), max(chosen, unchosen))
+            
+            vte_occurred = 0
+            if vte:
+                vte_occurred = 1
+            
+            # Store the pair-specific data
+            pair_vte_data.append({
+                'day': day,
+                'trial_num': traj_num,
+                'stim1': min(chosen, unchosen),
+                'stim2': max(chosen, unchosen),
+                'chosen': chosen,
+                'unchosen': unchosen,
+                'vte_occurred': vte_occurred,
+                'stim1_uncertainty': stim1_uncertainty,
+                'stim2_uncertainty': stim2_uncertainty,
+                'pair_relational_uncertainty': pair_relational_uncertainty,
+                'pair_roc_uncertainty': pair_roc_uncertainty,
+                'reward': reward
+            })
+            
+            # run multiple simulations to get choice probability
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen, unchosen])
+                model_choices[sim] = model_choice
+            
+            # see how well the model matches up with real choices
+            model_match_rate = np.mean(model_choices == chosen)
+            
+            # Update the model after recording uncertainty values
+            model.thresholding_update(chosen, unchosen, reward, model_match_rate, threshold=threshold)
+        
+        # Store model for this day
+        all_models[day] = model
+        
+        # Update global states for the next day
+        for stim_idx in range(n_stimuli):
+            global_U[stim_idx] = model.U[stim_idx]
+            global_L[stim_idx] = model.L[stim_idx]
+            global_R[stim_idx] = model.R[stim_idx]
+            global_N[stim_idx] = model.N[stim_idx]
+    
+    # Convert to DataFrame for easier analysis
+    pair_vte_df = pd.DataFrame(pair_vte_data)
+    
+    # Return the data and models
+    return pair_vte_df, all_models
+
+def analyze_correlations(pair_vte_df):
+    """
+    Analyzes correlations between VTE and uncertainty measures for each stimulus pair
+    
+    Parameters:
+        - pair_vte_df: DataFrame with paired VTE and uncertainty values
+        
+    Returns:
+        - results: Dictionary of correlation results by pair
+    """
+    from scipy.stats import pointbiserialr
+    import statsmodels.api as sm
+    
+    # Identify all unique stimulus pairs
+    pair_vte_df['pair'] = pair_vte_df.apply(lambda row: f"{row['stim1']}-{row['stim2']}", axis=1)
+    unique_pairs = pair_vte_df['pair'].unique()
+    
+    # Initialize results dictionary
+    results = {
+        'overall': {},
+        'by_pair': {},
+        'by_uncertainty_measure': {}
+    }
+    
+    # Overall correlations (across all pairs)
+    uncertainty_measures = [
+        'stim1_uncertainty', 
+        'stim2_uncertainty', 
+        'pair_relational_uncertainty', 
+        'pair_roc_uncertainty'
+    ]
+    
+    # Calculate overall correlations
+    for measure in uncertainty_measures:
+        r, p = pointbiserialr(pair_vte_df['vte_occurred'], pair_vte_df[measure])
+        results['overall'][measure] = {'r': r, 'p': p}
+    
+    # Calculate correlations for each stimulus pair
+    for pair in unique_pairs:
+        pair_data = pair_vte_df[pair_vte_df['pair'] == pair]
+        
+        # Skip pairs with very few data points or no VTE variation
+        if len(pair_data) < 5 or pair_data['vte_occurred'].nunique() < 2:
+            results['by_pair'][pair] = "Insufficient data"
+            continue
+        
+        pair_results = {}
+        for measure in uncertainty_measures:
+            try:
+                r, p = pointbiserialr(pair_data['vte_occurred'], pair_data[measure])
+                pair_results[measure] = {'r': r, 'p': p}
+            except:
+                pair_results[measure] = "Computation failed"
+        
+        # Logistic regression for this pair
+        try:
+            X = sm.add_constant(pair_data[uncertainty_measures])
+            logit_model = sm.Logit(pair_data['vte_occurred'], X)
+            logit_result = logit_model.fit(disp=0)
+            
+            pair_results['logistic_regression'] = {
+                'params': logit_result.params.to_dict(),
+                'pvalues': logit_result.pvalues.to_dict(),
+                'pseudo_r2': logit_result.prsquared
+            }
+        except:
+            pair_results['logistic_regression'] = "Computation failed"
+        
+        results['by_pair'][pair] = pair_results
+    
+    # Analyze by uncertainty measure (which measure best predicts VTE across all pairs)
+    for measure in uncertainty_measures:
+        # Compare VTE vs non-VTE trials for this measure
+        vte_trials = pair_vte_df[pair_vte_df['vte_occurred'] == 1]
+        non_vte_trials = pair_vte_df[pair_vte_df['vte_occurred'] == 0]
+        
+        from scipy.stats import ttest_ind
+        t_stat, p_value = ttest_ind(
+            vte_trials[measure], 
+            non_vte_trials[measure], 
+            equal_var=False
+        )
+        
+        results['by_uncertainty_measure'][measure] = {
+            'mean_vte_trials': vte_trials[measure].mean(),
+            'mean_non_vte_trials': non_vte_trials[measure].mean(),
+            'difference': vte_trials[measure].mean() - non_vte_trials[measure].mean(),
+            't_stat': t_stat,
+            'p_value': p_value
+        }
+    
+    return results
 
 
+
+
+### PLOTTING FUNCTIONS -------------------------------------------------------------------------------------
 def plot_stimulus_uncertainty(model, stimulus_labels=None):
     """
     plot uncertainty over trials
@@ -1662,3 +1656,156 @@ def plot_best_parameters(best_model):
     plot_positions(best_model)
     plot_uncertainty(best_model)
     plot_beta_distributions(best_model)
+    
+def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
+    """
+    Creates visualizations showing the relationship between VTE and pair-specific uncertainty
+    
+    Parameters:
+        - pair_vte_df: DataFrame with VTE and uncertainty data
+        - results: Analysis results from analyze_pair_specific_correlations
+        - output_dir: Directory to save plots (optional)
+    """
+    # 1. Boxplots of uncertainty by VTE for each pair
+    unique_pairs = pair_vte_df['pair'].unique()
+    
+    # Determine plot grid dimensions
+    n_pairs = len(unique_pairs)
+    n_cols = min(3, n_pairs)
+    n_rows = (n_pairs + n_cols - 1) // n_cols
+    
+    # For each uncertainty measure
+    for measure in ['stim1_uncertainty', 'stim2_uncertainty', 'pair_relational_uncertainty', 'pair_roc_uncertainty']:
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4*n_rows))
+        fig.suptitle(f'{measure} by VTE Status for Each Stimulus Pair', fontsize=16)
+        
+        # Flatten axes array if necessary
+        if n_rows > 1 or n_cols > 1:
+            axes = axes.flatten()
+        else:
+            axes = [axes]
+        
+        # Create boxplot for each pair
+        for i, pair in enumerate(unique_pairs):
+            pair_data = pair_vte_df[pair_vte_df['pair'] == pair]
+            
+            if i < len(axes):
+                if len(pair_data) > 0 and pair_data['vte_occurred'].nunique() > 1:
+                    sns.boxplot(x='vte_occurred', y=measure, data=pair_data, ax=axes[i])
+                    
+                    # Add correlation info if available
+                    if pair in results['by_pair'] and measure in results['by_pair'][pair]:
+                        if isinstance(results['by_pair'][pair][measure], dict):
+                            r = results['by_pair'][pair][measure]['r']
+                            p = results['by_pair'][pair][measure]['p']
+                            axes[i].set_title(f'Pair {pair}: r={r:.2f}, p={p:.3f}')
+                        else:
+                            axes[i].set_title(f'Pair {pair}')
+                    else:
+                        axes[i].set_title(f'Pair {pair}')
+                else:
+                    axes[i].set_visible(False)
+                    
+        # Hide any unused subplots
+        for j in range(i+1, len(axes)):
+            axes[j].set_visible(False)
+            
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.92)  # Make room for the suptitle
+        
+        if output_dir:
+            plt.savefig(os.path.join(output_dir, f'vte_{measure}_by_pair.png'), dpi=300)
+        plt.show()
+    
+    # 2. Barplot showing correlation strength for each pair
+    # Extract correlation values for each pair
+    pairs = []
+    correlation_values = []
+    p_values = []
+    measures = []
+    
+    for pair, pair_results in results['by_pair'].items():
+        if isinstance(pair_results, dict):
+            for measure in ['stim1_uncertainty', 'stim2_uncertainty', 'pair_relational_uncertainty', 'pair_roc_uncertainty']:
+                if measure in pair_results and isinstance(pair_results[measure], dict):
+                    pairs.append(pair)
+                    correlation_values.append(pair_results[measure]['r'])
+                    p_values.append(pair_results[measure]['p'])
+                    measures.append(measure)
+    
+    if correlation_values:  # Only proceed if we have valid correlations
+        # Create DataFrame for plotting
+        corr_df = pd.DataFrame({
+            'Pair': pairs,
+            'Correlation': correlation_values,
+            'P-value': p_values,
+            'Measure': measures,
+            'Significant': [p < 0.05 for p in p_values]
+        })
+        
+        # Plot barplot
+        plt.figure(figsize=(12, 6))
+        sns.barplot(x='Pair', y='Correlation', hue='Measure', data=corr_df)
+        
+        # Add significance markers
+        for i, (_, row) in enumerate(corr_df.iterrows()):
+            if row['Significant']:
+                plt.text(i, row['Correlation'] + 0.02, '*', ha='center', va='center', fontsize=12)
+        
+        plt.title('VTE-Uncertainty Correlation by Stimulus Pair')
+        plt.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        if output_dir:
+            plt.savefig(os.path.join(output_dir, 'vte_correlation_by_pair.png'), dpi=300)
+        plt.show()
+    
+    # 3. Heatmap of uncertainty by day and pair for VTE trials
+    # Calculate mean uncertainty for each day-pair combination
+    heatmap_data = pair_vte_df.pivot_table(
+        index='day', 
+        columns='pair',
+        values='pair_relational_uncertainty',
+        aggfunc='mean'
+    )
+    
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(heatmap_data, cmap='viridis', annot=True, fmt=".2f")
+    plt.title('Mean Relational Uncertainty by Day and Stimulus Pair')
+    plt.tight_layout()
+    
+    if output_dir:
+        plt.savefig(os.path.join(output_dir, 'uncertainty_heatmap_by_day_pair.png'), dpi=300)
+    plt.show()
+    
+    # 4. Line plot of VTE occurrence rate and mean uncertainty over days
+    day_summary = pair_vte_df.groupby('day').agg({
+        'vte_occurred': 'mean',
+        'stim1_uncertainty': 'mean',
+        'stim2_uncertainty': 'mean',
+        'pair_relational_uncertainty': 'mean',
+        'pair_roc_uncertainty': 'mean'
+    }).reset_index()
+    
+    # Create dual-axis plot
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+    
+    color = 'tab:blue'
+    ax1.set_xlabel('Day')
+    ax1.set_ylabel('VTE Rate', color=color)
+    ax1.plot(day_summary['day'], day_summary['vte_occurred'], 'o-', color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_ylabel('Mean Uncertainty', color=color)
+    ax2.plot(day_summary['day'], day_summary['pair_relational_uncertainty'], 'o-', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+    
+    plt.title('VTE Rate and Mean Uncertainty Over Days')
+    fig.tight_layout()
+    
+    if output_dir:
+        plt.savefig(os.path.join(output_dir, 'vte_uncertainty_over_days.png'), dpi=300)
+    plt.show()

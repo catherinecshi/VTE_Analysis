@@ -61,9 +61,8 @@ def check_timestamps(timestamps):
         else:
             continue
         
-        if not_ascending_count > 2 or stagnant_count > 30:
-            rat_ID, day = TRAJ_ID.split("_")
-            raise helper.CorruptionError(rat_ID, day, timestamps)
+        if not_ascending_count > 2 or stagnant_count > 50:
+            raise helper.CorruptionError(helper.CURRENT_RAT, helper.CURRENT_DAY, timestamps)
 
 def type_to_choice(trial_type, correct):
     """
@@ -383,7 +382,6 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     centre_hull = creating_zones_exp.get_centre_hull(DLC_df)
     
     # store IdPhi and trajectory values
-    IdPhi_values = {}
     trajectories = {}
     store_data = []
     count = 0
@@ -409,7 +407,13 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
             trial_end = timestamps[-1] # if not available, get last time possible
         
         trajectory_x, trajectory_y, traj_len = get_trajectory(DLC_df, trial_start, trial_end, centre_hull)
+        # Add these debug lines right before the condition
+        # this is specifically checking BP06 Day 8 why there are so many missing traj because of the following if statement
+        print(f"trajectory_x: {trajectory_x}, type: {type(trajectory_x)}, length: {len(trajectory_x) if trajectory_x is not None else 'None'}, bool: {bool(trajectory_x)}")
+        print(f"trajectory_y: {trajectory_y}, type: {type(trajectory_y)}, length: {len(trajectory_y) if trajectory_y is not None else 'None'}, bool: {bool(trajectory_y)}")
+
         if not trajectory_x or not trajectory_y: # empty list, happens for the last trajectory
+            print("true, skipping")
             continue
         
         # get the choice arm from the trial type and performance
@@ -474,12 +478,6 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         IdPhi = calculate_IdPhi(trajectory_x, trajectory_y)
         #plotting.plot_trajectory_animation((DLC_df["x"] / 5), (DLC_df["y"] / 5), trajectory_x, trajectory_y, title=traj_id)
         
-        # store IdPhi according to which arm the rat went down
-        if choice not in IdPhi_values:
-            IdPhi_values[choice] = []
-            
-        IdPhi_values[choice].append(IdPhi)
-        
         # store each trajectory for plotting later
         if choice in trajectories:
             trajectories[choice].append((trajectory_x, trajectory_y))
@@ -498,7 +496,7 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     
     # check if there are too many repeats
     if REPEATS > 10:
-        logging.warning(f"more than 10 repeats for {rat_ID} on {day}")
+        print(f"more than 10 repeats for {rat_ID} on {day}")
     else:
         df = pd.DataFrame(store_data)
         file_path = os.path.join(save, "trajectories.csv")
@@ -506,4 +504,4 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
     
     plt.close()
     
-    return IdPhi_values, trajectories
+    return trajectories

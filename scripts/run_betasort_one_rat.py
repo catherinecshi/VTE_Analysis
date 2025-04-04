@@ -89,9 +89,9 @@ for rat in os.listdir(data_path):
             #print(best_performance)
             
             # check how well it matches up with the transitive inference results
-            #model, _, _ = betasort.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.6)
-            #results = betasort.check_transitive_inference(model)
-            #print(results)
+            model, _, _ = betasort.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.6)
+            results = betasort.check_transitive_inference(model)
+            print(results)
             
             # also check with binomial test
             binomial_results = betasort.binomial_analysis_by_session(file_csv, rat)
@@ -102,12 +102,12 @@ for rat in os.listdir(data_path):
             print(t_test_results_session)
             print(t_test_results_overall)
             
-            #betasort.plot_stimulus_uncertainty(model)
-            #betasort.plot_relational_uncertainty(model)
-            #betasort.plot_ROC_uncertainty(model)
-            #betasort.plot_positions(model)
-            #betasort.plot_beta_distributions(model)
-            #betasort.plot_boundaries_history(model)
+            betasort.plot_stimulus_uncertainty(model)
+            betasort.plot_relational_uncertainty(model)
+            betasort.plot_ROC_uncertainty(model)
+            betasort.plot_positions(model)
+            betasort.plot_beta_distributions(model)
+            betasort.plot_boundaries_history(model)
             
             # compare against 
             

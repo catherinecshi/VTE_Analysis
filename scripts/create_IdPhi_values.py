@@ -42,7 +42,7 @@ vte_path = os.path.join(base_path, "processed_data", "VTE_data")
 
 for rat in os.listdir(vte_path):
     rat_path = os.path.join(vte_path, rat)
-    if not os.path.isdir(rat_path):
+    if not os.path.isdir(rat_path) or not "BP06" in rat:
         continue # skip files
 
     for root, dirs, files in os.walk(rat_path):
@@ -50,6 +50,9 @@ for rat in os.listdir(vte_path):
             parts = file.split("_")
             rat = parts[0]
             day = parts[1]
+            
+            if not "8" in day:
+                continue
             
             rat_day = (rat, day)
             if rat_day in SKIP_DAYS:
@@ -62,4 +65,4 @@ for rat in os.listdir(vte_path):
                 
                 _, _ = trajectory_analysis.quantify_VTE(data_structure, rat, day, save=save_path)
             except Exception as error:
-                logging.error(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")
+                print(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")

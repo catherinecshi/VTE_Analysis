@@ -1,5 +1,6 @@
 import os
 import re
+import numpy as np
 import pandas as pd
 
 from src import helper
@@ -13,6 +14,18 @@ def extract_day_number(folder_name):
         return int(match.group(1))
     return float('inf')  # Put folders without proper naming at the end
 
+def extract_trajectory_number(traj_id):
+    parts = traj_id.split('_')
+    if len(parts) > 0:
+        # try to convert the last part to an integer
+        try:
+            return int(parts[-1])
+        except ValueError:
+            print("no trajectory number??")
+            return float('inf') # put it at the end if conversion fails
+    print("no trajectory number?")
+    return float('inf') # if no parts, put at the end
+
 # make a better file for the data for legeibility
 for rat in os.listdir(base_path):
     if ".DS_Store" in rat or ".csv" in rat:
@@ -20,7 +33,6 @@ for rat in os.listdir(base_path):
     
     rat_df = []
     rat_path = os.path.join(base_path, rat)
-    
     
     day_folders = [day for day in os.listdir(rat_path) if ".DS_Store" not in day]
     days = sorted(day_folders, key=extract_day_number)
@@ -30,7 +42,7 @@ for rat in os.listdir(base_path):
         day_path = os.path.join(rat_path, day)
         for root, _, files in os.walk(day_path):
             for file in files:
-                if "trajectories" not in file:
+                if "zIdPhi_day_" not in file:
                     continue
 
                 file_path = os.path.join(root, file)
@@ -55,13 +67,24 @@ for rat in os.listdir(base_path):
                     # get everything else for the df
                     traj_id = row["ID"]
                     length = row["Length"]
+                    is_VTE = row["VTE"]
                     day_number = extract_day_number(day)
+                    
                     day_df.append({"ID": traj_id,
                                    "Day": day_number, 
                                    "first": first_index, 
                                    "second": second_index, 
                                    "correct": correct,
+                                   "VTE": is_VTE,
                                    "length": length})
+        
+        
+        # sort day df by trajectory
+        day_df.sort(key=lambda x: extract_trajectory_number(x["ID"]))
+        
+        # 2. Replace ID with just the trajectory number
+        for item in day_df:
+            item["ID"] = extract_trajectory_number(item["ID"])
         
         save_dir = os.path.join(model_path, rat)
         if not os.path.exists(save_dir):
