@@ -1,11 +1,13 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
-from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 # pylint: disable=global-statement, logging-fstring-interpolation, consider-using-enumerate
 
@@ -87,8 +89,6 @@ class Betasort:
         
         # avoid division by zero or undefined values
         if a + b < 2:
-            #print(a, b, "a + b < 2")
-            #print(self.rat, self.day, self.trial)
             return 1.0 # maximum uncertainty
         
         return (a * b) / ((a + b)**2 * (a + b + 1))
@@ -224,8 +224,8 @@ class Betasort:
             self.R[chosen] = self.R[chosen] + 1
             
             # radical new moves
-            self.U[chosen] = self.U[chosen] + probability
-            self.L[unchosen] = self.L[unchosen] + probability
+            self.U[chosen] = self.U[chosen] + (1)
+            self.L[unchosen] = self.L[unchosen] + (1)
         elif reward == 1: 
             self.R[unchosen] = self.R[unchosen] + 1
             self.R[chosen] = self.R[chosen] + 1
@@ -302,7 +302,7 @@ class Betasort:
             self.unexpected_uncertainty *= self.unexpected_uncertainty_decay
         
         # unexpected uncertainty causes more forgetting
-        effective_xi = self.xi * (1 - 0.5 * self.unexpected_uncertainty)
+        effective_xi = 1 - 0.5 * self.unexpected_uncertainty
         
         # relax
         self.R = self.R * effective_xi
@@ -325,8 +325,8 @@ class Betasort:
             self.R[chosen] = self.R[chosen] + 1
             
             # radical new moves
-            self.U[chosen] = self.U[chosen] + probability
-            self.L[unchosen] = self.L[unchosen] + probability
+            self.U[chosen] = self.U[chosen] + (1 - probability)
+            self.L[unchosen] = self.L[unchosen] + (1 - probability)
         elif reward == 1: 
             self.R[unchosen] = self.R[unchosen] + 1
             self.R[chosen] = self.R[chosen] + 1
@@ -364,101 +364,122 @@ class Betasort:
         self.position_history.append(self.get_all_positions())
         self.U_history.append(self.U.copy())
         self.L_history.append(self.L.copy())
-    
-    def simulate_trials(self, chosen_idx, other_idx, n_simulations=100):
-        """
-        simulate n_simulations trials to get a rate at which one element would be picked over another
-        
-        Parameters:
-            - chosen_idx : int
-                - the index for the chosen element
-            - other_idx : int
-                - the index for the other element
-            n_simulations : int, defaults to 100
-                - the number of simulations ran for getting rate
-        
-        Returns:
-            - model_match_rate : float
-                - the rate at which the model produced choices equivalent to the actual choice
-        """
-        
-        # run multiple simulations to get choice probability
-        model_choices = np.zeros(n_simulations)
-        for sim in range(n_simulations):
-            model_choice = self.choose([chosen_idx, other_idx])
-            model_choices[sim] = model_choice
-        
-        model_match_rate = np.mean(model_choices == chosen_idx)
-        return model_match_rate
-    
-    def simulate_trial(self, stim_pair):
-        """
-        simulate a single trial with pair of stimuli
-        
-        Parameters:
-            - stim_pair (list): two element list with indices of stimuli in the pair
-        
-        Returns:
-            - chosen (int): index of chosen stimulus
-            - reward (int): 1 if choice was rewarded, 0 otherwise
-        """
-        # choose one stimulus
-        chosen_idx = self.choose(stim_pair)
-        chosen = stim_pair.index(chosen_idx)
-        unchosen = 1 - chosen
-        unchosen_idx = stim_pair[unchosen]
-        
-        # determine whether rewards should be given and updates accordingly
-        reward = 1 if chosen_idx < unchosen_idx else 0 # since earlier items are rewarded
-        self.update(chosen_idx, unchosen_idx, reward)
-        
-        return chosen_idx, reward
-    
-def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.5):
+
+class Betasort_Lite:
     """
-    uses real data from participants to update values for stimulus position and uncertainty
-    takes all data from one rat and separately updates the model as elements get added
-    
-    Parameters:
-        - all_data_df : DataFrame
-            - data for all days for a single rat
-        - rat : String
-            - the rat
-        - tau : float
-            - noise parameter
-        - xi : float
-            - recall parameter
-    
-    Returns:
-        - final_model : Betasort
-            - final betasort model for all days
-        - all_models : Dict
-            - dictionary of models for each day
+    Lightweight implementation of Betasort model for optimization.
+    Removes unnecessary uncertainty calculations and history tracking.
     """
-    # sort data by day
-    all_data_df = all_data_df.sort_values('Day')
     
-    all_models = {}
+    def __init__(self, n_stimuli, tau=0.05, xi=0.95):
+        self.n_stimuli = n_stimuli
+        self.tau = tau
+        self.xi = xi
+        
+        # Initialize memory arrays (without tracking histories)
+        self.U = np.ones(n_stimuli)  # upper parameter
+        self.L = np.ones(n_stimuli)  # lower parameter
+        self.R = np.ones(n_stimuli)  # rewards
+        self.N = np.ones(n_stimuli)  # non rewards
     
-    # track global stimuli states
+    def choose(self, available_stimuli):
+        """Choice policy - selects stimuli from available choices"""
+        # Generate random values for each available stimulus
+        X = np.zeros(len(available_stimuli))
+        
+        for i, stim_idx in enumerate(available_stimuli):
+            if np.random.random() < self.tau:  # choose randomly
+                X[i] = np.random.beta(1, 1)
+            else:  # base off of learned stimuli beta distributions
+                X[i] = np.random.beta(self.U[stim_idx] + 1, self.L[stim_idx] + 1)
+        
+        # Choose stimulus with largest value
+        chosen_idx = np.argmax(X) 
+        return available_stimuli[chosen_idx]
+    
+    def update(self, chosen, unchosen, reward, probability, threshold=0.75):
+        """Simplified update method without tracking histories"""
+        # Relax
+        self.R = self.R * self.xi
+        self.N = self.N * self.xi
+        
+        # Estimate trial reward rate
+        E = self.R / (self.R + self.N)
+        xi_R = E / (E + 1) + 0.5
+        
+        # Relax some more
+        self.U = self.U * xi_R * self.xi
+        self.L = self.L * xi_R * self.xi
+
+        # Get value estimates
+        V = self.U / (self.U + self.L)
+
+        if reward == 1 and probability < threshold:
+            # Update reward rate
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            # Update model
+            self.U[chosen] = self.U[chosen] + 1
+            self.L[unchosen] = self.L[unchosen] + 1
+        elif reward == 1: 
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+        else:
+            # Update reward rate
+            self.N[unchosen] = self.N[unchosen] + 1
+            self.N[chosen] = self.N[chosen] + 1
+            
+            # Shift unchosen up, chosen down
+            self.U[unchosen] = self.U[unchosen] + 1
+            self.L[chosen] = self.L[chosen] + 1
+            
+            # Process other stimuli (implicit inference)
+            for j in range(self.n_stimuli):
+                if j != chosen and j != unchosen:
+                    if V[j] > V[chosen] and V[j] < V[unchosen]:
+                        # j fell between chosen and unchosen (consolidate)
+                        self.U[j] = self.U[j] + V[j]
+                        self.L[j] = self.L[j] + (1 - V[j])
+                    elif V[j] < V[unchosen]:
+                        # Shift j down
+                        self.L[j] = self.L[j] + 1
+                    elif V[j] > V[chosen]:
+                        # Shift j up
+                        self.U[j] = self.U[j] + 1
+
+def compare_model_to_one_rat_lite(all_data_df, rat, n_simulations=50, tau=0.01, xi=0.99, threshold=0.75, verbose=False):
+    """
+    Lightweight version of compare_model_to_one_rat that omits unnecessary calculations
+    and only returns match rates needed for optimization.
+    """
+    # Track global stimuli states
     global_U = {}
     global_L = {}
     global_R = {}
     global_N = {}
     
-    # process each day separately
+    # Store match rates for each day
+    match_rates = []
+    
+    # Process each day separately
     for day, day_data in all_data_df.groupby('Day'):
+        if verbose and day % 5 == 0:  # Print only every 5th day to reduce output
+            print(f"Day {day}", end=" ", flush=True)
+        
         # Extract relevant data
         chosen_idx = day_data["first"].values
         unchosen_idx = day_data["second"].values
-        rewards = day_data["correct"].values
         
         # Identify which stimuli are present on this day
         present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
         n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
         
         # Initialize a new model for this day
-        model = Betasort(n_stimuli, rat, day)
+        model = Betasort_Lite(n_stimuli, tau=tau, xi=xi)
         
         # Transfer state from previous days
         for stim_idx in range(n_stimuli):
@@ -468,47 +489,50 @@ def analyze_one_rat(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.5):
                 model.R[stim_idx] = global_R[stim_idx]
                 model.N[stim_idx] = global_N[stim_idx]
         
-        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
-        model.relational_uncertainty_history = [model.get_all_relational_uncertainties()]
-        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
-        model.position_history = [model.get_all_positions()]
-        model.U_history = [model.U.copy()]
-        model.L_history = [model.L.copy()]
-        
-        # process the trials for today
+        # Process the trials for today
         participant_choices = np.column_stack((chosen_idx, unchosen_idx))
         n_trials = len(participant_choices)
+        matches = np.zeros(n_trials)
         
         for t in range(n_trials):
-            chosen_idx, unchosen_idx = participant_choices[t]
-            reward = rewards[t]
+            chosen_idx, other_idx = participant_choices[t]
             
-            # Validate indices (just in case)
-            if not (0 <= chosen_idx < n_stimuli) or not (0 <= unchosen_idx < n_stimuli):
-                print(f"Day {day}, Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {unchosen_idx}")
+            # Skip invalid indices
+            if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
                 continue
-                
-            # Update model
-            model.update(chosen_idx, unchosen_idx, reward)
-        
-        # store all the stuff for this day
-        all_models[day] = model
 
-        # update global states
+            # Run multiple simulations to get choice probability
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen_idx, other_idx])
+                model_choices[sim] = model_choice
+            
+            # Calculate match rate
+            model_match_rate = np.mean(model_choices == chosen_idx)
+            matches[t] = model_match_rate
+
+            # Update model based on actual feedback
+            reward = 1 if chosen_idx < other_idx else 0
+            model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
+        
+        # Calculate cumulative match rate
+        cumulative_match_rate = np.mean(matches)
+        match_rates.append(cumulative_match_rate)
+        
+        if verbose and day % 5 == 0:
+            print(f"Match rate: {cumulative_match_rate:.4f}")
+        
+        # Update global states
         for stim_idx in range(n_stimuli):
             global_U[stim_idx] = model.U[stim_idx]
             global_L[stim_idx] = model.L[stim_idx]
             global_R[stim_idx] = model.R[stim_idx]
             global_N[stim_idx] = model.N[stim_idx]
     
-    # return the models
-    final_day = max(all_models.keys())
-    return all_models[final_day], all_models
+    # Only return match rates - this is all we need for optimization
+    return match_rates
 
-def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99, threshold=0.5):
-    # sort data by day
-    all_data_df = all_data_df.sort_values('Day')
-    
+def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99, threshold=0.75):
     all_models = {}
     
     # track global stimuli states
@@ -522,6 +546,8 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
     
     # process each day separately
     for day, day_data in all_data_df.groupby('Day'):
+        print(f"\n  Rat {rat} Day {day}", end="", flush=True)
+        
         # Extract relevant data
         chosen_idx = day_data["first"].values
         unchosen_idx = day_data["second"].values
@@ -555,6 +581,9 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
         matches = np.zeros(n_trials)
         
         for t in range(n_trials):
+            if t % 100 == 0 or (n_trials < 100 and t % 10 == 0):
+                print(".", end="", flush=True)
+            
             chosen_idx, other_idx = participant_choices[t]
             #reward = rewards[t]
             
@@ -575,8 +604,9 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
 
             # update model based on actual feedback
             reward = 1 if chosen_idx < other_idx else 0
-            #model.update(chosen_idx, other_idx, reward)
             model.thresholding_update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
+            
+            #print(t, chosen_idx, reward)
         
         # calculate cumulative match rate
         cumulative_match_rate = np.mean(matches)
@@ -597,7 +627,7 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
     return all_models[final_day], all_models, match_rates
 
 def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulations=100):
-    """Run binomial test on shtuff"""
+    """Run binomial test to check if model predictions are significantly similar to rat choices"""
     
     all_data_df = all_data_df.sort_values('Day')
     
@@ -612,12 +642,18 @@ def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
         # initialize model with current parameters
         model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
         
+        # These track correctness
         model_correct = np.zeros(len(chosen_idx))
         rat_correct = np.zeros(len(chosen_idx))
+        
+        # NEW: This will track how often model agrees with rat
+        model_rat_matches = np.zeros(len(chosen_idx))
+        
         for t in range(len(chosen_idx)):
             reward = 1 if chosen_idx[t] < unchosen_idx[t] else 0
             sim_correct = np.zeros(n_simulations)
             model_choices = np.zeros(n_simulations)
+            
             for sim in range(n_simulations):
                 model_choice = model.choose([chosen_idx[t], unchosen_idx[t]])
                 model_choices[sim] = model_choice
@@ -626,23 +662,32 @@ def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
             # see how well the model matches up with real choices
             current_model_match_rate = np.mean(model_choices == chosen_idx[t])
             
+            # NEW: Store whether model and rat agreed on this trial
+            model_rat_matches[t] = current_model_match_rate
+            
             model_correct[t] = np.mean(sim_correct)
             rat_correct[t] = reward
-            model.thresholding_update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
+            model.UU_update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
         
-        # binomial test
-        n_matches = int(np.sum(rat_correct))
-        n_trials = len(rat_correct)
-        model_correct_rate = np.mean(model_correct)
-        p_value = stats.binomtest(n_matches, n_trials, p=model_correct_rate)
+        # NEW: binomial test on model-rat agreement instead of correctness
+        # Count total matches across all trials
+        n_matches = int(np.sum(model_rat_matches * n_simulations))
+        # Total number of simulation runs
+        n_trials = len(model_rat_matches) * n_simulations
+        # Null hypothesis: random chance of matching (0.5 for binary choice)
+        chance_match_rate = 0.5  # If there are only 2 choices in each trial
+        
+        # Test if match rate is significantly higher than chance
+        p_value = stats.binomtest(n_matches, n_trials, p=chance_match_rate, alternative='greater')
         
         session_results[day] = {
             'matches': n_matches,
             'trials': n_trials,
             'match_rate': n_matches/n_trials,
             'p_value': p_value,
-            'model_rate': model_correct_rate,
-            'significant': p_value.pvalue < 0.05
+            'chance_rate': chance_match_rate,
+            # NEW: Now significant when p < 0.05, indicating match rate better than chance
+            'significant': p_value.pvalue < 0.05  # Significant if model-rat agreement is BETTER than chance
         }
     
     return session_results
@@ -701,9 +746,6 @@ def t_test_model_vs_real_choices(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
             
             # Determine the model's preferred choice
             model_choice = chosen_idx[t] if model_choices_count[chosen_idx[t]] > model_choices_count[unchosen_idx[t]] else unchosen_idx[t]
-            
-            # Store choices (as binary: 1 if model matches rat, 0 if different)
-            match = 1 if model_choice == real_choice else 0
             
             day_model_choices.append(model_choice)
             day_real_choices.append(real_choice)
@@ -862,34 +904,96 @@ def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, 
     return best_xi, best_tau, best_threshold, best_performance, param_performances, results_df, summary_df
 
 def model_performance_objective(params, *args):
-    # unpack parameters
+    """Optimization objective function using lightweight model"""
+    # Unpack parameters
     xi, tau, threshold = params
-    all_data, rat = args
+    all_data, rat, verbose = args
     
-    # evaluate model with these parameters
-    _, _, match_rates = compare_model_to_one_rat(
+    if verbose:
+        #print(f"Evaluating: xi={xi:.6f}, tau={tau:.6f}, threshold={threshold:.6f}", end="", flush=True)
+        start_time = time.time()
+    
+    # Evaluate model with these parameters
+    match_rates = compare_model_to_one_rat_lite(
         all_data, rat,
-        tau=tau, xi=xi, threshold=threshold
+        tau=tau, xi=xi, threshold=threshold,
+        verbose=False  # Set to True to see per-day progress
     )
     
-    # return negative match rate since we're minimizing
-    return -np.mean(match_rates)
+    # Calculate performance
+    performance = np.mean(match_rates)
+    
+    if verbose:
+        elapsed_time = time.time() - start_time
+        print(f" → Performance: {performance:.6f}, Time: {elapsed_time:.2f}s")
+    
+    # Return negative match rate since we're minimizing
+    return -performance
 
-def minimize_parameters(all_data, rat):
-    #initial_params = [0.95, 0.05, 0.5] # xi, tau, threhsold
+def diff_evolution_lite(all_data, rat, verbose=True, max_iter=100, popsize=25):
+    """Optimized differential evolution using lightweight model"""
+    if verbose:
+        print("\n" + "="*50)
+        print(f"Starting differential evolution at {time.strftime('%H:%M:%S')}")
+        print(f"Parameter bounds: xi=[0.75, 0.999], tau=[0.001, 0.25], threshold=[0.6, 0.9]")
+        print(f"Population size: {popsize}, Max iterations: {max_iter}")
+        print("="*50 + "\n")
+    
+    total_start_time = time.time()
+    
+    # Store iteration data for tracking
+    iterations = [0]
+    last_time = [time.time()]
+    
+    def callback(xk, convergence):
+        iterations[0] += 1
+        current_time = time.time()
+        iter_time = current_time - last_time[0]
+        last_time[0] = current_time
+        
+        best_xi, best_tau, best_threshold = xk
+        performance = -model_performance_objective(xk, all_data, rat, False)
+        
+        if verbose:
+            print(f"\nIteration {iterations[0]} completed in {iter_time:.2f}s")
+            print(f"  Best parameters: xi={best_xi:.6f}, tau={best_tau:.6f}")
+            print(f"  Best performance: {performance:.6f}")
+            print(f"  Convergence measure: {convergence:.6f}")
+            
+            # Estimate remaining time
+            elapsed = time.time() - total_start_time
+            time_per_iter = elapsed / iterations[0]
+            remaining_iters = max_iter - iterations[0]
+            est_remaining = time_per_iter * remaining_iters
+            print(f"  Estimated remaining time: {est_remaining:.2f}s (~{est_remaining/60:.1f}m)")
+        
+        return False  # Don't stop the optimization
     
     result = differential_evolution(
         model_performance_objective,
-        bounds=[(0.75, 1.0), (0.001, 0.25), (0.3, 0.7)],
-        args=(all_data, rat),
-        popsize=15,            # Population size (default is 15x number of parameters)
-        mutation=(0.5, 1.0),   # Range for mutation scaling factor
-        recombination=0.7,     # Probability of recombination for each parameter
-        disp=True              # Show progress
+        bounds=[(0.9, 0.999), (0.001, 0.1), (0.6, 0.9)],
+        args=(all_data, rat, verbose),
+        popsize=popsize,
+        maxiter=max_iter,
+        mutation=(0.5, 1.5),
+        recombination=0.7,
+        disp=verbose,
+        callback=callback if verbose else None
     )
+    
+    total_time = time.time() - total_start_time
     
     best_xi, best_tau, best_threshold = result.x
     best_performance = -result.fun
+    
+    if verbose:
+        print("\n" + "="*50)
+        print(f"Differential evolution completed at {time.strftime('%H:%M:%S')}")
+        print(f"Total optimization time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+        print(f"Total function evaluations: {result.nfev}")
+        print(f"Best parameters: xi={best_xi:.6f}, tau={best_tau:.6f}, threshold={best_threshold:.6f}")
+        print(f"Best performance: {best_performance:.6f}")
+        print("="*50)
     
     return best_xi, best_tau, best_threshold, best_performance
 
@@ -1140,7 +1244,7 @@ def analyze_correlations(pair_vte_df):
 
 
 ### PLOTTING FUNCTIONS -------------------------------------------------------------------------------------
-def plot_stimulus_uncertainty(model, stimulus_labels=None):
+def plot_stimulus_uncertainty(model, stimulus_labels=None, save=None):
     """
     plot uncertainty over trials
     
@@ -1168,9 +1272,14 @@ def plot_stimulus_uncertainty(model, stimulus_labels=None):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
     
-def plot_relational_uncertainty(model, stimulus_labels=None):
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
+    
+def plot_relational_uncertainty(model, stimulus_labels=None, save=None):
     """
     Plot probabilistic-based relational uncertainties between stimuli pairs
     
@@ -1198,9 +1307,14 @@ def plot_relational_uncertainty(model, stimulus_labels=None):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def plot_ROC_uncertainty(model, stimulus_labels=None):
+def plot_ROC_uncertainty(model, stimulus_labels=None, save=None):
     """
     Plot probabilistic-based relational uncertainties between stimuli pairs
     
@@ -1228,9 +1342,14 @@ def plot_ROC_uncertainty(model, stimulus_labels=None):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def plot_relational_uncertainty_history(model, uncertainty_type='both', stimulus_labels=None, figsize=(15, 10)):
+def plot_relational_uncertainty_history(model, uncertainty_type='both', stimulus_labels=None, figsize=(15, 10), save=None):
     """
     Plot the history of relational uncertainties between stimuli pairs
     
@@ -1295,9 +1414,14 @@ def plot_relational_uncertainty_history(model, uncertainty_type='both', stimulus
         plt.xlabel("Trial")
     
     plt.tight_layout()
-    plt.show()
     
-def plot_positions(model, stimulus_labels=None):
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
+    
+def plot_positions(model, stimulus_labels=None, save=None):
     """
     plot positions over trials
     
@@ -1323,9 +1447,398 @@ def plot_positions(model, stimulus_labels=None):
     plt.grid(True, alpha=0.3)
     plt.ylim(0, 1)
     plt.tight_layout()
-    plt.show()
     
-def plot_beta_distributions(model, x_resolution=1000, stimulus_labels=None, figsize=(12, 8)):
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
+        
+def plot_positions_across_days(all_models, mode='detailed', stimulus_labels=None, figsize=(12, 8), 
+                              show_markers=False, save=None):
+    """
+    Plot positions of all stimuli across days.
+    
+    Parameters:
+        - all_models : dict
+            Dictionary where keys are day numbers and values are Betasort model instances
+        - mode : str, optional
+            'summary' (default): Plot only the final positions for each day
+            'detailed': Plot the full evolution of positions across all trials and days
+        - stimulus_labels : list, optional
+            Labels for stimuli
+        - figsize : tuple, optional
+            Figure size
+        - show_markers : bool, optional
+            Whether to show markers at each trial point in detailed mode
+        - save : str, optional
+            Path to save the figure
+            
+    Returns:
+        - fig, ax : matplotlib figure and axes objects
+    """
+    # Get sorted days
+    days = sorted(all_models.keys())
+    
+    # Determine the maximum number of stimuli across all days
+    max_stimuli = max(model.n_stimuli for model in all_models.values())
+    
+    # If no labels provided, create default ones
+    if stimulus_labels is None:
+        stimulus_labels = [f"Stimulus {i}" for i in range(max_stimuli)]
+    
+    # Create a colormap to use different colors for each stimulus
+    import matplotlib.cm as cm
+    colors = cm.tab10(np.linspace(0, 1, max_stimuli))
+    
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    if mode == 'summary':
+        # Summary mode: plot only final positions for each day
+        for i in range(max_stimuli):
+            positions = []
+            days_with_stimulus = []
+            
+            for day in days:
+                model = all_models[day]
+                if i < model.n_stimuli:
+                    # Get the final position for this stimulus on this day
+                    final_positions = model.position_history[-1]
+                    positions.append(final_positions[i])
+                    days_with_stimulus.append(day)
+            
+            if positions:  # Only plot if this stimulus appears in any day
+                label = stimulus_labels[i] if i < len(stimulus_labels) else f"Stimulus {i}"
+                ax.plot(days_with_stimulus, positions, 'o-', color=colors[i], label=label, markersize=8)
+        
+        # Add labels and title
+        ax.set_xlabel('Day', fontsize=12)
+        ax.set_ylabel('Estimated Position', fontsize=12)
+        ax.set_title('Final Estimated Stimulus Positions by Day', fontsize=14)
+        
+        # Adjust x-ticks to show all days
+        ax.set_xticks(days)
+        ax.set_xticklabels([str(day) for day in days])
+    
+    elif mode == 'detailed':
+        # Detailed mode: plot full evolution across all trials and days
+        trial_offset = 0
+        day_boundaries = [0]  # Start with 0 as the first boundary
+        day_midpoints = []
+        
+        # Keep track of which stimuli we've already seen and labeled
+        labeled_stimuli = set()
+        
+        # Plot positions for each stimulus across all days
+        for day in days:
+            model = all_models[day]
+            n_trials = len(model.position_history)
+            
+            # Calculate midpoint for day label
+            day_midpoints.append(trial_offset + n_trials / 2)
+            
+            # Get x-axis values for this day (trial numbers + offset)
+            x_values = np.arange(trial_offset, trial_offset + n_trials)
+            
+            # Convert position_history to numpy array for easier indexing
+            position_array = np.array(model.position_history)
+            
+            # Plot each stimulus for this day
+            for i in range(model.n_stimuli):
+                # Extract positions for this stimulus across all trials
+                stimulus_positions = position_array[:, i]
+                
+                # Only add a label if we haven't seen this stimulus before
+                if i not in labeled_stimuli:
+                    label = stimulus_labels[i] if i < len(stimulus_labels) else f"Stimulus {i}"
+                    labeled_stimuli.add(i)
+                else:
+                    label = None
+                
+                # Choose line style based on show_markers flag
+                if show_markers:
+                    line_style = 'o-'  # Line with circle markers
+                    markersize = 4     # Smaller markers for detailed view
+                else:
+                    line_style = '-'   # Just a line
+                    markersize = None  # No markers
+                
+                ax.plot(x_values, stimulus_positions, line_style, color=colors[i], 
+                       label=label, markersize=markersize)
+            
+            # Update the trial offset for the next day
+            trial_offset += n_trials
+            day_boundaries.append(trial_offset)
+        
+        # Add vertical lines to separate days
+        for boundary in day_boundaries[1:-1]:  # Skip the first and last boundaries
+            ax.axvline(x=boundary, color='k', linestyle=':', alpha=0.5)
+        
+        # Add day labels at the top
+        for i, day in enumerate(days):
+            ax.text(day_midpoints[i], 1.02, f"Day {day}", ha='center', va='bottom', 
+                   transform=ax.get_xaxis_transform())
+        
+        # Add labels and title
+        ax.set_xlabel('Trial (continuous across days)', fontsize=12)
+        ax.set_ylabel('Estimated Position', fontsize=12)
+        ax.set_title('Evolution of Stimulus Positions Across All Trials and Days', fontsize=14)
+        
+        # Remove x-ticks for clarity (there would be too many trials)
+        ax.set_xticks([])
+    
+    else:
+        raise ValueError(f"Invalid mode: {mode}. Must be 'summary' or 'detailed'.")
+    
+    # Set y-axis limits
+    ax.set_ylim(0, 1)
+    
+    # Add grid
+    ax.grid(True, alpha=0.3)
+    
+    # Add legend (outside the plot if there are many stimuli)
+    if max_stimuli > 5:
+        ax.legend(loc='center left', bbox_to_anchor=(1.05, 0.5))
+        plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make room for legend
+    else:
+        ax.legend(loc='best')
+        plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+    
+    return fig, ax
+
+def plot_uncertainty_across_days(all_models, uncertainty_type='ROC', mode='detailed', 
+                                stimulus_labels=None, figsize=(12, 8), show_markers=False, save=None):
+    """
+    Plot uncertainty values of all stimulus pairs across days.
+    
+    Parameters:
+        - all_models : dict
+            Dictionary where keys are day numbers and values are Betasort model instances
+        - uncertainty_type : str, optional
+            'ROC' (default): Plot ROC-based uncertainty
+            'relational': Plot probability-based relational uncertainty
+            'stimulus': Plot individual stimulus uncertainty
+        - mode : str, optional
+            'summary' (default): Plot only the final uncertainty values for each day
+            'detailed': Plot the full evolution of uncertainty across all trials and days
+        - stimulus_labels : list, optional
+            Labels for stimuli
+        - figsize : tuple, optional
+            Figure size
+        - show_markers : bool, optional
+            Whether to show markers at each trial point in detailed mode
+        - save : str, optional
+            Path to save the figure
+            
+    Returns:
+        - fig, ax : matplotlib figure and axes objects
+    """
+    # Get sorted days
+    days = sorted(all_models.keys())
+    
+    # Determine the maximum number of stimuli across all days
+    max_stimuli = max(model.n_stimuli for model in all_models.values())
+    
+    # If no labels provided, create default ones
+    if stimulus_labels is None:
+        if uncertainty_type == 'stimulus':
+            stimulus_labels = [f"Stimulus {i}" for i in range(max_stimuli)]
+        else:
+            # For pair-based uncertainties
+            stimulus_labels = [f"Pair {i}-{i+1}" for i in range(max_stimuli-1)]
+    
+    # Create a colormap to use different colors for each stimulus/pair
+    import matplotlib.cm as cm
+    if uncertainty_type == 'stimulus':
+        colors = cm.tab10(np.linspace(0, 1, max_stimuli))
+        num_entities = max_stimuli
+    else:
+        colors = cm.tab10(np.linspace(0, 1, max_stimuli-1))
+        num_entities = max_stimuli-1  # Number of pairs is one less than number of stimuli
+    
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    if mode == 'summary':
+        # Summary mode: plot only final uncertainty values for each day
+        for i in range(num_entities):
+            values = []
+            days_with_entity = []
+            
+            for day in days:
+                model = all_models[day]
+                
+                # Skip if this stimulus/pair doesn't exist in this day's model
+                if uncertainty_type == 'stimulus' and i >= model.n_stimuli:
+                    continue
+                elif uncertainty_type != 'stimulus' and i >= model.n_stimuli-1:
+                    continue
+                
+                # Get the appropriate uncertainty history based on type
+                if uncertainty_type == 'ROC':
+                    history = model.ROC_uncertainty_history
+                elif uncertainty_type == 'relational':
+                    history = model.relational_uncertainty_history
+                elif uncertainty_type == 'stimulus':
+                    history = model.uncertainty_history
+                else:
+                    raise ValueError(f"Invalid uncertainty_type: {uncertainty_type}")
+                
+                # Get the final uncertainty value for this entity on this day
+                final_values = history[-1]
+                values.append(final_values[i])
+                days_with_entity.append(day)
+            
+            if values:  # Only plot if this entity appears in any day
+                if uncertainty_type == 'stimulus':
+                    label = stimulus_labels[i] if i < len(stimulus_labels) else f"Stimulus {i}"
+                else:
+                    label = stimulus_labels[i] if i < len(stimulus_labels) else f"Pair {i}-{i+1}"
+                
+                ax.plot(days_with_entity, values, 'o-', color=colors[i], label=label, markersize=8)
+        
+        # Add labels and title
+        ax.set_xlabel('Day', fontsize=12)
+        ax.set_ylabel('Uncertainty', fontsize=12)
+        
+        if uncertainty_type == 'ROC':
+            title = 'ROC Uncertainty Values by Day'
+        elif uncertainty_type == 'relational':
+            title = 'Relational Uncertainty Values by Day'
+        else:
+            title = 'Stimulus Uncertainty Values by Day'
+            
+        ax.set_title(title, fontsize=14)
+        
+        # Adjust x-ticks to show all days
+        ax.set_xticks(days)
+        ax.set_xticklabels([str(day) for day in days])
+    
+    elif mode == 'detailed':
+        # Detailed mode: plot full evolution across all trials and days
+        trial_offset = 0
+        day_boundaries = [0]  # Start with 0 as the first boundary
+        day_midpoints = []
+        
+        # Keep track of which entities we've already labeled
+        labeled_entities = set()
+        
+        # Plot uncertainty values for each entity across all days
+        for day in days:
+            model = all_models[day]
+            
+            # Get the appropriate uncertainty history based on type
+            if uncertainty_type == 'ROC':
+                history = model.ROC_uncertainty_history
+            elif uncertainty_type == 'relational':
+                history = model.relational_uncertainty_history
+            elif uncertainty_type == 'stimulus':
+                history = model.uncertainty_history
+            
+            n_trials = len(history)
+            
+            # Calculate midpoint for day label
+            day_midpoints.append(trial_offset + n_trials / 2)
+            
+            # Get x-axis values for this day (trial numbers + offset)
+            x_values = np.arange(trial_offset, trial_offset + n_trials)
+            
+            # Convert history to numpy array for easier indexing
+            uncertainty_array = np.array(history)
+            
+            # Plot each entity for this day
+            if uncertainty_type == 'stimulus':
+                n_entities = model.n_stimuli
+            else:
+                n_entities = model.n_stimuli - 1
+                
+            for i in range(n_entities):
+                # Extract uncertainty values for this entity across all trials
+                entity_values = uncertainty_array[:, i]
+                
+                # Only add a label if we haven't seen this entity before
+                if i not in labeled_entities:
+                    if uncertainty_type == 'stimulus':
+                        label = stimulus_labels[i] if i < len(stimulus_labels) else f"Stimulus {i}"
+                    else:
+                        label = stimulus_labels[i] if i < len(stimulus_labels) else f"Pair {i}-{i+1}"
+                    labeled_entities.add(i)
+                else:
+                    label = None
+                
+                # Choose line style based on show_markers flag
+                if show_markers:
+                    line_style = 'o-'  # Line with circle markers
+                    markersize = 4     # Smaller markers for detailed view
+                else:
+                    line_style = '-'   # Just a line
+                    markersize = None  # No markers
+                
+                ax.plot(x_values, entity_values, line_style, color=colors[i], 
+                       label=label, markersize=markersize)
+            
+            # Update the trial offset for the next day
+            trial_offset += n_trials
+            day_boundaries.append(trial_offset)
+        
+        # Add vertical lines to separate days - now more dotted and visible
+        for boundary in day_boundaries[1:-1]:  # Skip the first and last boundaries
+            ax.axvline(x=boundary, color='k', linestyle=':', linewidth=1.5, alpha=0.7)
+        
+        # Add day labels at the top
+        for i, day in enumerate(days):
+            ax.text(day_midpoints[i], 1.02, f"Day {day}", ha='center', va='bottom', 
+                   transform=ax.get_xaxis_transform())
+        
+        # Add labels and title
+        ax.set_xlabel('Trial (continuous across days)', fontsize=12)
+        ax.set_ylabel('Uncertainty', fontsize=12)
+        
+        if uncertainty_type == 'ROC':
+            title = 'Evolution of ROC Uncertainty Values Across All Trials and Days'
+        elif uncertainty_type == 'relational':
+            title = 'Evolution of Relational Uncertainty Values Across All Trials and Days'
+        else:
+            title = 'Evolution of Stimulus Uncertainty Values Across All Trials and Days'
+            
+        ax.set_title(title, fontsize=14)
+        
+        # Remove x-ticks for clarity (there would be too many trials)
+        ax.set_xticks([])
+    
+    else:
+        raise ValueError(f"Invalid mode: {mode}. Must be 'summary' or 'detailed'.")
+    
+    # Set y-axis limits
+    ax.set_ylim(0, 1)
+    
+    # Add grid
+    ax.grid(True, alpha=0.3)
+    
+    # Add legend (outside the plot if there are many entities)
+    if num_entities > 5:
+        ax.legend(loc='center left', bbox_to_anchor=(1.05, 0.5))
+        plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make room for legend
+    else:
+        ax.legend(loc='best')
+        plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+    
+    return fig, ax
+    
+def plot_beta_distributions(model, x_resolution=1000, stimulus_labels=None, figsize=(12, 8), save=None):
     """
     plot beta distributions based on upper and lower parameters at the end
     
@@ -1396,9 +1909,14 @@ def plot_beta_distributions(model, x_resolution=1000, stimulus_labels=None, figs
     ax.legend(loc='best', frameon=True, framealpha=0.9, fontsize=10)
     
     plt.tight_layout(rect=[0, 0.05, 1, 1])
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def plot_boundaries_history(model, stimulus_labels=None):
+def plot_boundaries_history(model, stimulus_labels=None, save=None):
     """
     plots thei hsitory of the upper and lower parameters
     
@@ -1441,9 +1959,14 @@ def plot_boundaries_history(model, stimulus_labels=None):
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     plt.tight_layout()
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def plot_match_rates(matches, window_size=10):
+def plot_match_rates(matches, window_size=10, save=None):
     """
     plot trial-by-trial and moving average match rates
     
@@ -1485,9 +2008,14 @@ def plot_match_rates(matches, window_size=10):
     plt.ylim(-0.05, 1.05)
     
     plt.tight_layout()
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def parameter_performance_heatmap(param_performances):
+def parameter_performance_heatmap(param_performances, save=None):
     plt.figure(figsize=(10, 8))
     xi_list = sorted(set(p[0] for p in param_performances.keys()))
     tau_list = sorted(set(p[1] for p in param_performances.keys()))
@@ -1516,9 +2044,14 @@ def parameter_performance_heatmap(param_performances):
                      ha="center", va="center", color="w" if performance_matrix[i, j] < 0.7 else "black")
     
     plt.tight_layout()
-    plt.show()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
 
-def parameter_performance_heatmap_with_threshold(param_performances, title=None, fixed_param=None, fixed_value=None):
+def parameter_performance_heatmap_with_threshold(param_performances, title=None, fixed_param=None, fixed_value=None, save=None):
     """
     Create a heatmap of parameter performances
     
@@ -1649,22 +2182,21 @@ def parameter_performance_heatmap_with_threshold(param_performances, title=None,
                         ha="center", va="center", 
                         color="w" if performance_matrix[i, j] < 0.7 else "black")
     
-    plot_stimulus_uncertainty()
     return fig, ax
 
 def plot_best_parameters(best_model):
     plot_positions(best_model)
-    plot_uncertainty(best_model)
+    #plot_uncertainty(best_model)
     plot_beta_distributions(best_model)
     
-def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
+def plot_vte_uncertainty(pair_vte_df, results, save=None):
     """
     Creates visualizations showing the relationship between VTE and pair-specific uncertainty
     
     Parameters:
         - pair_vte_df: DataFrame with VTE and uncertainty data
         - results: Analysis results from analyze_pair_specific_correlations
-        - output_dir: Directory to save plots (optional)
+        - save: Directory to save plots (optional)
     """
     # 1. Boxplots of uncertainty by VTE for each pair
     unique_pairs = pair_vte_df['pair'].unique()
@@ -1713,9 +2245,11 @@ def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
         plt.tight_layout()
         plt.subplots_adjust(top=0.92)  # Make room for the suptitle
         
-        if output_dir:
-            plt.savefig(os.path.join(output_dir, f'vte_{measure}_by_pair.png'), dpi=300)
-        plt.show()
+        if save:
+            plt.savefig(os.path.join(save, f'vte_{measure}_by_pair.png'), dpi=300)
+            plt.close()
+        else:
+            plt.show()
     
     # 2. Barplot showing correlation strength for each pair
     # Extract correlation values for each pair
@@ -1757,9 +2291,11 @@ def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
         plt.xticks(rotation=45)
         plt.tight_layout()
         
-        if output_dir:
-            plt.savefig(os.path.join(output_dir, 'vte_correlation_by_pair.png'), dpi=300)
-        plt.show()
+        if save:
+            plt.savefig(os.path.join(save, 'vte_correlation_by_pair.png'), dpi=300)
+            plt.close()
+        else:
+            plt.show()
     
     # 3. Heatmap of uncertainty by day and pair for VTE trials
     # Calculate mean uncertainty for each day-pair combination
@@ -1775,9 +2311,11 @@ def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
     plt.title('Mean Relational Uncertainty by Day and Stimulus Pair')
     plt.tight_layout()
     
-    if output_dir:
-        plt.savefig(os.path.join(output_dir, 'uncertainty_heatmap_by_day_pair.png'), dpi=300)
-    plt.show()
+    if save:
+        plt.savefig(os.path.join(save, 'uncertainty_heatmap_by_day_pair.png'), dpi=300)
+        plt.close()
+    else:
+        plt.show()
     
     # 4. Line plot of VTE occurrence rate and mean uncertainty over days
     day_summary = pair_vte_df.groupby('day').agg({
@@ -1806,6 +2344,232 @@ def plot_vte_uncertainty(pair_vte_df, results, output_dir=None):
     plt.title('VTE Rate and Mean Uncertainty Over Days')
     fig.tight_layout()
     
-    if output_dir:
-        plt.savefig(os.path.join(output_dir, 'vte_uncertainty_over_days.png'), dpi=300)
-    plt.show()
+    if save:
+        plt.savefig(os.path.join(save, 'vte_uncertainty_over_days.png'), dpi=300)
+        plt.close()
+    else:
+        plt.show()
+    
+    
+
+## CENTRAL FUNCTION THAT CONTAINS EVERYTHING FOR THE PIPELINE
+def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff_evolution=True,
+                                  xi=None, tau=None, threshold=None):
+    """
+    Comprehensive analysis function for Betasort model that:
+    1. Finds optimal parameters (optionally using differential evolution)
+    2. Runs a model with optimal parameters
+    3. Performs binomial tests, t-tests, and VTE uncertainty analysis
+    
+    Parameters:
+    - all_data_df: DataFrame containing rat choice data
+    - rat: String identifier for the rat
+    - n_simulations: Number of simulations for choice testing
+    - use_diff_evolution: Whether to find optimal parameters using differential evolution
+    - xi, tau, threshold: Optional parameter values to use if not using differential evolution
+    
+    Returns:
+    - Dictionary containing:
+        - all_models: Dictionary of models for each day
+        - pair_vte_df: DataFrame with paired VTE and uncertainty values
+        - best_xi: Optimal xi parameter
+        - best_tau: Optimal tau parameter
+        - best_threshold: Optimal threshold parameter
+        - best_performance: Performance with optimal parameters
+        - session_results_ttest: T-test results by session
+        - overall_results_ttest: Overall t-test results
+        - session_results_binomial: Binomial test results by session
+    """
+    results = {}
+    
+    # Step 1: Find optimal parameters if requested
+    if use_diff_evolution:
+        print("Finding optimal parameters using differential evolution...")
+        best_xi, best_tau, best_threshold, best_performance = diff_evolution_lite(all_data_df, rat)
+    else:
+        # Use provided parameters
+        best_xi = xi if xi is not None else 0.95  # Default values
+        best_tau = tau if tau is not None else 0.05
+        best_threshold = threshold if threshold is not None else 0.8
+    
+    # Store parameter values
+    results['best_xi'] = best_xi
+    results['best_tau'] = best_tau
+    results['best_threshold'] = best_threshold
+    
+    print(f"Using parameters: xi={best_xi}, tau={best_tau}, threshold={best_threshold}")
+    
+    # Step 2: Initialize storage for all analyses
+    all_models = {}
+    global_U, global_L, global_R, global_N = {}, {}, {}, {}
+    
+    # VTE data collection
+    pair_vte_data = []
+    
+    # Binomial analysis storage
+    session_results_binomial = {}
+    
+    # T-test analysis storage
+    session_results_regression = []
+    
+    # Match rates for performance calculation
+    all_match_rates = []
+    
+    # Process each day separately
+    for day, day_data in all_data_df.groupby('Day'):
+        print(f"Processing day {day}...")
+        
+        # Extract relevant data for this day
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        rewards = day_data["correct"].values
+        
+        # Handle optional VTE column
+        if 'VTE' in day_data.columns:
+            vtes = day_data["VTE"].values
+        else:
+            vtes = np.zeros_like(chosen_idx)  # Default to no VTEs if not provided
+            
+        # Handle optional ID column
+        if 'ID' in day_data.columns:
+            traj_nums = day_data["ID"].values
+        else:
+            traj_nums = np.arange(len(chosen_idx))  # Default to sequential IDs
+        
+        # Identify which stimuli are present on this day
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
+        
+        # Initialize a model for this day
+        model = Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
+        
+        # Transfer state from previous days
+        for stim_idx in range(n_stimuli):
+            if stim_idx in global_U:
+                model.U[stim_idx] = global_U[stim_idx]
+                model.L[stim_idx] = global_L[stim_idx]
+                model.R[stim_idx] = global_R[stim_idx]
+                model.N[stim_idx] = global_N[stim_idx]
+        
+        # Reset histories
+        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.relational_uncertainty_history = [model.get_all_relational_uncertainties()]
+        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
+        model.position_history = [model.get_all_positions()]
+        model.U_history = [model.U.copy()]
+        model.L_history = [model.L.copy()]
+        
+        # Data for analyses
+        day_matches = []
+        model_correct_rates = []
+        rat_correct_rates = []
+        
+        # Process trials for this day
+        for t in range(len(chosen_idx)):
+            chosen = chosen_idx[t]
+            unchosen = unchosen_idx[t]
+            reward = rewards[t]
+            vte = vtes[t]
+            traj_num = traj_nums[t]
+            
+            # VTE Analysis: Get uncertainties before updates
+            stim1_uncertainty = model.get_uncertainty_stimulus(min(chosen, unchosen))
+            stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
+            pair_relational_uncertainty = model.get_uncertainty_relation(min(chosen, unchosen), max(chosen, unchosen))
+            pair_roc_uncertainty = model.get_uncertainty_relation_ROC(min(chosen, unchosen), max(chosen, unchosen))
+            
+            # Store VTE data
+            vte_occurred = 1 if vte else 0
+            pair_vte_data.append({
+                'day': day,
+                'trial_num': traj_num,
+                'stim1': min(chosen, unchosen),
+                'stim2': max(chosen, unchosen),
+                'chosen': chosen,
+                'unchosen': unchosen,
+                'vte_occurred': vte_occurred,
+                'stim1_uncertainty': stim1_uncertainty,
+                'stim2_uncertainty': stim2_uncertainty,
+                'pair_relational_uncertainty': pair_relational_uncertainty,
+                'pair_roc_uncertainty': pair_roc_uncertainty,
+                'reward': reward
+            })
+            
+            # Simulate model choices (for all analyses)
+            model_choices = np.zeros(n_simulations)
+            model_correct = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen, unchosen])
+                model_choices[sim] = model_choice
+                # Correct = choosing the lower-valued stimulus (as per original code)
+                model_correct[sim] = 1 if model_choice == min(chosen, unchosen) else 0
+            
+            # Calculate match rate (model choice matches rat's choice)
+            model_match_rate = np.mean(model_choices == chosen)
+            day_matches.append(model_match_rate)
+            
+            # Store correct rates for binomial analysis
+            model_correct_rates.append(np.mean(model_correct))
+            rat_correct_rates.append(1 if chosen < unchosen else 0)
+            
+            # Update model based on actual choice
+            model.thresholding_update(chosen, unchosen, reward, model_match_rate, threshold=best_threshold)
+        
+        # Store the model for this day
+        all_models[day] = model
+        
+        # Update global states for the next day
+        for stim_idx in range(n_stimuli):
+            global_U[stim_idx] = model.U[stim_idx]
+            global_L[stim_idx] = model.L[stim_idx]
+            global_R[stim_idx] = model.R[stim_idx]
+            global_N[stim_idx] = model.N[stim_idx]
+        
+        # Calculate day-specific match rate for performance
+        day_match_rate = np.mean(day_matches)
+        all_match_rates.append(day_match_rate)
+        
+        # Binomial analysis for this day
+        n_rat_correct = int(np.sum(rat_correct_rates))
+        n_trials = len(rat_correct_rates)
+        model_correct_rate = sum(model_correct_rates) / len(model_correct_rates)
+        p_value_binomial = stats.binomtest(n_rat_correct, n_trials, p=model_correct_rate)
+        
+        session_results_binomial[day] = {
+            'matches': n_rat_correct,
+            'trials': n_trials,
+            'match_rate': n_rat_correct/n_trials if n_trials > 0 else 0,
+            'p_value': p_value_binomial,
+            'model_rate': model_correct_rate,
+            'significant': p_value_binomial.pvalue < 0.05
+        }
+        
+        # calculate logistic regression
+        X = np.array(model_correct_rates).reshape(-1, 1) # model probabilities as features
+        Y = np.array(rat_correct_rates)
+        
+        regression_model = LogisticRegression()
+        regression_model.fit(X, Y)
+        
+        # get model accuracy for logistic regression
+        predictions = regression_model.predict(X)
+        accuracy = accuracy_score(Y, predictions)
+        
+        session_results_regression.append(accuracy)
+    
+    # Calculate overall performance
+    best_performance = np.mean(all_match_rates)
+    results['best_performance'] = best_performance
+    
+    # Convert VTE data to DataFrame
+    pair_vte_df = pd.DataFrame(pair_vte_data)
+    if len(pair_vte_df) > 0:  # Add pair column for VTE analysis
+        pair_vte_df['pair'] = pair_vte_df.apply(lambda row: f"{row['stim1']}-{row['stim2']}", axis=1)
+    
+    # Store all results
+    results['all_models'] = all_models
+    results['pair_vte_df'] = pair_vte_df
+    results['session_results_binomial'] = session_results_binomial
+    results['session_predictions_regression'] = session_results_regression
+    
+    return results

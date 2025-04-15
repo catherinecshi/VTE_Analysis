@@ -107,7 +107,7 @@ dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "dlc_data")
 hull_path = os.path.join(helper.BASE_PATH, "processed_data", "hull_data")
 
 for rat in os.listdir(dlc_path):
-    if ".DS_Store" in rat:
+    if ".DS_Store" in rat or "BP15" not in rat:
         continue
 
     rat_path = os.path.join(dlc_path, rat)

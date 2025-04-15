@@ -61,7 +61,7 @@ def check_timestamps(timestamps):
         else:
             continue
         
-        if not_ascending_count > 2 or stagnant_count > 50:
+        if not_ascending_count > 2 or stagnant_count > 100:
             raise helper.CorruptionError(helper.CURRENT_RAT, helper.CURRENT_DAY, timestamps)
 
 def type_to_choice(trial_type, correct):
@@ -406,11 +406,13 @@ def quantify_VTE(data_structure, rat_ID, day, save = None):
         else:
             trial_end = timestamps[-1] # if not available, get last time possible
         
+        # check the trajectory from trial start to trial end
+        trajectory_df = DLC_df[(DLC_df["times"] >= trial_start) & (DLC_df["times"] <= trial_end)]
+        if trajectory_df.empty:
+            # sometimes there are gaps in dlc, so skip these trajectories
+            continue
+        
         trajectory_x, trajectory_y, traj_len = get_trajectory(DLC_df, trial_start, trial_end, centre_hull)
-        # Add these debug lines right before the condition
-        # this is specifically checking BP06 Day 8 why there are so many missing traj because of the following if statement
-        print(f"trajectory_x: {trajectory_x}, type: {type(trajectory_x)}, length: {len(trajectory_x) if trajectory_x is not None else 'None'}, bool: {bool(trajectory_x)}")
-        print(f"trajectory_y: {trajectory_y}, type: {type(trajectory_y)}, length: {len(trajectory_y) if trajectory_y is not None else 'None'}, bool: {bool(trajectory_y)}")
 
         if not trajectory_x or not trajectory_y: # empty list, happens for the last trajectory
             print("true, skipping")

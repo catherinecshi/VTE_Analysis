@@ -31,7 +31,7 @@ SKIP_DAYS = [("BP06", "Day10"), ("BP10", "Day43"), ("BP10", "Day21"), ("BP10", "
              ("BP15", "Day10"), ("TH405", "Day3"), ("BP21", "Day21"), ("BP21", "Day8"),
              ("BP19", "Day28"), ("BP19", "Day17"), ("BP10", "Day37"), ("BP10", "Day26"),
              ("BP10", "Day6"), ("BP10", "Day18"), ("BP10", "Day46"), ("BP10", "Day23"),
-             ("BP11", "Day6"), ("BP11", "Day1"), ("BP11", "Day4")]
+             ("BP11", "Day6"), ("BP11", "Day1"), ("BP11", "Day4"), ("BP08", "Day25")]
 
 base_path = "/Users/catpillow/Documents/VTE_Analysis"
 dlc_path = os.path.join(base_path, "processed_data", "cleaned_dlc")
@@ -42,7 +42,7 @@ vte_path = os.path.join(base_path, "processed_data", "VTE_data")
 
 for rat in os.listdir(vte_path):
     rat_path = os.path.join(vte_path, rat)
-    if not os.path.isdir(rat_path) or not "BP06" in rat:
+    if not os.path.isdir(rat_path) or not "BP15" in rat:
         continue # skip files
 
     for root, dirs, files in os.walk(rat_path):
@@ -50,9 +50,6 @@ for rat in os.listdir(vte_path):
             parts = file.split("_")
             rat = parts[0]
             day = parts[1]
-            
-            if not "8" in day:
-                continue
             
             rat_day = (rat, day)
             if rat_day in SKIP_DAYS:
@@ -63,6 +60,6 @@ for rat in os.listdir(vte_path):
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 
-                _, _ = trajectory_analysis.quantify_VTE(data_structure, rat, day, save=save_path)
+                _ = trajectory_analysis.quantify_VTE(data_structure, rat, day, save=save_path)
             except Exception as error:
                 print(f"error in rat_VTE_over_session - {error} on day {day} for {rat}")
