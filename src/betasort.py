@@ -158,7 +158,7 @@ class Betasort:
         # value from samples1 exceeds a randomly selected value from samples2
         auc = 0
         for i in range(n_samples):
-            auc += np.mean(samples1[i] > samples2)
+            auc = np.mean(samples1 > samples2)
         auc /= n_samples
         
         # Convert AUC to uncertainty measure
@@ -2548,13 +2548,20 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         X = np.array(model_correct_rates).reshape(-1, 1) # model probabilities as features
         Y = np.array(rat_correct_rates)
         
-        regression_model = LogisticRegression()
-        regression_model.fit(X, Y)
-        
-        # get model accuracy for logistic regression
-        predictions = regression_model.predict(X)
-        accuracy = accuracy_score(Y, predictions)
-        
+        # Check if there's more than one class before fitting
+        unique_classes = np.unique(Y)
+        if len(unique_classes) > 1:
+            regression_model = LogisticRegression()
+            regression_model.fit(X, Y)
+            
+            # get model accuracy for logistic regression
+            predictions = regression_model.predict(X)
+            accuracy = accuracy_score(Y, predictions)
+        else:
+            # Handle single-class case
+            # If all predictions are the same, the accuracy is either 0% or 100%
+            accuracy = float(unique_classes[0])  # If all Y are 1, accuracy is 1.0; if all Y are 0, accuracy is 0.0
+            
         session_results_regression.append(accuracy)
     
     # Calculate overall performance

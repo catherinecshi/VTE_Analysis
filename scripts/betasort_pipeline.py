@@ -38,7 +38,7 @@ data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
 save_path = os.path.join(helper.BASE_PATH, "processed_data", "new_model_data")
 
 for rat in os.listdir(data_path):
-    if "BP06" in rat or "BP08" in rat:
+    if "BP21" not in rat and "BP22" not in rat and "BP07" not in rat and "BP09" not in rat and "BP16" not in rat:
         continue
     
     rat_path = os.path.join(data_path, rat)
