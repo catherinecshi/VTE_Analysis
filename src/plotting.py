@@ -89,7 +89,9 @@ def create_bar_plot(data, x_ticks, errors=None, xlim=None, ylim=None, significan
     if ylim:
         # Convert proportion limits to percentage limits
         plt.ylim((ylim[0] * 100, ylim[1] * 100))
-        
+    
+    plt.ylim(0, 10)
+    
     if significance_pairs:
         bar_positions = [bar.get_x() + bar.get_width() / 2 for bar in bars]  # Get center positions of bars
         bar_heights = [bar.get_height() for bar in bars]  # Get heights of the bars

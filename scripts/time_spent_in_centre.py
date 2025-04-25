@@ -73,7 +73,44 @@ for rat in os.listdir(base_path):
                     VTE_lengths.append(traj_len)
                 else:
                     non_VTE_lengths.append(traj_len)
-                    
+
+import scipy.stats as stats
+
+# Print the sample sizes
+print("\n----- T-Test Analysis: VTE vs Non-VTE Trajectory Lengths -----")
+print(f"Number of VTE trajectories: {len(VTE_lengths)}")
+print(f"Number of non-VTE trajectories: {len(non_VTE_lengths)}")
+
+# Calculate basic statistics
+vte_mean = np.mean(VTE_lengths)
+vte_std = np.std(VTE_lengths)
+vte_median = np.median(VTE_lengths)
+vte_sem = vte_std / np.sqrt(len(VTE_lengths))  # Standard error of the mean
+
+non_vte_mean = np.mean(non_VTE_lengths)
+non_vte_std = np.std(non_VTE_lengths)
+non_vte_median = np.median(non_VTE_lengths)
+non_vte_sem = non_vte_std / np.sqrt(len(non_VTE_lengths))
+
+# Print descriptive statistics
+print("\nDescriptive Statistics:")
+print(f"VTE trajectories:")
+print(f"  - Mean: {vte_mean:.4f} seconds")
+print(f"  - Median: {vte_median:.4f} seconds")
+print(f"  - Standard deviation: {vte_std:.4f} seconds")
+print(f"  - Standard error: {vte_sem:.4f} seconds")
+
+print(f"\nNon-VTE trajectories:")
+print(f"  - Mean: {non_vte_mean:.4f} seconds")
+print(f"  - Median: {non_vte_median:.4f} seconds")
+print(f"  - Standard deviation: {non_vte_std:.4f} seconds") 
+print(f"  - Standard error: {non_vte_sem:.4f} seconds")
+
+print(f"\nMean difference (VTE - non-VTE): {vte_mean - non_vte_mean:.4f} seconds")
+
+# Perform the t-test (Welch's t-test which doesn't assume equal variances)
+t_stat, p_value = stats.ttest_ind(VTE_lengths, non_VTE_lengths, equal_var=False)
+print(f"\nWelch's t-test: t = {t_stat:.4f}, p = {p_value:.6f}")
 
 # make figure for counts of durations
 plotting.create_frequency_histogram(traj_lens, xlim=(0,6), title="Time Spent in Centre Zone",

@@ -605,6 +605,9 @@ def plot_days_until_criteria(all_days_until_criteria):
         color = colormap(i / (num_rats - 1)) if num_rats > 1 else colormap(0.0)
         
         for j, trial_type in enumerate(trial_types):
+            if trial_type == 5:
+                continue
+            
             try:
                 y = days_dict[trial_type]
             except KeyError:
@@ -622,6 +625,9 @@ def plot_days_until_criteria(all_days_until_criteria):
         #y = sum[trial_type]
         #ax.scatter([j] * len(y), y, color=color, label=ratID if j == 0 else "") # plot
         
+        if trial_type == 5:
+            continue
+        
         mean = np.mean(total[trial_type])
         std = np.std(total[trial_type])
         ax.scatter(i, mean, color="black", s=100, zorder=5)
@@ -633,7 +639,7 @@ def plot_days_until_criteria(all_days_until_criteria):
     ax.set_xlabel("Trial Type")
     ax.set_ylabel("Number of Days Until Criteria")
     ax.set_title("Days until Criteria by Trial Type (75%)")
-    ax.legend(title="Rat ID")
+    #ax.legend(title="Rat ID")
     plt.show()
 
 

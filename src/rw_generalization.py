@@ -1,11 +1,10 @@
 import numpy as np
 
 class RWGeneralization:
-    def __init__(self, n_stimuli, alpha=0.1, beta=0.1, generalization_factor=0.5):
+    def __init__(self, n_stimuli, alpha=0.1, beta=0.1):
         self.n_stimuli = n_stimuli
         self.alpha = alpha  # Learning rate
         self.beta = beta  # Generalization rate
-        self.generalization_factor = generalization_factor
         self.values = np.ones(n_stimuli) * 0.5  # Initialize values at 0.5
         
         # History tracking
@@ -89,7 +88,7 @@ class RWGeneralization:
     
     def copy(self):
         """Create a deep copy of this model"""
-        copied = RWGeneralization(self.n_stimuli, self.alpha, self.beta, self.generalization_factor)
+        copied = RWGeneralization(self.n_stimuli, self.alpha, self.beta)
         copied.values = self.values.copy()
         copied.value_history = [v.copy() for v in self.value_history]
         return copied

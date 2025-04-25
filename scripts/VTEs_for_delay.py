@@ -3,6 +3,11 @@ import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import seaborn as sns
+
+from statsmodels.formula.api import ols
+from scipy.stats import f_oneway
 
 from src import helper
 from src import plotting
@@ -112,6 +117,23 @@ def analyze_vte_anova(vtes_volatility, min_day=0, max_day=5):
         max_day=max_day
     )
     
+    # ADD THESE PRINT STATEMENTS HERE
+    print("\n===== ANOVA DATA SUMMARY =====")
+    for i, (group_data, label) in enumerate(zip(data_groups, group_labels)):
+        print(f"{label}: {len(group_data)} observations, mean = {np.mean(group_data):.2f}%, SEM = {np.std(group_data, ddof=1)/np.sqrt(len(group_data)):.2f}%")
+    
+    # Calculate total observations and degrees of freedom
+    total_observations = sum(len(group) for group in data_groups)
+    num_groups = len(data_groups)
+    between_df = num_groups - 1
+    within_df = total_observations - num_groups
+    
+    print(f"\nTotal observations: {total_observations}")
+    print(f"Number of groups: {num_groups}")
+    print(f"Between-groups degrees of freedom: {between_df}")
+    print(f"Within-groups degrees of freedom: {within_df}")
+    print(f"F-statistic should be reported as: F({between_df}, {within_df})")
+    
     # Run ANOVA and create plot
     fig, ax, stats_results = statistics.plot_one_way_anova_line(
         data_groups,
@@ -121,7 +143,90 @@ def analyze_vte_anova(vtes_volatility, min_day=0, max_day=5):
         ylabel='VTE Percentage (%)'
     )
     
+    # Print ANOVA results for reporting
+    print("\n===== ANOVA RESULTS =====")
+    print(f"F({between_df}, {within_df}) = {stats_results['f_stat']:.3f}, p = {stats_results['p_value']:.4f}")
+    
+    # Print significance statement
+    if stats_results['p_value'] < 0.001:
+        sig_statement = "p < 0.001"
+    elif stats_results['p_value'] < 0.01:
+        sig_statement = "p < 0.01"
+    elif stats_results['p_value'] < 0.05:
+        sig_statement = "p < 0.05"
+    else:
+        sig_statement = "p > 0.05 (not significant)"
+    
+    print(f"Significance: {sig_statement}")
+    
+    # Add this function to perform post-hoc analysis if ANOVA is significant
+    if stats_results['p_value'] < 0.05:
+        print_posthoc_analysis(data_groups, group_labels)
+        
     return fig, ax, stats_results
+
+# Add this helper function for post-hoc analysis
+def print_posthoc_analysis(data_groups, group_labels):
+    """Perform and print post-hoc pairwise comparisons with Bonferroni correction"""
+    from scipy import stats
+    
+    print("\n===== POST-HOC ANALYSIS =====")
+    print("Bonferroni-corrected pairwise comparisons:")
+    
+    # Calculate number of comparisons for Bonferroni correction
+    n_comparisons = len(data_groups) * (len(data_groups) - 1) // 2
+    print(f"Number of comparisons: {n_comparisons}")
+    print(f"Adjusted alpha level: {0.05/n_comparisons:.5f}")
+    
+    # Perform all pairwise comparisons
+    significant_pairs = []
+    for i in range(len(data_groups)):
+        for j in range(i+1, len(data_groups)):
+            # Perform t-test
+            t_stat, p_val = stats.ttest_ind(
+                data_groups[i],
+                data_groups[j],
+                equal_var=False  # Welch's t-test
+            )
+            
+            # Apply Bonferroni correction
+            corrected_p = p_val * n_comparisons
+            corrected_p = min(corrected_p, 1.0)  # Cap at 1.0
+            
+            # Determine significance
+            significant = corrected_p < 0.05
+            if significant:
+                significant_pairs.append((i, j))
+                
+                # Determine significance level
+                if corrected_p < 0.001:
+                    sig_symbol = "***"
+                elif corrected_p < 0.01:
+                    sig_symbol = "**"
+                else:
+                    sig_symbol = "*"
+            else:
+                sig_symbol = "ns"
+            
+            # Format mean difference
+            mean_i = np.mean(data_groups[i])
+            mean_j = np.mean(data_groups[j])
+            mean_diff = mean_i - mean_j
+            
+            print(f"{group_labels[i]} vs {group_labels[j]}: t = {t_stat:.3f}, p = {p_val:.5f}, " +
+                  f"corrected p = {corrected_p:.5f} {sig_symbol}")
+            print(f"  Mean diff: {mean_diff:.2f}% ({mean_i:.2f}% vs {mean_j:.2f}%)")
+    
+    if not significant_pairs:
+        print("No significant pairwise differences found")
+    else:
+        print(f"\n{len(significant_pairs)} significant pairwise differences found")
+    
+    print("\nSignificance levels:")
+    print("  * p < 0.05")
+    print("  ** p < 0.01")
+    print("  *** p < 0.001")
+    print("  ns = not significant")
 
 # Calculate the mean and SEM for each day
 mean_perc_vtes = vtes_during_volatility_df.groupby("no_days")["perc_vtes"].mean()
@@ -170,4 +275,5 @@ plotting.create_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
                           ylabel="% VTE Trials")
 
 fig, ax, stats_results = analyze_vte_anova(vtes_during_volatility, min_day=0, max_day=5)
+print(stats_results)
 plt.show()

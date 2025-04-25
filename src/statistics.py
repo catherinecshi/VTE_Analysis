@@ -125,16 +125,16 @@ def plot_one_way_anova_line(data_groups, group_labels=None, title=None, xlabel=N
     # Add plot elements
     if group_labels:
         ax.set_xticks(x)
-        ax.set_xticklabels(group_labels)
+        ax.set_xticklabels(group_labels, fontsize=14)
     
     if title:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=24)
     
     if xlabel:
-        ax.set_xlabel(xlabel)
+        ax.set_xlabel(xlabel, fontsize=20)
     
     if ylabel:
-        ax.set_ylabel(ylabel)
+        ax.set_ylabel(ylabel, fontsize=20)
     
     # Add ANOVA results to plot
     anova_text = f"One-way ANOVA: \nF = {stats_results['f_stat']:.3f}\np = {stats_results['p_value']:.2e}"

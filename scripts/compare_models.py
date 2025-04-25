@@ -965,16 +965,21 @@ def plot_combined_results(combined_df, output_path):
     plt.figure(figsize=(12, 8))
     sns.set_style("whitegrid")
     
+    # Create a copy of the dataframe with percentages
+    model_stats_pct = model_stats.copy()
+    model_stats_pct['mean_rate'] = model_stats_pct['mean_rate'] * 100
+    model_stats_pct['sem_rate'] = model_stats_pct['sem_rate'] * 100
+    
     # Create bar plot without error bars first
     bar_plot = sns.barplot(
         x='model', 
         y='mean_rate', 
-        data=model_stats,
+        data=model_stats_pct,
         palette="viridis"
     )
 
     # Add error bars manually
-    for i, row in model_stats.iterrows():
+    for i, row in model_stats_pct.iterrows():
         bar_plot.errorbar(
             x=i, 
             y=row['mean_rate'],
@@ -984,23 +989,23 @@ def plot_combined_results(combined_df, output_path):
             fmt='none'  # This prevents adding markers
         )
     
-    # Add chance level line
-    plt.axhline(y=0.5, color='k', linestyle='--', alpha=0.7, label='Chance Level')
+    # Add chance level line (50%)
+    plt.axhline(y=50, color='k', linestyle='--', alpha=0.7, label='Chance Level')
     
     # Customize plot
-    plt.title("Model Comparison Across All Rats", fontsize=16)
-    plt.xlabel("Model", fontsize=14)
-    plt.ylabel("Mean Match Rate", fontsize=14)
+    plt.title("Model Comparison Across All Rats", fontsize=24)
+    plt.xlabel("Model", fontsize=20)
+    plt.ylabel("Mean Match Rate (%)", fontsize=20)
     plt.xticks(rotation=45, ha='right')
-    plt.ylim(0.4, 1.0)  # Adjust as needed
+    plt.ylim(40, 100)  # Adjust as needed (equivalent to 0.4 to 1.0 in proportions)
     
-    # Add value labels on bars
+    # Add value labels on bars (as percentages)
     for i, bar in enumerate(bar_plot.patches):
-        bar_value = model_stats.iloc[i]["mean_rate"]
+        bar_value = model_stats_pct.iloc[i]["mean_rate"]
         bar_plot.text(
             bar.get_x() + bar.get_width()/2,
-            bar.get_height() + 0.01,
-            f"{bar_value:.3f}",
+            bar.get_height() + 1,  # Adjusted for percentage scale
+            f"{bar_value:.1f}%",
             ha='center',
             va='bottom',
             fontsize=10
@@ -1012,14 +1017,18 @@ def plot_combined_results(combined_df, output_path):
     plt.savefig(os.path.join(output_path, "combined_performance.png"), dpi=300)
     plt.close()
     
+    # Create a copy of combined_df with percentages
+    combined_df_pct = combined_df.copy()
+    combined_df_pct['mean_match_rate'] = combined_df_pct['mean_match_rate'] * 100
+    
     # Create boxplot to show distribution across rats
     plt.figure(figsize=(12, 8))
     
     boxplot = sns.boxplot(
         x='model', 
         y='mean_match_rate', 
-        data=combined_df,
-        palette="viridis",
+        data=combined_df_pct,
+        palette="viridis_r",
         order=model_stats['model']  # Use same order as bar plot
     )
     
@@ -1027,20 +1036,20 @@ def plot_combined_results(combined_df, output_path):
     sns.stripplot(
         x='model', 
         y='mean_match_rate', 
-        data=combined_df,
+        data=combined_df_pct,
         color='black',
         alpha=0.5,
         jitter=True,
         order=model_stats['model']  # Use same order as bar plot
     )
     
-    # Add chance level line
-    plt.axhline(y=0.5, color='k', linestyle='--', alpha=0.7, label='Chance Level')
+    # Add chance level line (50%)
+    plt.axhline(y=50, color='r', linestyle='--', alpha=0.7, label='Chance Level')
     
     # Customize plot
-    plt.title("Model Performance Distribution Across Rats", fontsize=16)
-    plt.xlabel("Model", fontsize=14)
-    plt.ylabel("Match Rate", fontsize=14)
+    plt.title("Model Performance Distribution Across Rats", fontsize=24)
+    plt.xlabel("Model", fontsize=20)
+    plt.ylabel("Match Rate (%)", fontsize=20)
     plt.xticks(rotation=45, ha='right')
     
     plt.tight_layout()
@@ -1050,7 +1059,8 @@ def plot_combined_results(combined_df, output_path):
     plt.close()
     
     # Create heatmap showing performance by model and rat
-    pivot_df = combined_df.pivot(index='rat', columns='model', values='mean_match_rate')
+    # First convert to percentages
+    pivot_df = combined_df.pivot(index='rat', columns='model', values='mean_match_rate') * 100
     
     plt.figure(figsize=(14, 10))
     
@@ -1059,15 +1069,21 @@ def plot_combined_results(combined_df, output_path):
     pivot_df = pivot_df[model_order]
     
     # Create heatmap
-    sns.heatmap(
+    ax = plt.subplot(111)
+    heatmap = sns.heatmap(
         pivot_df,
-        annot=True,
-        fmt=".3f",
+        annot=False,
+        fmt=".1f",
         cmap="viridis",
-        cbar_kws={'label': 'Match Rate'}
+        cbar_kws={'label': 'Match Rate (%)'},
+        ax=ax,
+        annot_kws={'size': 20}
     )
     
-    plt.title("Performance by Model and Rat", fontsize=16)
+    ax.tick_params(axis='x', labelsize=20)
+    ax.tick_params(axis='y', labelsize=20)
+    
+    plt.title("Performance by Model and Rat", fontsize=24)
     plt.tight_layout()
     
     # Save plot
@@ -1734,6 +1750,7 @@ def run_full_analysis():
     # Start timing
     start_time = time.time()
     
+    """
     # Process each rat
     for rat in rats_to_analyze:
         print(f"\nProcessing rat: {rat}")
@@ -1794,6 +1811,7 @@ def run_full_analysis():
             print(f"Completed analysis for {rat} in {rat_elapsed_time:.2f} seconds")
         except Exception as e:
             print(f"Error analyzing {rat}: {e}")
+    """
     
     # Combine results across rats
     print("\nAggregating results across all rats...")
@@ -2271,4 +2289,4 @@ def run_optimized_analysis(optimization_iterations=10):
 
 if __name__ == "__main__":
     run_full_analysis()
-    run_optimized_analysis()
+    #run_optimized_analysis()

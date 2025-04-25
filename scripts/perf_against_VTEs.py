@@ -59,7 +59,7 @@ results_df = pd.DataFrame(data)
 results_df.to_csv("/Users/catpillow/Documents/VTE_Analysis/processed_data/VTE_vs_Performance.csv", index=False)
 
 # Create two subplots
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 6))
 
 # First subplot - Regular scale
 for rat in results_df['Rat'].unique():
@@ -83,12 +83,10 @@ ax1.plot(x_trendline1, p1(x_trendline1), "r--",
          label=f'y = {z1[0]:.2f}x + {z1[1]:.2f}\nR² = {r_squared1:.3f}')
 
 # Customize first plot
-ax1.set_ylabel('Performance (%)')
-ax1.set_xlabel('VTE Percentage (%)')
-ax1.set_title('Performance vs VTE Percentage')
-ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-# ... existing code ...
+#ax1.set_ylabel('Performance (%)')
+#ax1.set_xlabel('VTE Percentage (%)')
+#ax1.set_title('Performance vs VTE Percentage')
+#ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 
 # Second subplot - Log scale
 # Filter out zero values
@@ -109,17 +107,26 @@ p2 = np.poly1d(z2)
 correlation_matrix2 = np.corrcoef(log_vte, nonzero_data['Performance_Percentage'])
 r_squared2 = correlation_matrix2[0,1]**2
 
+from scipy import stats
+r_value2, p_value2 = stats.pearsonr(log_vte, nonzero_data['Performance_Percentage'])
+n = len(log_vte)  # Sample size
+
+print(f"Log VTE vs Performance Stats:")
+print(f"Correlation coefficient (r): {r_value2:.3f}")
+print(f"R-squared (R²): {r_squared2:.3f}")
+print(f"p-value: {p_value2:.5f}")
+print(f"Sample size (n): {n}")
+print(f"Regression equation: y = {z2[0]:.2f}x + {z2[1]:.2f}")
+
 # Add trendline to second plot
 x_trendline2 = np.array([log_vte.min(), log_vte.max()])
 ax2.plot(x_trendline2, p2(x_trendline2), "r--", 
          label=f'y = {z2[0]:.2f}x + {z2[1]:.2f}\nR² = {r_squared2:.3f}')
 
-# ... existing code ...
-
 # Customize second plot
-ax2.set_ylabel('Performance (%)')
-ax2.set_xlabel('Log(VTE Percentage)')
-ax2.set_title('Performance vs Log(VTE Percentage)')
+ax2.set_ylabel('Performance (%)', fontsize=20)
+ax2.set_xlabel('Log(VTE Percentage)', fontsize=20)
+ax2.set_title('Performance vs Log(VTE Percentage)', fontsize=24)
 ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 
 plt.tight_layout()

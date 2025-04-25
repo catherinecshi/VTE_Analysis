@@ -38,7 +38,7 @@ for rat in os.listdir(base_path):
                 trial_type_IdPhis[trial_type].append(IdPhi)
 
 # make figure for counts of durations
-plotting.create_frequency_histogram(IdPhis, title="IdPhi Distribution", stat="count",
+plotting.create_frequency_histogram(IdPhis, title="IdPhi Distribution", stat="count", xlim=(0, 150),
                                     binwidth=2, xlabel="IdPhi", ylabel="Counts")
 plotting.create_multiple_frequency_histograms(choice_IdPhis, title="IdPhi Distribution by Choice Arm",
                                               binwidth=5, xlabel="IdPhi", ylabel="Density")

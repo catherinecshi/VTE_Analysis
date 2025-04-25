@@ -154,8 +154,118 @@ for rat_day, mistake_trials_to_vtes in all_trial_to_vtes.items():
 data_groups = [trial_groups[i] for i in sorted(trial_groups.keys())]
 group_labels = [str(i) for i in sorted(trial_groups.keys())]
 
+def plot_one_way_anova_bar(data_groups, group_labels=None, title=None, xlabel=None, ylabel=None):
+    """
+    Creates a bar plot with error bars and significance indicators
+    
+    Parameters:
+        - data_groups (list of arrays): arrays of data for each group
+        - group_labels (str list): (optional) labels for each group
+        - title (str): (optional)
+        - xlabel (str): (optional)
+        - ylabel (str): (optional)
+    
+    Returns:
+        - fig: plt figure object
+        - ax: plt axis object
+        - stats_results (dict): results from one_way_anova
+    """
+    from scipy import stats
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    stats_results = statistics.one_way_anova(data_groups)
+    
+    # means & SEM
+    means = [np.mean(group) * 100 for group in data_groups]
+    sems = [stats.sem(group) * 100 for group in data_groups]
+    
+    # plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    x = np.arange(len(data_groups))
+    
+    ax.bar(x, means, yerr=sems, capsize=5)
+    
+    # Add significance bars if ANOVA is significant
+    if stats_results["p_value"] < 0.05:
+        # Perform pairwise t-tests with Bonferroni correction
+        significant_pairs = []
+        p_values = {}
+        
+        for i in range(len(data_groups)):
+            for j in range(i+1, len(data_groups)):
+                t_stat, p_val = stats.ttest_ind(
+                    data_groups[i], 
+                    data_groups[j], 
+                    equal_var=False  # Use Welch's t-test
+                )
+                
+                # Apply Bonferroni correction for multiple comparisons
+                n_comparisons = len(data_groups) * (len(data_groups) - 1) / 2
+                corrected_p = p_val * n_comparisons
+                corrected_p = min(corrected_p, 1.0)  # Cap at 1.0
+                
+                if corrected_p < 0.05:
+                    significant_pairs.append((i, j))
+                    p_values[(i, j)] = corrected_p
+        
+        # Add significance bars and stars
+        max_height = max(means) + max(sems) if sems else max(means)
+        step = max_height * 0.1
+        
+        for i, (group1, group2) in enumerate(significant_pairs):
+            # Calculate positions
+            bar_height = max_height + step * (i + 1)
+            
+            # Draw the bar
+            x1, x2 = group1, group2
+            ax.plot([x1, x1, x2, x2], 
+                   [bar_height, bar_height + step/2, bar_height + step/2, bar_height],
+                   color='black', linewidth=1)
+            
+            # Add star
+            p_value = p_values[(group1, group2)]
+            if p_value < 0.001:
+                star = '***'
+            elif p_value < 0.01:
+                star = '**'
+            else:
+                star = '*'
+            
+            ax.text((x1 + x2) / 2, bar_height + step/2, star, 
+                   ha='center', va='bottom', fontsize=12)
+            
+        # Adjust the y-axis to accommodate the significance bars
+        y_max = ax.get_ylim()[1]
+        required_y_max = max_height + step * (len(significant_pairs) + 1)
+        if required_y_max > y_max:
+            ax.set_ylim(top=required_y_max)
+    
+    # add plot elements
+    if group_labels:
+        ax.set_xticks(x)
+        ax.set_xticklabels(group_labels, fontsize=14)
+    
+    if title:
+        ax.set_title(title, fontsize=24)
+    
+    if xlabel:
+        ax.set_xlabel(xlabel, fontsize=20)
+    
+    if ylabel:
+        ax.set_ylabel(ylabel, fontsize=20)
+    
+    # add anova results to plot
+    anova_text = f"One-way ANOVA: \nF = {stats_results['f_stat']:.3f}\np = {stats_results['p_value']:.2e}"
+    print(anova_text)
+    #ax.text(0.95, 0.95, anova_text, transform=ax.transAxes, verticalalignment="top",
+           # horizontalalignment="right", bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
+    
+    plt.tight_layout()
+    return fig, ax, stats_results
+
 # Run ANOVA and create plot
-fig, ax, stats_results = statistics.plot_one_way_anova(
+fig, ax, stats_results = plot_one_way_anova_bar(
     data_groups,
     group_labels=group_labels,
     title="VTE Relative to Mistake Trials",
@@ -163,3 +273,87 @@ fig, ax, stats_results = statistics.plot_one_way_anova(
     ylabel="VTE Percentage (%)"
 )
 plt.show()
+print(stats_results)
+
+def print_bonferroni_results(data_groups, group_labels=None):
+    """
+    Perform pairwise t-tests with Bonferroni correction and print results
+    
+    Parameters:
+        - data_groups (list of arrays): arrays of data for each group
+        - group_labels (str list): (optional) labels for each group
+    """
+    from scipy import stats
+    import numpy as np
+    
+    if group_labels is None:
+        group_labels = [str(i) for i in range(len(data_groups))]
+    
+    # Calculate number of comparisons for Bonferroni correction
+    n_comparisons = len(data_groups) * (len(data_groups) - 1) // 2
+    
+    print("\n===== Bonferroni Post-Hoc Analysis =====")
+    print(f"Number of comparisons: {n_comparisons}")
+    print("Alpha level after Bonferroni correction: {:.5f}".format(0.05/n_comparisons))
+    print("\nSignificant pairwise comparisons:")
+    
+    # Perform all pairwise comparisons
+    found_significant = False
+    for i in range(len(data_groups)):
+        for j in range(i+1, len(data_groups)):
+            # Perform t-test
+            t_stat, p_val = stats.ttest_ind(
+                data_groups[i],
+                data_groups[j],
+                equal_var=False  # Welch's t-test for unequal variances
+            )
+            
+            # Apply Bonferroni correction
+            corrected_p = p_val * n_comparisons
+            corrected_p = min(corrected_p, 1.0)  # Cap at 1.0
+            
+            # Determine significance level
+            if corrected_p < 0.05:
+                found_significant = True
+                significance = ""
+                if corrected_p < 0.001:
+                    significance = "***"
+                elif corrected_p < 0.01:
+                    significance = "**"
+                else:
+                    significance = "*"
+                
+                # Format means for comparison
+                mean_i = np.mean(data_groups[i]) * 100
+                mean_j = np.mean(data_groups[j]) * 100
+                
+                # Print the result
+                print(f"  {group_labels[i]} vs {group_labels[j]}: t = {t_stat:.3f}, p = {p_val:.5f}, " +
+                      f"corrected p = {corrected_p:.5f} {significance}")
+                print(f"    Mean {group_labels[i]}: {mean_i:.2f}%, Mean {group_labels[j]}: {mean_j:.2f}%")
+    
+    if not found_significant:
+        print("  No significant pairwise comparisons found.")
+    
+    print("\nSignificance levels:")
+    print("  * p < 0.05")
+    print("  ** p < 0.01")
+    print("  *** p < 0.001")
+
+# Print the number of observations in each group
+for trial_num in sorted(trial_groups.keys()):
+    print(f"Group {trial_num}: {len(trial_groups[trial_num])} observations")
+
+# Calculate total observations and degrees of freedom
+total_observations = sum(len(group) for group in trial_groups.values())
+num_groups = len(trial_groups)
+between_df = num_groups - 1
+within_df = total_observations - num_groups
+
+print(f"\nTotal observations across all groups: {total_observations}")
+print(f"Number of groups: {num_groups}")
+print(f"Between-groups degrees of freedom: {between_df}")
+print(f"Within-groups degrees of freedom: {within_df}")
+print(f"F-statistic should be reported as: F({between_df}, {within_df})")
+
+print_bonferroni_results(data_groups, group_labels)

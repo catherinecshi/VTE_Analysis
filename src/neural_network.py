@@ -17,7 +17,7 @@ class NeuralNetworkModel:
         self.prediction_history = []
     
     def _forward(self, x, apply_dropout=False):
-        """Forward pass through the network with protection against numerical instability"""
+        """Forward pass through the network"""
         # Ensure capacity for this stimulus
         self._ensure_capacity(x + 1)
         
@@ -78,7 +78,7 @@ class NeuralNetworkModel:
         return available_stimuli[np.argmax(values)]
     
     def update(self, chosen, unchosen, reward):
-        """Update network weights with stochastic gradient descent and numerical stability checks"""
+        """Update network weights with stochastic gradient descent"""
         # Ensure capacity for these stimuli
         self._ensure_capacity(max(chosen, unchosen) + 1)
         
