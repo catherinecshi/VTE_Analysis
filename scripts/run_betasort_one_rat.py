@@ -75,6 +75,10 @@ for rat in os.listdir(data_path):
             
             # check how well it matches up with the transitive inference results
             model, all_models, match_rates = betasort.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.85)
+            
+            pair_labels = ['AB', 'BC', 'CD', 'DE']
+            fig, ax = betasort.plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=pair_labels, figsize=(12, 8), show_markers=False)
+            
             print(match_rates)
             results = betasort.check_transitive_inference(model)
             print(results)

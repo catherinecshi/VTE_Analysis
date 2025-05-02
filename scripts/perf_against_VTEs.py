@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from scipy import stats
 
 # Initialize lists to store data
 data = []
@@ -58,46 +58,20 @@ for rat in rat_folders:
 results_df = pd.DataFrame(data)
 results_df.to_csv("/Users/catpillow/Documents/VTE_Analysis/processed_data/VTE_vs_Performance.csv", index=False)
 
-# Create two subplots
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 6))
+# Create a single figure instead of two subplots
+fig, ax = plt.subplots(figsize=(12, 8))  # Adjusted figure size for a single plot
 
-# First subplot - Regular scale
-for rat in results_df['Rat'].unique():
-    rat_data = results_df[results_df['Rat'] == rat]
-    ax1.scatter(rat_data['VTE_Percentage'], 
-               rat_data['Performance_Percentage'],
-               label=rat,
-               alpha=0.6)
-
-# Add trendline for regular scale
-z1 = np.polyfit(results_df['VTE_Percentage'], results_df['Performance_Percentage'], 1)
-p1 = np.poly1d(z1)
-
-# Calculate R-squared for regular scale
-correlation_matrix1 = np.corrcoef(results_df['VTE_Percentage'], results_df['Performance_Percentage'])
-r_squared1 = correlation_matrix1[0,1]**2
-
-# Add trendline to first plot
-x_trendline1 = np.array([results_df['VTE_Percentage'].min(), results_df['VTE_Percentage'].max()])
-ax1.plot(x_trendline1, p1(x_trendline1), "r--", 
-         label=f'y = {z1[0]:.2f}x + {z1[1]:.2f}\nR² = {r_squared1:.3f}')
-
-# Customize first plot
-#ax1.set_ylabel('Performance (%)')
-#ax1.set_xlabel('VTE Percentage (%)')
-#ax1.set_title('Performance vs VTE Percentage')
-#ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-# Second subplot - Log scale
-# Filter out zero values
+# Filter out zero values for log scale
 nonzero_data = results_df[results_df['VTE_Percentage'] > 0]
 log_vte = np.log10(nonzero_data['VTE_Percentage'])
+
+# Plot data points for each rat
 for rat in results_df['Rat'].unique():
     rat_data = nonzero_data[nonzero_data['Rat'] == rat]
-    ax2.scatter(np.log10(rat_data['VTE_Percentage']), 
-               rat_data['Performance_Percentage'],
-               label=rat,
-               alpha=0.6)
+    ax.scatter(np.log10(rat_data['VTE_Percentage']), 
+              rat_data['Performance_Percentage'],
+              label=rat,
+              alpha=0.6)
 
 # Add trendline for log scale
 z2 = np.polyfit(log_vte, nonzero_data['Performance_Percentage'], 1)
@@ -107,7 +81,7 @@ p2 = np.poly1d(z2)
 correlation_matrix2 = np.corrcoef(log_vte, nonzero_data['Performance_Percentage'])
 r_squared2 = correlation_matrix2[0,1]**2
 
-from scipy import stats
+# Calculate stats
 r_value2, p_value2 = stats.pearsonr(log_vte, nonzero_data['Performance_Percentage'])
 n = len(log_vte)  # Sample size
 
@@ -118,16 +92,21 @@ print(f"p-value: {p_value2:.5f}")
 print(f"Sample size (n): {n}")
 print(f"Regression equation: y = {z2[0]:.2f}x + {z2[1]:.2f}")
 
-# Add trendline to second plot
-x_trendline2 = np.array([log_vte.min(), log_vte.max()])
-ax2.plot(x_trendline2, p2(x_trendline2), "r--", 
-         label=f'y = {z2[0]:.2f}x + {z2[1]:.2f}\nR² = {r_squared2:.3f}')
+# Add trendline to plot
+x_trendline = np.array([log_vte.min(), log_vte.max()])
+ax.plot(x_trendline, p2(x_trendline), "r--", 
+       label=f'y = {z2[0]:.2f}x + {z2[1]:.2f}\nR² = {r_squared2:.3f}')
 
-# Customize second plot
-ax2.set_ylabel('Performance (%)', fontsize=20)
-ax2.set_xlabel('Log(VTE Percentage)', fontsize=20)
-ax2.set_title('Performance vs Log(VTE Percentage)', fontsize=24)
-ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+# Customize plot with correct methods for tick labels
+ax.set_ylabel('Performance (%)', fontsize=24)
+ax.set_xlabel('Log(VTE Percentage)', fontsize=24)
+ax.set_title('Performance vs Log(VTE Percentage)', fontsize=30)
+
+# Fix the tick label font size - this is the corrected code
+ax.tick_params(axis='both', labelsize=20)  # Sets both x and y tick label sizes
+
+# Add legend with proper positioning
+ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 
 plt.tight_layout()
 plt.show()

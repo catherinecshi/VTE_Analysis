@@ -1966,6 +1966,168 @@ def plot_boundaries_history(model, stimulus_labels=None, save=None):
     else:
         plt.show()
 
+def plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=None, figsize=(12, 8), 
+                                    show_markers=False, save=None):
+    """
+    Plot ROC uncertainty between adjacent stimulus pairs across days.
+    
+    Parameters:
+        - all_models : dict
+            Dictionary where keys are day numbers and values are Betasort model instances
+        - mode : str, optional
+            'summary': Plot only the final ROC uncertainty values for each day
+            'detailed': Plot the full evolution of ROC uncertainty across all trials and days
+        - pair_labels : list, optional
+            Labels for stimulus pairs (e.g., ['A-B', 'B-C', 'C-D', 'D-E'])
+        - figsize : tuple, optional
+            Figure size
+        - show_markers : bool, optional
+            Whether to show markers at each trial point in detailed mode
+        - save : str, optional
+            Path to save the figure
+            
+    Returns:
+        - fig, ax : matplotlib figure and axes objects
+    """
+    # Get sorted days
+    days = sorted(all_models.keys())
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Determine the maximum number of pairs across all days
+    max_pairs = max(model.n_stimuli - 1 for model in all_models.values())
+    
+    # If no labels provided, create default ones
+    if pair_labels is None:
+        pair_labels = [f"Pair {i}-{i+1}" for i in range(max_pairs)]
+    
+    # Create a colormap to use different colors for each pair
+    import matplotlib.cm as cm
+    colors = cm.tab10(np.linspace(0, 1, max_pairs))
+    
+    if mode == 'summary':
+        # Summary mode: plot only final ROC uncertainty values for each day
+        for i in range(max_pairs):
+            values = []
+            days_with_pair = []
+            
+            for day in days:
+                model = all_models[day]
+                if i < model.n_stimuli - 1:
+                    # Get the final ROC uncertainty for this pair on this day
+                    final_values = model.ROC_uncertainty_history[-1]
+                    values.append(final_values[i])
+                    days_with_pair.append(day)
+            
+            if values:  # Only plot if this pair appears in any day
+                label = pair_labels[i] if i < len(pair_labels) else f"Pair {i}-{i+1}"
+                ax.plot(days_with_pair, values, 'o-', color=colors[i], label=label, markersize=8)
+        
+        # Add labels and title
+        ax.set_xlabel('Day', fontsize=12)
+        ax.set_ylabel('ROC Uncertainty', fontsize=12)
+        ax.set_title('Final ROC Uncertainty Between Stimulus Pairs by Day', fontsize=14)
+        
+        # Adjust x-ticks to show all days
+        ax.set_xticks(days)
+        ax.set_xticklabels([str(day) for day in days])
+    
+    elif mode == 'detailed':
+        # Detailed mode: plot full evolution across all trials and days
+        trial_offset = 0
+        day_boundaries = [0]  # Start with 0 as the first boundary
+        day_midpoints = []
+        
+        # Keep track of which pairs we've already labeled
+        labeled_pairs = set()
+        
+        # Plot ROC uncertainty for each pair across all days
+        for day in days:
+            model = all_models[day]
+            
+            # Get ROC uncertainty history for this day
+            roc_history = model.ROC_uncertainty_history
+            n_trials = len(roc_history)
+            
+            # Calculate midpoint for day label
+            day_midpoints.append(trial_offset + n_trials / 2)
+            
+            # Get x-axis values for this day (trial numbers + offset)
+            x_values = np.arange(trial_offset, trial_offset + n_trials)
+            
+            # Convert ROC_uncertainty_history to numpy array for easier indexing
+            uncertainty_array = np.array(roc_history)
+            
+            # Plot each pair for this day
+            for i in range(model.n_stimuli - 1):
+                # Extract ROC uncertainty for this pair across all trials
+                pair_uncertainty = uncertainty_array[:, i]
+                
+                # Only add a label if we haven't seen this pair before
+                if i not in labeled_pairs:
+                    label = pair_labels[i] if i < len(pair_labels) else f"Pair {i}-{i+1}"
+                    labeled_pairs.add(i)
+                else:
+                    label = None
+                
+                # Choose line style based on show_markers flag
+                if show_markers:
+                    line_style = 'o-'  # Line with circle markers
+                    markersize = 4     # Smaller markers for detailed view
+                else:
+                    line_style = '-'   # Just a line
+                    markersize = None  # No markers
+                
+                ax.plot(x_values, pair_uncertainty, line_style, color=colors[i], 
+                       label=label, markersize=markersize, linewidth=2)
+            
+            # Update the trial offset for the next day
+            trial_offset += n_trials
+            day_boundaries.append(trial_offset)
+        
+        # Add vertical lines to separate days
+        for boundary in day_boundaries[1:-1]:  # Skip the first and last boundaries
+            ax.axvline(x=boundary, color='k', linestyle=':', alpha=0.7, linewidth=1.5)
+        
+        # Add day labels at the top
+        for i, day in enumerate(days):
+            ax.text(day_midpoints[i], 1.02, f"Day {day}", ha='center', va='bottom', 
+                   transform=ax.get_xaxis_transform(), fontsize=10)
+        
+        # Add labels and title
+        ax.set_xlabel('Trial (continuous across days)', fontsize=12)
+        ax.set_ylabel('ROC Uncertainty', fontsize=12)
+        ax.set_title('Evolution of ROC Uncertainty Between Stimulus Pairs Across All Trials and Days', fontsize=14)
+        
+        # Remove x-ticks for clarity (there would be too many trials)
+        ax.set_xticks([])
+    
+    else:
+        raise ValueError(f"Invalid mode: {mode}. Must be 'summary' or 'detailed'.")
+    
+    # Set y-axis limits
+    ax.set_ylim(0, 1)
+    
+    # Add grid
+    ax.grid(True, alpha=0.3)
+    
+    # Add legend (outside the plot if there are many pairs)
+    if max_pairs > 5:
+        ax.legend(loc='center left', bbox_to_anchor=(1.05, 0.5))
+        plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make room for legend
+    else:
+        ax.legend(loc='best')
+        plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, bbox_inches='tight', dpi=300)
+        plt.close()
+    else:
+        plt.show()
+    
+    return fig, ax
+
 def plot_match_rates(matches, window_size=10, save=None):
     """
     plot trial-by-trial and moving average match rates

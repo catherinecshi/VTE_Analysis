@@ -443,10 +443,11 @@ def plot_model_match_rates(model_stats, rat_level_df, combined_df, stat_results=
     plt.axhline(y=50, color='r', linestyle='--', alpha=0.7, label='Chance Level')
     
     # Customize plot appearance
-    plt.title("Transitive Inference Match Rates", fontsize=24)
-    plt.xlabel("Model", fontsize=20)
-    plt.ylabel("Match Rate (%)", fontsize=20)
-    plt.xticks(rotation=45, ha='right')
+    plt.title("Transitive Inference Match Rates", fontsize=30)
+    plt.xlabel("Model", fontsize=24)
+    plt.ylabel("Match Rate (%)", fontsize=24)
+    plt.yticks(fontsize=20)
+    plt.xticks(rotation=45, ha='right', fontsize=20)
     
     plt.tight_layout()
     

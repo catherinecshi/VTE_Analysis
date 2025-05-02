@@ -244,16 +244,17 @@ def plot_one_way_anova_bar(data_groups, group_labels=None, title=None, xlabel=No
     # add plot elements
     if group_labels:
         ax.set_xticks(x)
-        ax.set_xticklabels(group_labels, fontsize=14)
+        ax.set_xticklabels(group_labels, fontsize=20)
+        ax.tick_params(axis='y', labelsize=20)
     
     if title:
-        ax.set_title(title, fontsize=24)
+        ax.set_title(title, fontsize=30)
     
     if xlabel:
-        ax.set_xlabel(xlabel, fontsize=20)
+        ax.set_xlabel(xlabel, fontsize=24)
     
     if ylabel:
-        ax.set_ylabel(ylabel, fontsize=20)
+        ax.set_ylabel(ylabel, fontsize=24)
     
     # add anova results to plot
     anova_text = f"One-way ANOVA: \nF = {stats_results['f_stat']:.3f}\np = {stats_results['p_value']:.2e}"

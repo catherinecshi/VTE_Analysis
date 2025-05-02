@@ -1047,10 +1047,11 @@ def plot_combined_results(combined_df, output_path):
     plt.axhline(y=50, color='r', linestyle='--', alpha=0.7, label='Chance Level')
     
     # Customize plot
-    plt.title("Model Performance Distribution Across Rats", fontsize=24)
-    plt.xlabel("Model", fontsize=20)
-    plt.ylabel("Match Rate (%)", fontsize=20)
-    plt.xticks(rotation=45, ha='right')
+    plt.title("Model Performance Distribution Across Rats", fontsize=30)
+    plt.xlabel("Model", fontsize=24)
+    plt.ylabel("Match Rate (%)", fontsize=24)
+    plt.yticks(fontsize=24)
+    plt.xticks(rotation=45, ha='right', fontsize=20)
     
     plt.tight_layout()
     
@@ -1170,7 +1171,7 @@ def plot_combined_vte_correlations(combined_df, output_path):
         x='model', 
         y='mean_corr', 
         data=model_stats,
-        palette="viridis"
+        palette="viridis_r"
     )
 
     # Add error bars manually
@@ -1218,7 +1219,7 @@ def plot_combined_vte_correlations(combined_df, output_path):
         x='model', 
         y='correlation', 
         data=overall_df,
-        palette="viridis",
+        palette="viridis_r",
         order=model_stats['model']  # Use same order as bar plot
     )
     
@@ -1234,13 +1235,14 @@ def plot_combined_vte_correlations(combined_df, output_path):
     )
     
     # Add zero line
-    plt.axhline(y=0, color='k', linestyle='--', alpha=0.7)
+    plt.axhline(y=0, color='r', linestyle='--', alpha=0.7)
     
     # Customize plot
-    plt.title("VTE-Uncertainty Correlation Distribution Across Rats", fontsize=16)
-    plt.xlabel("Model", fontsize=14)
-    plt.ylabel("Correlation (r)", fontsize=14)
-    plt.xticks(rotation=45, ha='right')
+    plt.title("VTE-Uncertainty Correlation Distribution Across Rats", fontsize=30)
+    plt.xlabel("Model", fontsize=24)
+    plt.ylabel("Correlation (r)", fontsize=24)
+    plt.yticks(fontsize=20)
+    plt.xticks(rotation=45, ha='right', fontsize=20)
     
     plt.tight_layout()
     
