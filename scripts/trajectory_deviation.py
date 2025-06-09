@@ -4,7 +4,7 @@ import pandas as pd
 
 from numpy.linalg import norm
 
-from src import helper
+from models import helper
 
 standard_trajectories_path = os.path.join(helper.BASE_PATH, "processed_data", "standard_trajectories")
 all_trajectories_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")

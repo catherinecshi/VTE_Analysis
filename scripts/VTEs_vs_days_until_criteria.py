@@ -4,9 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import plotting
-from src import performance_analysis
+from analysis import performance_analysis
+from visualization import generic_plots
 
 # get proportion of VTEs for each trial type for each rat
 proportion_of_VTEs: dict[str, dict] = {}
@@ -57,7 +56,7 @@ for rat in os.listdir(vte_path):
     proportion_of_VTEs[rat] = proportion_of_VTEs_rat
 
 # get number of days until criteria for each trial type for each rat
-all_rats_performances = performance_analysis.create_all_rats_performance()
+all_rats_performances = performance_analysis.get_all_rats_performance()
 days_until_criteria = performance_analysis.days_until_criteria(all_rats_performances)
 
 # match days until criteria to VTEs
@@ -77,5 +76,5 @@ for rat, day_items in days_until_criteria.items():
         x.append(days)
         y.append(VTE_proportion)
 
-plotting.create_scatter_plot(x, y, "VTEs vs Days Until Criteria", 
+generic_plots.create_scatter_plot(x, y, "VTEs vs Days Until Criteria", 
                              "Number of Days until Criteria was Reached", "VTEs for Trial Type")

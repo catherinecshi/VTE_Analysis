@@ -3,9 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import plotting
-from src import performance_analysis
+from analysis import performance_analysis
+from visualization import generic_plots
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -62,8 +61,8 @@ for rat in os.listdir(base_path):
 
 VTE_df = pd.DataFrame(VTE_infos)
      
-all_rats_performances = performance_analysis.create_all_rats_performance()
-performance_changes = performance_analysis.create_all_perf_changes(all_rats_performances)
+all_rats_performances = performance_analysis.get_all_rats_performance()
+performance_changes = performance_analysis.save_all_perf_changes(all_rats_performances)
 absolute_changes = performance_changes.copy()
 absolute_changes["perf_change"] = absolute_changes["perf_change"].abs()
 
@@ -71,19 +70,19 @@ VTEs_vs_learning = pd.merge(VTE_df, performance_changes)
 absolute_VTEs_vs_learning = pd.merge(VTE_df, absolute_changes)
 
 # plot general change
-plotting.create_box_and_whisker_plot(VTEs_vs_learning, "VTEs", "perf_change",
-                                     title="Change in Performance against VTEs",
-                                     xlabel="VTE Count", ylabel="Change in Performance")
+generic_plots.create_box_and_whisker_plot(VTEs_vs_learning, "VTEs", "perf_change",
+                                          title="Change in Performance against VTEs",
+                                          xlabel="VTE Count", ylabel="Change in Performance")
 
-plotting.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
-                             "Change in Performance against VTEs", "VTE Count",
-                             "Change in Performance")
+generic_plots.create_scatter_plot(VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
+                                  "Change in Performance against VTEs", "VTE Count",
+                                  "Change in Performance")
 
 # plot absolute change
-plotting.create_box_and_whisker_plot(absolute_VTEs_vs_learning, "VTEs", "perf_change",
-                                     title="Absolute Change in Performance against VTEs",
-                                     xlabel="VTE Count", ylabel="Absolute Change in Performance")
+generic_plots.create_box_and_whisker_plot(absolute_VTEs_vs_learning, "VTEs", "perf_change",
+                                          title="Absolute Change in Performance against VTEs",
+                                          xlabel="VTE Count", ylabel="Absolute Change in Performance")
 
-plotting.create_scatter_plot(absolute_VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
-                             "Absolute Change in Performance against VTEs", "VTE Count",
-                             "Absolute Change in Performance")
+generic_plots.create_scatter_plot(absolute_VTEs_vs_learning["VTEs"], VTEs_vs_learning["perf_change"],
+                                  "Absolute Change in Performance against VTEs", "VTE Count",
+                                  "Absolute Change in Performance")

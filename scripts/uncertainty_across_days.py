@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.ticker import MaxNLocator
 import os
-from src import helper
+from models import helper
 
 def load_data(file_path):
     """

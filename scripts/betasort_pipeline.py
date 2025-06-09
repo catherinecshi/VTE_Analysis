@@ -2,10 +2,9 @@ import os
 import json
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from src import helper
-from src import betasort
+from models import helper
+from models import betasort
 
 # Create wrapper functions for the plotting functions to save figures
 def plot_and_save(plot_func, output_path, filename_prefix, *args, **kwargs):

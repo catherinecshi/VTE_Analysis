@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-from src import helper
-from src import plotting
+from utilities import conversion_utils
+from visualization import generic_plots
 
 # pylint: disable=consider-using-dict-items
 
@@ -40,7 +40,7 @@ for rat in os.listdir(vte_path):
                 is_VTE = zIdPhi > vte_threshold
 
                 # getting whether trial is correct from choice & trial type
-                is_correct = helper.choice_to_correctness(trial_type, choice)
+                is_correct = conversion_utils.choice_to_correctness(trial_type, choice)
                 
                 # add to counts
                 if day_and_trial_type in vte_counts and is_VTE:
@@ -90,7 +90,7 @@ for rat in os.listdir(vte_path):
                 vte_proportions.append(vte_proportion)
                 wrong_proportions.append(wrong_proportion)
             
-plotting.create_scatter_plot(wrong_proportions, vte_proportions, "VTEs with Incorrect Trials",
-                             "Proportion of Incorrect Trials per Day per Trial Type",
-                             "VTE Proportion")
+generic_plots.create_scatter_plot(wrong_proportions, vte_proportions, "VTEs with Incorrect Trials",
+                                  "Proportion of Incorrect Trials per Day per Trial Type",
+                                  "VTE Proportion")
                 

@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import f_oneway, ttest_ind
 from statsmodels.stats.multicomp import MultiComparison
 
-from src import helper
-from src import plotting
+from visualization import generic_plots
 
 vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
 
@@ -61,7 +60,7 @@ for trial_type in VTE_trials.keys():
 
 x_ticks = ["AB", "BC", "CD", "DE"] # trial types
 data = VTEs_for_trial_type.values() # number of VTEs
-plotting.create_bar_plot(data, x_ticks, title="VTE Percentage for Trial Type", xlabel="Trial Types", ylabel="Percentage of VTEs")
+generic_plots.create_bar_plot(data, x_ticks, title="VTE Percentage for Trial Type", xlabel="Trial Types", ylabel="Percentage of VTEs")
 
 trial_types = ["AB", "BC", "CD", "DE"]
 anova_data = []

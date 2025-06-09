@@ -8,9 +8,9 @@ import logging
 import pandas as pd
 import numpy as np
 
-from src import data_processing
-from src import performance_analysis
-from src import plotting
+from preprocessing import data_processing
+from analysis import performance_analysis
+from visualization import generic_plots
 
 logging.basicConfig(filename="day_learning_since_new_arm_log.txt",
                     format='%(asctime)s %(message)s',
@@ -27,8 +27,8 @@ DATA_STRUCTURE = data_processing.load_data_structure(SAVE_PATH)
 days_since_new_arm = performance_analysis.get_days_since_new_arm(SAVE_PATH, DATA_STRUCTURE)
 
 # get the change in performance day by day
-all_rats_performances = performance_analysis.create_all_rats_performance(data_structure=DATA_STRUCTURE)
-all_perf_changes_by_trial = performance_analysis.create_all_perf_changes_by_trials(all_rats_performances)
+all_rats_performances = performance_analysis.get_all_rats_performance(data_structure=DATA_STRUCTURE)
+all_perf_changes_by_trial = performance_analysis.save_all_perf_changes_trials(all_rats_performances)
 
 # ensure type is the same
 days_since_new_arm["trials_available"] = days_since_new_arm["trials_available"].apply(lambda x: [int (y) for y in x])
@@ -96,7 +96,7 @@ plotting.create_histogram(learning_during_volatility_df, "days_since_new_arm", "
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="Change in Performance since Last Session")"""
 
-plotting.create_line_plot(merged_df["days_since_new_arm"],
+generic_plots.create_line_plot(merged_df["days_since_new_arm"],
                           merged_df["mean_perf_change"],
                           merged_df["sem"],
                           xlim=(0, 8),

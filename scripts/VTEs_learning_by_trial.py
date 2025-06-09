@@ -2,8 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import plotting
+from visualization import generic_plots
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -102,7 +101,7 @@ non_VTEs_proportion = non_VTEs_correct / (non_VTEs_correct + non_VTEs_incorrect)
 data = [VTEs_proportion, non_VTEs_proportion]
 x_ticks = ["VTEs", "non-VTEs"]
 
-plotting.create_bar_plot(data, x_ticks, title="VTE Influence on Next Trial Accuracy",
+generic_plots.create_bar_plot(data, x_ticks, title="VTE Influence on Next Trial Accuracy",
                          xlabel="VTEs/Non-VTEs", ylabel="Likelihood of Getting Next Trial Correct")
 
 # For analysis of trials before VTE trials
@@ -174,5 +173,5 @@ x_ticks = ["VTEs", "non-VTEs"]
 
 print("running updated code")
 
-plotting.create_bar_plot(data, x_ticks, title="Previous Trial Performance Influence on VTE Probability",
+generic_plots.create_bar_plot(data, x_ticks, title="Previous Trial Performance Influence on VTE Probability",
                          xlabel="VTEs/Non-VTEs", ylabel="Likelihood of Previous Trial Being Correct")

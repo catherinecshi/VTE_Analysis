@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 
-from src import helper
-from src import statistics
+from models import helper
+from analysis import statistics
 
 def plot_combined_results(combined_df, output_path):
     """

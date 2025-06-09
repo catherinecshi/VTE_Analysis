@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from scipy import stats
 
-from src import helper
+from models import helper
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
 

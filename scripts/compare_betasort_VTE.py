@@ -2,8 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import betasort
+from models import helper
+from models import betasort
 
 # Main analysis
 data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")

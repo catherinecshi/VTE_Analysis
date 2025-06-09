@@ -1,8 +1,7 @@
 import os
 import pandas as pd
 
-from src import helper
-from src import plotting
+from visualization import generic_plots
 
 # for plotting
 vte_zIdPhi_values = {} # {choice: [zIdPhi values]}
@@ -52,7 +51,7 @@ norm_IdPhis = [IdPhi for values in norm_IdPhi_values.values() for IdPhi in value
 zIdPhi_dict = {"VTE Trajectories": vte_zIdPhis, "Non-VTE Trajectories": norm_zIdPhis}
 IdPhi_dict = {"VTE Trajectories": vte_IdPhis, "Non-VTE Trajectories": norm_IdPhis}
 
-plotting.create_multiple_frequency_histograms(zIdPhi_dict, title="zIdPhi values between VTE vs Non-VTE Trajectories",
+generic_plots.create_multiple_frequency_histograms(zIdPhi_dict, title="zIdPhi values between VTE vs Non-VTE Trajectories",
                                               xlabel="zIdPhi values", ylabel="Density")
-plotting.create_multiple_frequency_histograms(IdPhi_dict, title="IdPhi values between VTE vs Non-VTE Trajectories",
+generic_plots.create_multiple_frequency_histograms(IdPhi_dict, title="IdPhi values between VTE vs Non-VTE Trajectories",
                                               xlabel="IdPhi values", ylabel="Density")

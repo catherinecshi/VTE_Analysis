@@ -1,10 +1,10 @@
 import os
 import pandas as pd
 
-from src import helper
-from src import plotting
+from config import settings
+from visualization import generic_plots
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
+base_path = os.path.join(settings.BASE_PATH, "processed_data", "VTE_Values")
 
 IdPhis = []
 choice_IdPhis = {}
@@ -38,9 +38,9 @@ for rat in os.listdir(base_path):
                 trial_type_IdPhis[trial_type].append(IdPhi)
 
 # make figure for counts of durations
-plotting.create_frequency_histogram(IdPhis, title="IdPhi Distribution", stat="count", xlim=(0, 150),
+generic_plots.create_frequency_histogram(IdPhis, title="IdPhi Distribution", stat="count", xlim=(0, 150),
                                     binwidth=2, xlabel="IdPhi", ylabel="Counts")
-plotting.create_multiple_frequency_histograms(choice_IdPhis, title="IdPhi Distribution by Choice Arm",
+generic_plots.create_multiple_frequency_histograms(choice_IdPhis, title="IdPhi Distribution by Choice Arm",
                                               binwidth=5, xlabel="IdPhi", ylabel="Density")
-plotting.create_multiple_frequency_histograms(trial_type_IdPhis, title="IdPhi Distribution by Trial Type",
+generic_plots.create_multiple_frequency_histograms(trial_type_IdPhis, title="IdPhi Distribution by Trial Type",
                                               binwidth=5, xlabel="IdPhi", ylabel="Density")

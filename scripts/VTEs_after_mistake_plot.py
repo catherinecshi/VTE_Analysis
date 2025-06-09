@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import statsmodels.api as sm
 
-from src import helper
+from models import helper
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 

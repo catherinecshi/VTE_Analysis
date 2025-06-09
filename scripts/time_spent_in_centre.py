@@ -2,8 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import plotting
+from visualization import generic_plots
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -113,17 +112,17 @@ t_stat, p_value = stats.ttest_ind(VTE_lengths, non_VTE_lengths, equal_var=False)
 print(f"\nWelch's t-test: t = {t_stat:.4f}, p = {p_value:.6f}")
 
 # make figure for counts of durations
-plotting.create_frequency_histogram(traj_lens, xlim=(0,6), title="Time Spent in Centre Zone",
+generic_plots.create_frequency_histogram(traj_lens, xlim=(0,6), title="Time Spent in Centre Zone",
                                     binwidth=0.1, xlabel="Time (s)", ylabel="Density")
-plotting.create_frequency_histogram(correct_traj_lens, label1="Correct Trials", xlim=(0,6),
+generic_plots.create_frequency_histogram(correct_traj_lens, label1="Correct Trials", xlim=(0,6),
                                     list2=incorrect_traj_lens, label2="Incorrect Trials",
                                     title="Time Spent in Centre Zone during Correct vs Incorrect Trials",
                                     binwidth=0.1, xlabel="Time (s)", ylabel="Density")
-plotting.create_frequency_histogram(VTE_lengths, label1="VTE Trials", xlim=(0,5),
+generic_plots.create_frequency_histogram(VTE_lengths, label1="VTE Trials", xlim=(0,5),
                                     list2=non_VTE_lengths, label2="Non-VTE Trials",
                                     title="Time Spent in Centre Zone during VTE vs Non-VTE Trials",
                                     binwidth=0.1, xlabel="Time (s)", ylabel="Density")
 
 # make cumulative frequency figure
-plotting.plot_cumulative_frequency(traj_lens, title="Time Spent in Centre Zone",
+generic_plots.plot_cumulative_frequency(traj_lens, title="Time Spent in Centre Zone",
                                    xlabel="Time (s)", ylabel="Cumulative Frequency")

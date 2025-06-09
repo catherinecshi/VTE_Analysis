@@ -2,8 +2,8 @@ import os
 import ast
 import pandas as pd
 
-from src import helper
-from src import plotting
+from utilities import math_utils
+from visualization import trajectory_plots
 
 rat = "TH605"
 day = "Day11"
@@ -31,7 +31,7 @@ for index, row in vte_pd.iterrows():
     
     choice = row["Choice"]
     IdPhi = row["IdPhi"]
-    IdPhi = helper.round_to_sig_figs(IdPhi)
+    IdPhi = math_utils.round_to_sig_figs(IdPhi)
     
     x_vals = row["X Values"]
     y_vals = row["Y Values"]
@@ -45,10 +45,10 @@ for index, row in vte_pd.iterrows():
         zIdPhi = "NaN"
         label = "IdPhi: " + str(IdPhi) + " zIdPhi: " + zIdPhi + " for choice: " + choice
     else:
-        zIdPhi = helper.round_to_sig_figs(zIdPhi)
+        zIdPhi = math_utils.round_to_sig_figs(zIdPhi)
         label = "IdPhi: " + str(IdPhi) + " zIdPhi: " + str(zIdPhi) + " for choice: " + choice
     
     jpg_path = os.path.join(helper.BASE_PATH, "processed_data", "IdPhi_zIdPhi_values", f"{rat}_{day}")
     os.makedirs(jpg_path, exist_ok=True) # Create directory if it doesn't exist
     
-    plotting.plot_trajectory(all_x, all_y,(x_vals, y_vals), title=label, traj_id=traj_id, save=jpg_path)
+    trajectory_plots.plot_trajectory(all_x, all_y,(x_vals, y_vals), title=label, traj_id=traj_id, save=jpg_path)

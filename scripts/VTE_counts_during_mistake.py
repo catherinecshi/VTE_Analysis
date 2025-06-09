@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from src import helper
-from src import statistics
+from models import helper
+from analysis import statistics
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 

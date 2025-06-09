@@ -6,7 +6,7 @@ import seaborn as sns
 from scipy.stats import pearsonr
 import glob
 
-from src import helper
+from models import helper
 
 base_dir = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
 

@@ -1,8 +1,7 @@
 import os
 import pandas as pd
 
-from src import helper
-from src import plotting
+from visualization import generic_plots
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -38,9 +37,9 @@ for rat in os.listdir(base_path):
                 trial_type_zIdPhis[trial_type].append(zIdPhi)
 
 # make figure for counts of durations
-plotting.create_frequency_histogram(zIdPhis, title="zIdPhi Distribution", stat="count",
+generic_plots.create_frequency_histogram(zIdPhis, title="zIdPhi Distribution", stat="count",
                                     binwidth=0.1, xlabel="zIdPhi", ylabel="Counts", xlim=(-2.5, 8))
-plotting.create_multiple_frequency_histograms(choice_zIdPhis, title="zIdPhi Distribution by Choice Arm",
+generic_plots.create_multiple_frequency_histograms(choice_zIdPhis, title="zIdPhi Distribution by Choice Arm",
                                               binwidth=0.1, xlabel="zIdPhi", ylabel="Density", xlim=(-2.5, 8))
-plotting.create_multiple_frequency_histograms(trial_type_zIdPhis, title="zIdPhi Distribution by Trial Type",
+generic_plots.create_multiple_frequency_histograms(trial_type_zIdPhis, title="zIdPhi Distribution by Trial Type",
                                               binwidth=0.1, xlabel="zIdPhi", ylabel="Density", xlim=(-2.5, 8))

@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from scipy.stats import zscore
-from src import data_processing
+from preprocessing import data_processing
 
 ### LOGGING
 logger = logging.getLogger() # creating logging object

@@ -6,7 +6,7 @@ import os
 from scipy import stats
 from pathlib import Path
 
-from src import helper
+from models import helper
 
 # Set the style for better visualizations
 plt.style.use('seaborn-v0_8-whitegrid')

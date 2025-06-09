@@ -9,11 +9,10 @@ import seaborn as sns
 from statsmodels.formula.api import ols
 from scipy.stats import f_oneway
 
-from src import helper
-from src import plotting
-from src import statistics
-from src import data_processing
-from src import performance_analysis
+from analysis import statistics
+from preprocessing import data_processing
+from analysis import performance_analysis
+from visualization import generic_plots
 
 # Load data structure
 data_path = os.path.join(helper.BASE_PATH, "data", "VTE_Data")
@@ -269,7 +268,7 @@ create_combined_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
                           ylabel="% VTE Trials")
 
 
-plotting.create_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
+generic_plots.create_line_plot(mean_perc_vtes.index, mean_perc_vtes, sem_perc_vtes,
                           xlim=(0, 5), title="VTEs during Volatility",
                           xlabel="Number of Days Since New Arm Added",
                           ylabel="% VTE Trials")

@@ -3,7 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from src import helper
+from models import helper
+from utilities import conversion_utils
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 model_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
@@ -52,11 +53,11 @@ for rat in os.listdir(base_path):
                     # get other element
                     first_element = row["Choice"]
                     is_correct = row["Correct"]
-                    second_element = helper.get_other_element(first_element, is_correct)
+                    second_element = conversion_utils.get_other_element(first_element, is_correct)
                     
                     # now convert them both to indices
-                    first_index = helper.letter_to_indices(first_element)
-                    second_index = helper.letter_to_indices(second_element)
+                    first_index = conversion_utils.letter_to_indices(first_element)
+                    second_index = conversion_utils.letter_to_indices(second_element)
                     
                     # and convert is correct to 1s and 0s
                     if is_correct:

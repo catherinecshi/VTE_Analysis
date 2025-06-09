@@ -3,9 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from src import helper
-from src import plotting
-from src import performance_analysis
+from analysis import performance_analysis
+from visualization import generic_plots
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -78,8 +77,8 @@ for rat in os.listdir(base_path):
                     VTE_infos.append(VTE_info)
 
 VTE_df = pd.DataFrame(VTE_infos)
-all_rats_performances = performance_analysis.create_all_rats_performance()
-performance_changes = performance_analysis.create_all_perf_changes(all_rats_performances)
+all_rats_performances = performance_analysis.get_all_rats_performance()
+performance_changes = performance_analysis.save_all_perf_changes(all_rats_performances)
 absolute_changes = performance_changes.copy()
 absolute_changes["perf_change"] = absolute_changes["perf_change"].abs()
 
@@ -100,7 +99,7 @@ for trial_type, trial_group in grouped_by_trial_type:
     labels.append(trial_type)
 
 # plot general change
-plotting.create_populational_scatter_plot(x_vals, y_vals, title="Change in Performance against VTEs",
+generic_plots.create_populational_scatter_plot(x_vals, y_vals, title="Change in Performance against VTEs",
                                           xlabel="Change in Performance", ylabel="VTE Proportion", labels=labels)
 
 # setup for populational scatter plots
@@ -117,5 +116,5 @@ for trial_type, trial_group in grouped_by_trial_type:
     labels.append(trial_type)
 
 # plot general change
-plotting.create_populational_scatter_plot(x_vals, y_vals, title="Absolute Change in Performance against VTEs",
+generic_plots.create_populational_scatter_plot(x_vals, y_vals, title="Absolute Change in Performance against VTEs",
                                           xlabel="Absolute Change in Performance", ylabel="VTE Proportion", labels=labels)

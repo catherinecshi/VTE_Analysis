@@ -7,13 +7,12 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import scipy.stats
 from datetime import datetime
 
 # Import modules from src package
-from src import data_processing
-from src import performance_analysis
-from src import helper
+from preprocessing import data_processing
+from analysis import performance_analysis
+from visualization import performance_plots
 
 # Set up logging
 logging.basicConfig(filename=f"figure_generation_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
@@ -287,12 +286,12 @@ def generate_all_figures():
     
     # 3. Generate all rats performance data
     print("Generating all rats performance data...")
-    all_rats_performances = performance_analysis.create_all_rats_performance(data_structure=DATA_STRUCTURE)
+    all_rats_performances = performance_analysis.get_all_rats_performance(data_structure=DATA_STRUCTURE)
     #performance_analysis.plot_rat_performance(all_rats_performances)
     
     # 4. Generate performance changes plots
     print("Generating performance changes plots...")
-    perf_changes = performance_analysis.create_all_perf_changes(all_rats_performances)
+    perf_changes = performance_analysis.save_all_perf_changes(all_rats_performances)
     
     # Create a plot for overall performance changes
     try:
@@ -316,7 +315,7 @@ def generate_all_figures():
     
     # 5. Generate performance changes by trial type
     print("Generating performance changes by trial plots...")
-    perf_changes_by_trial = performance_analysis.create_all_perf_changes_by_trials(all_rats_performances)
+    perf_changes_by_trial = performance_analysis.save_all_perf_changes_trials(all_rats_performances)
     
     try:
         # Create box plot of performance changes by trial type
@@ -364,7 +363,7 @@ def generate_all_figures():
     # 6. Plot days until criteria
     print("Plotting days until criteria...")
     all_days_until_criteria = performance_analysis.days_until_criteria(all_rats_performances)
-    performance_analysis.plot_days_until_criteria(all_days_until_criteria)
+    performance_plots.plot_days_until_criteria(all_days_until_criteria)
     
     f_stat, p_val, anova_df = run_anova_analysis(all_days_until_criteria, FIGURES_PATH)
     print(f_stat, p_val)

@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import zscore
 
-from src import helper
-from src import data_processing
-from src import trajectory_analysis
+from models import helper
+from preprocessing import data_processing
+from feature_extraction import trajectory_analysis
 
 ### GETTING zIdPhi VALUES
 SKIP_DAYS = [("BP06", "Day10"), ("BP10", "Day43"), ("BP10", "Day21"), ("BP10", "Day27"),

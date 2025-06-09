@@ -9,7 +9,8 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 from matplotlib.animation import FuncAnimation
 
-from src import helper
+from models import helper
+from utilities import math_utils
 
 is_VTE = None
 
@@ -69,7 +70,7 @@ def plot_trajectory_animation(x, y, trajectory_x, trajectory_y, interval=20, tra
     
     if label:
         if isinstance(label, float):
-            rounded_label = helper.round_to_sig_figs(label, 3)
+            rounded_label = math_utils.round_to_sig_figs(label, 3)
         else:
             rounded_label = label
         legend_elements = [Line2D([0], [0], color="blue", lw=2, label=rounded_label)]
@@ -189,8 +190,8 @@ for rat in os.listdir(vte_path):
                             length = row["Length"]
                             trial_type = row["Trial Type"]
                             
-                            rounded_zIdPhi = helper.round_to_sig_figs(zIdPhi)
-                            rounded_IdPhi = helper.round_to_sig_figs(IdPhi)
+                            rounded_zIdPhi = math_utils.round_to_sig_figs(zIdPhi)
+                            rounded_IdPhi = math_utils.round_to_sig_figs(IdPhi)
                             label = "zIdPhi: " + str(rounded_zIdPhi) + ", IdPhi: " + str(rounded_IdPhi)
                             
                             # make sure the typing is correct

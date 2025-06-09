@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 from scipy.optimize import differential_evolution
 from scipy.stats import pointbiserialr
 
-from src import helper
-from src import bayesian_learner
-from src import neural_network
-from src import rw_generalization
-from src import temporal_difference_learning
-from src import value_transfer
+from models import helper
+from models import bayesian_learner
+from models import neural_network
+from models import rw_generalization
+from models import temporal_difference_learning
+from models import value_transfer
 
 def compare_model_to_data(all_data_df, rat, model_class, model_params, n_simulations=100):
     """
