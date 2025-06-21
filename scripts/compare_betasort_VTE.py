@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 
-from models import helper
 from models import betasort
 
 # Main analysis

@@ -4,7 +4,7 @@ Centralizes all directory and file path construction
 
 from pathlib import Path
 
-BASE_PATH = Path("/Users/catpillow/Documents/Draft_Analysis")
+BASE_PATH = Path("/Users/catpillow/Documents/VTE_Analysis")
 
 class RemotePaths:
     """path management when getting data from citadel"""

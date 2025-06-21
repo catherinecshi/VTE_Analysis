@@ -7,7 +7,7 @@ import seaborn as sns
 from scipy import stats
 
 from models import helper
-from analysis import statistics
+from analysis import generic_statistics
 
 def plot_combined_results(combined_df, output_path):
     """

@@ -1,10 +1,11 @@
 import os
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from models import helper
-from models import betasort
+from config.paths import paths
+from analysis import betasort_analysis
+from models import betasort_test
+from visualization import betasort_plots
 
 def save_plot(fig, output_dir, filename, dpi=300, close_fig=True):
     """
@@ -51,13 +52,13 @@ def plot_and_save(plot_func, model, output_path, filename_prefix, *args, **kwarg
     plt.close()
 
 
-data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
-save_path = os.path.join(helper.BASE_PATH, "processed_data", "new_model_data")
+data_path = paths.preprocessed_data_model
+save_path = paths.betasort_data
 
 for rat in os.listdir(data_path):
-    if "TH510" not in rat:
+    if rat != "TH510":
         continue
-
+    
     rat_path = os.path.join(data_path, rat)
     for root, _, files in os.walk(rat_path):
         for file in files:
@@ -67,34 +68,34 @@ for rat in os.listdir(data_path):
             file_path = os.path.join(root, file)
             file_csv = pd.read_csv(file_path)
             
-            #best_tau, best_xi, best_threshold, best_performance = betasort.diff_evolution(file_csv, rat)
+            #best_tau, best_xi, best_threshold, best_performance = betasort_analysis.diff_evolution(file_csv, rat)
             #print(best_tau)
             #print(best_xi)
             #print(best_threshold)
             #print(best_performance)
             
             # check how well it matches up with the transitive inference results
-            model, all_models, match_rates = betasort.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.85)
+            model, all_models, match_rates = betasort_analysis.compare_model_to_one_rat(file_csv, rat, tau=0.006, xi=0.99, threshold=0.85, test=True)
             
             pair_labels = ['AB', 'BC', 'CD', 'DE']
-            fig, ax = betasort.plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=pair_labels, figsize=(12, 8), show_markers=False)
+            fig, ax = betasort_plots.plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=pair_labels, figsize=(12, 8), show_markers=False)
             
             print(match_rates)
-            results = betasort.check_transitive_inference(model)
+            results = betasort_analysis.check_transitive_inference(model)
             print(results)
             
             # check positions over all days
-            betasort.plot_positions_across_days(all_models)
-            betasort.plot_uncertainty_across_days(all_models)
+            betasort_plots.plot_positions_across_days(all_models)
+            betasort_plots.plot_uncertainty_across_days(all_models)
             
             # also check with binomial test
-            binomial_results = betasort.binomial_analysis_by_session(file_csv, rat)
+            binomial_results = betasort_analysis.binomial_analysis_by_session(file_csv, rat)
             print(binomial_results)
             
-            betasort.plot_stimulus_uncertainty(model)
-            betasort.plot_relational_uncertainty(model)
-            betasort.plot_ROC_uncertainty(model)
-            betasort.plot_positions(model)
-            betasort.plot_beta_distributions(model)
-            betasort.plot_boundaries_history(model)
+            betasort_plots.plot_stimulus_uncertainty(model)
+            betasort_plots.plot_relational_uncertainty(model)
+            betasort_plots.plot_ROC_uncertainty(model)
+            betasort_plots.plot_positions(model)
+            betasort_plots.plot_beta_distributions(model)
+            betasort_plots.plot_boundaries_history(model)
             

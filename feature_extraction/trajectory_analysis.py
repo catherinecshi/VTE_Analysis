@@ -440,10 +440,10 @@ def quantify_VTE(data_structure, rat, day, save = None):
             file_manipulation.add_row_to_csv(excluded_path, skip_row)
             continue
         
-        last_trajectory_x = trajectory_x # update
+        last_trajectory_x = trial_results["trajectory_x"] # update
         
         # convert to cm and create idphi values
-        trajectory_x, trajectory_y = conversion_utils.convert_pixels_to_cm(trajectory_x, trajectory_y)
+        trajectory_x, trajectory_y = conversion_utils.convert_pixels_to_cm(trial_results["trajectory_x"], trial_results["trajectory_y"])
         IdPhi = math_utils.calculate_IdPhi(trajectory_x, trajectory_y)
         #plotting.plot_trajectory_animation((DLC_df["x"] / 5), (DLC_df["y"] / 5), trajectory_x, trajectory_y, title=traj_id)
         

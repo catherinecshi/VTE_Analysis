@@ -1,10 +1,10 @@
 import os
 import pandas as pd
 
-from config import settings
+from config.paths import paths
 from visualization import generic_plots
 
-base_path = os.path.join(settings.BASE_PATH, "processed_data", "VTE_Values")
+base_path = paths.vte_values
 
 IdPhis = []
 choice_IdPhis = {}

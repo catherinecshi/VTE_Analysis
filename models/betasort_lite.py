@@ -86,7 +86,7 @@ class Betasort_Lite:
                         # Shift j up
                         self.U[j] = self.U[j] + 1
 
-def compare_model_to_one_rat_lite(all_data_df, rat, n_simulations=50, tau=0.01, xi=0.99, threshold=0.75, verbose=False):
+def compare_model_to_one_rat_lite(all_data_df, n_simulations=50, tau=0.01, xi=0.99, threshold=0.75, verbose=False):
     """
     Lightweight version of compare_model_to_one_rat that omits unnecessary calculations
     and only returns match rates needed for optimization.

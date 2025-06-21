@@ -18,7 +18,7 @@ from config.paths import remote, paths
 from utilities import logging_utils
 
 # pylint: disable=logging-fstring-interpolation
-logger = logging_utils.setup_logger("retrieve_data")
+logger = logging_utils.setup_script_logger()
 
 REMOTE_NAME = remote.remote_name
 REMOTE_PATH = remote.remote_path

@@ -7,40 +7,36 @@ Procedure:
 3. saves individual day files with VTE classification
 """
 import os
-import logging
 import numpy as np
 import pandas as pd
-from datetime import datetime
 from scipy.stats import zscore
+
+from config.paths import paths
 from preprocessing import data_processing
+from utilities import logging_utils
 
 ### LOGGING
-logger = logging.getLogger() # creating logging object
-logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
-# makes a new log everytime the code runs by checking the time
-log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/create_zIdPhi_values_log_%Y%m%d_%H%M%S.txt")
-handler = logging.FileHandler(log_file)
-handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
-logger.addHandler(handler)
+logger = logging_utils.setup_script_logger()
 
 base_path = "/Users/catpillow/Documents/VTE_Analysis"
-dlc_path = os.path.join(base_path, "processed_data", "cleaned_dlc")
-data_path = os.path.join(base_path, "data", "VTE_Data")
+dlc_path = paths.cleaned_dlc
+data_path = paths.vte_data
 data_structure = data_processing.load_data_structure(data_path)
-vte_path = os.path.join(base_path, "processed_data", "VTE_data")
-values_path = os.path.join(base_path, "processed_data", "VTE_values")
+vte_path = paths.vertice_data
 
-for rat in os.listdir(values_path):
+for rat_dir in paths.vte_values.iterdir():
+    rat = rat_dir.name
     if ".DS" in rat or ".csv" in rat:
         continue
     
-    rat_path = os.path.join(values_path, rat)
+    rat_path = paths.vte_values / rat
     before_zscore_df = pd.DataFrame()
     day_dataframes = {}  # Dictionary to store data for each day
     
     # First, collect all data across days for z-scoring
-    for day in os.listdir(rat_path):
-        day_path = os.path.join(rat_path, day)
+    for day_dir in rat_path.iterdir():
+        day = day_dir.name
+        day_path = rat_path / day
         if ".DS" in day:
             continue
         

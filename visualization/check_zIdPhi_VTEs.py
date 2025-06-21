@@ -9,7 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 from matplotlib.animation import FuncAnimation
 
-from models import helper
+from config.paths import paths
 from utilities import math_utils
 
 is_VTE = None
@@ -88,7 +88,7 @@ def plot_trajectory_animation(x, y, trajectory_x, trajectory_y, interval=20, tra
 
 # show a couple of trajectories for each choice for each rat
 # first get zIdPhi values
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+vte_path = paths.vte_values
 zIdPhis = {} # {traj_id: zIdPhi}
 for rat in os.listdir(vte_path):
     if ".DS_Store" in rat:
@@ -109,7 +109,7 @@ for rat in os.listdir(vte_path):
                 zIdPhis[traj_id] = zIdPhi
 
 # then get all the x and y values for the scatter plots
-dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "cleaned_dlc")
+dlc_path = paths.cleaned_dlc
 
 for rat in os.listdir(vte_path):
     if ".DS_Store" in rat or "BP06" in rat or "BP08" in rat or "BP07" in rat or "BP09" in rat or "TH510" in rat or "TH605" in rat or "BP13" in rat or "BP15" in rat or "BP22" in rat:
@@ -210,5 +210,5 @@ for rat in os.listdir(vte_path):
                             else:
                                 print(f"is_VTE is none for {traj_id}")
                 
-    vte_data_path = os.path.join(helper.BASE_PATH, "processed_data", "manual_VTE", f"{rat}_VTEs.csv")
+    vte_data_path = paths.manual_vte / f"{rat}_VTEs.csv"
     VTE_data.to_csv(vte_data_path)

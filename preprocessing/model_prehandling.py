@@ -1,13 +1,12 @@
 import os
 import re
-import numpy as np
 import pandas as pd
 
-from models import helper
+from config.paths import paths
 from utilities import conversion_utils
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
-model_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
+base_path = paths.vte_values
+model_path = paths.preprocessed_data_model
 
 def extract_day_number(folder_name):
     match = re.search(r'Day(\d+)', folder_name)

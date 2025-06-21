@@ -3,8 +3,9 @@ import ast
 import pandas as pd
 import matplotlib.pyplot as plt
 
-base_path = "/Users/catpillow/Documents/VTE_Analysis"
-vte_path = os.path.join(base_path, "processed_data", "VTE_values", "BP13", "Day8", "trajectories.csv")
+from config.paths import paths
+
+vte_path = paths.vte_values / "BP13" / "Day8" / "trajectories.csv"
 
 trajectories_csv = pd.read_csv(vte_path)
 non_VTE_trajectory = None
@@ -24,7 +25,7 @@ for index, row in trajectories_csv.iterrows():
         
         VTE_trajectory = (x, y)
         
-dlc_path = os.path.join(base_path, "processed_data", "cleaned_dlc", "BP13", "Day8_coordinates.csv")
+dlc_path = paths.cleaned_dlc / "BP13" / "Day8_coordinates.csv"
 coordinates_csv = pd.read_csv(dlc_path)
 x_val = coordinates_csv["x"]
 y_val = coordinates_csv["y"]

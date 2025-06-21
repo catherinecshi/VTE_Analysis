@@ -9,7 +9,7 @@ import seaborn as sns
 from statsmodels.formula.api import ols
 from scipy.stats import f_oneway
 
-from analysis import statistics
+from analysis import generic_statistics
 from preprocessing import data_processing
 from analysis import performance_analysis
 from visualization import generic_plots
@@ -134,7 +134,7 @@ def analyze_vte_anova(vtes_volatility, min_day=0, max_day=5):
     print(f"F-statistic should be reported as: F({between_df}, {within_df})")
     
     # Run ANOVA and create plot
-    fig, ax, stats_results = statistics.plot_one_way_anova_line(
+    fig, ax, stats_results = generic_statistics.plot_one_way_anova_line(
         data_groups,
         group_labels=group_labels,
         title=f'VTE Percentage by Days Since New Arm',

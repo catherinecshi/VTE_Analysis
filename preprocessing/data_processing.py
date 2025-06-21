@@ -653,7 +653,7 @@ def _load_dlc_data_structure(save_path: Path) -> Dict:
     data_structure = {}
     
     for rat_folder_path in save_path.iterdir():
-        if not rat_folder_path.is_dir() or rat_folder_path.name.startswith("."):
+        if not rat_folder_path.is_dir() or rat_folder_path.name.startswith(".") or ".DS" in rat_folder_path.name:
             logger.debug(f"Skipping non-directory path: {rat_folder_path}")
             continue
 
@@ -669,7 +669,7 @@ def _load_dlc_data_structure(save_path: Path) -> Dict:
         data_structure[rat] = {}
         
         for day_folder_path in rat_path.iterdir():
-            if not day_folder_path.is_dir() or day_folder_path.name.startswith("."):
+            if not day_folder_path.is_dir() or day_folder_path.name.startswith(".") or ".DS" in day_folder_path.name:
                 logger.info(f"skipping non-directory path: {day_folder_path}")
                 continue
 
@@ -889,23 +889,19 @@ def load_specific_files(data_structure: Dict, rat: str, day: str) -> tuple[pd.Da
     timestamps = data_structure[rat][day][settings.TIMESTAMPS]
     trial_starts = time_utils.get_video_trial_starts(timestamps, SS_log)
     
-    # Convert to Path object - much cleaner than string manipulation
     dlc_path = Path(paths.cleaned_dlc) / rat
-    
     file_path = None
     
-    # Use Path.iterdir() instead of os.walk() for simpler directory traversal
     # This assumes files are directly in the dlc_path directory
     for file_path_obj in dlc_path.iterdir():
         if file_path_obj.is_file():  # Only process files, not subdirectories
-            # Use .name to get just the filename, then split
             file_name = file_path_obj.name
             parts = file_name.split("_")
             day_from_file = parts[0]
             
             # Check our conditions
             if day == day_from_file and "coordinates" in parts[1]:
-                file_path = file_path_obj  # Keep as Path object
+                file_path = file_path_obj
                 break
     
     if file_path is not None:

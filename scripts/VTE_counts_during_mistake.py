@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from models import helper
-from analysis import statistics
+from analysis import generic_statistics
 
 base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
 
@@ -174,7 +174,7 @@ def plot_one_way_anova_bar(data_groups, group_labels=None, title=None, xlabel=No
     import numpy as np
     import matplotlib.pyplot as plt
     
-    stats_results = statistics.one_way_anova(data_groups)
+    stats_results = generic_statistics.one_way_anova(data_groups)
     
     # means & SEM
     means = [np.mean(group) * 100 for group in data_groups]

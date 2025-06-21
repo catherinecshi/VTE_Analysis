@@ -156,29 +156,14 @@ class Betasort:
 
         # estimated value of each stimulus
         V = self.U / (self.U + self.L)
-
-        # explicit feedback
-        if reward == 1 and probability < threshold: # if correct trial + choice did not match data
-            # update reward rate
-            self.R[unchosen] = self.R[unchosen] + 1
+        
+        if reward == 1:
             self.R[chosen] = self.R[chosen] + 1
-            
-            # shifts chosen up, unchosen down
-            self.U[chosen] = self.U[chosen] + 1
-            self.L[unchosen] = self.L[unchosen] + 1
-        elif reward == 1: # correct trial + choice matched data
             self.R[unchosen] = self.R[unchosen] + 1
-            self.R[chosen] = self.R[chosen] + 1
-            
-            # shifts chosen up, unchosen down
-            self.U = self.U + V
-            self.L = self.L + (1 - V)
-        else: # incorrect trial
-            # update reward rate
-            self.N[unchosen] = self.N[unchosen] + 1
+        else:
             self.N[chosen] = self.N[chosen] + 1
+            self.N[unchosen] = self.N[unchosen] + 1
             
-            # shift unchosen up, chosen down
             self.U[unchosen] = self.U[unchosen] + 1
             self.L[chosen] = self.L[chosen] + 1
             
@@ -195,6 +180,14 @@ class Betasort:
                     elif V[j] > V[chosen]:
                         # shift j up
                         self.U[j] = self.U[j] + 1
+
+        if probability < threshold: # choice matched data
+            # consolidate
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+        #else: # incorrect trial
+            #self.U = self.U - V
+            #self.L = self.L - (1 - V)
 
         # store updated uncertainties and positions upper and lower
         self.uncertainty_history.append(self.get_all_stimulus_uncertainties())

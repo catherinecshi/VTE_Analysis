@@ -53,3 +53,13 @@ class NoMatchError(Exception):
         self.message = f"error with {settings.CURRENT_RAT} on {settings.CURRENT_DAY} where no match with {pattern} was found in {input_value} within {function}"
         
         super().__init__(self.message)
+
+class NoPathError(Exception):
+    """Exception raised when no path is found where there should be"""
+    
+    def __init__(self, path, function):
+        self.path = path
+        self.function = function
+        self.message = f"error with {settings.CURRENT_RAT} on {settings.CURRENT_DAY} where {path} cannot be found in {function}"
+        
+        super().__init__(self.message)

@@ -7,9 +7,9 @@ import os
 from pathlib import Path
 from scipy import stats
 
-from models import helper
+from config.paths import paths
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
+base_path = paths.model_comparison
 
 def load_and_process_data():
     """
@@ -452,7 +452,7 @@ def plot_model_match_rates(model_stats, rat_level_df, combined_df, stat_results=
     plt.tight_layout()
     
     # Save plot
-    output_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison", "TI_match_rate_with_stats.png")
+    output_path = base_path / "TI_match_rate_with_stats.png"
     plt.savefig(output_path, dpi=300)
     
     return boxplot
@@ -469,13 +469,12 @@ def main():
         print(model_stats)
         
         # Run statistical tests
-        output_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
-        stat_results = run_statistical_tests(rat_level_df, output_path)
+        stat_results = run_statistical_tests(rat_level_df, base_path)
         
         # Plot the results with statistical markers
         plot_model_match_rates(model_stats, rat_level_df, combined_df, stat_results)
         
-        print(f"\nAnalysis complete! Results saved to {output_path}")
+        print(f"\nAnalysis complete! Results saved to {base_paht}")
         
     except Exception as e:
         print(f"Error: {e}")

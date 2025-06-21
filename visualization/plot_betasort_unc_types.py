@@ -1,14 +1,14 @@
 import os
+import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr
-import glob
 
-from models import helper
+from config.paths import paths
 
-base_dir = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
+base_dir = paths.model_comparison
 
 # Function to find all vte_uncertainty_data.csv files
 def find_csv_files():

@@ -259,8 +259,16 @@ if __name__ == "__main__":
                 try:
                     DLC_df[("time", "time")] = timestamps
                 except ValueError:
-                    logger.error(f"unequal dlc frames {len(DLC_df)} and timestmaps {len(timestamps)} for {rat} on {day}")
-                    continue
+                    if len(DLC_df) - len(timestamps) == 1:
+                        DLC_df = DLC_df.drop(DLC_df.index[0])
+                        DLC_df[("time", "time")] = timestamps 
+                    elif len(DLC_df) - len(timestamps) == 2:
+                        DLC_df = DLC_df.drop(DLC_df.index[0])
+                        DLC_df = DLC_df.drop(DLC_df.index[-1])
+                        DLC_df[("time", "time")] = timestamps
+                    else:
+                        logger.error(f"unequal dlc frames {len(DLC_df)} and timestmaps {len(timestamps)} for {rat} on {day}")
+                        continue
             else:
                 logger.error(f"missing timestamps for {rat} on {day}")
                 continue

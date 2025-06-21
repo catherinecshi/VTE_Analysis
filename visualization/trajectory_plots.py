@@ -36,7 +36,6 @@ def plot_trajectory(x, y, trajectories, title="", save=None, label=None, traj_id
     plt.xlabel("X coordinate")
     plt.ylabel("Y coordinate")
     plt.grid(True)
-    plt.legend()
     
     if save is not None and traj_id is not None:
         save_path = os.path.join(save, f"trajectory_{traj_id}.jpg")

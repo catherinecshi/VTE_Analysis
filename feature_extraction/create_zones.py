@@ -24,6 +24,7 @@ from scipy.spatial.qhull import ConvexHull
 from mpl_point_clicker import clicker
 
 from config import settings
+from config.paths import paths
 
 # pylint: disable=import-error
 
@@ -103,11 +104,11 @@ def make_hull(x_coords, y_coords, hull_points, reused=False):
     return convex_hull
 
 # get all the scatter plots of every rat for each day
-dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "dlc_data")
-hull_path = os.path.join(helper.BASE_PATH, "processed_data", "hull_data")
+dlc_path = paths.dlc_data
+hull_path = paths.hull_data
 
 for rat in os.listdir(dlc_path):
-    if ".DS_Store" in rat or "BP15" not in rat:
+    if ".DS_Store" in rat:
         continue
 
     rat_path = os.path.join(dlc_path, rat)
