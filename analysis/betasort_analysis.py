@@ -4,8 +4,12 @@ import pandas as pd
 from scipy import stats
 from scipy.optimize import differential_evolution
 
+from utilities import logging_utils
 from models import betasort_test
 from models.betasort import Betasort
+
+# pylint: disable=consider-using-enumerate
+logger = logging_utils.get_module_logger("betasort_analysis")
 
 def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0.99, threshold=0.75, test=False):
     all_models = {}
@@ -18,6 +22,8 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
     
     # store match rates for each day
     match_rates = []
+    
+    index = 0 # to keep track of vtes indices
     
     # process each day separately
     for day, day_data in all_data_df.groupby('Day'):
@@ -34,9 +40,9 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
         
         # Initialize a new model for this day
         if test:
-            model = betasort_test.Betasort(n_stimuli, rat, day)
+            model = betasort_test.Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
         else:
-            model = Betasort(n_stimuli, rat, day)
+            model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
         
         # Transfer state from previous days
         for stim_idx in range(n_stimuli):
@@ -56,6 +62,7 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
         participant_choices = np.column_stack((chosen_idx, unchosen_idx))
         n_trials = len(participant_choices)
         matches = np.zeros(n_trials)
+        vtes = day_data["VTE"]
         
         for t in range(n_trials):
             if t % 100 == 0 or (n_trials < 100 and t % 10 == 0):
@@ -81,9 +88,14 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
 
             # update model based on actual feedback
             reward = 1 if chosen_idx < other_idx else 0
-            model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
+            try:
+                model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold, vte=vtes[index])
+            except KeyError:
+                model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold, vte=False)
+                print(f"couldn't find vtes for trial {t} with list {vtes}")
             
             #print(t, chosen_idx, reward)
+            index += 1
         
         # calculate cumulative match rate
         cumulative_match_rate = np.mean(matches)
@@ -139,7 +151,7 @@ def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
             
             model_correct[t] = np.mean(sim_correct)
             rat_correct[t] = reward
-            model.update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
+            model.update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.85)
         
         n_matches = int(np.sum(model_rat_matches * n_simulations))
         n_trials = len(model_rat_matches) * n_simulations
@@ -159,104 +171,7 @@ def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
     
     return session_results
 
-def t_test_model_vs_real_choices(all_data_df, rat, tau=0.05, xi=0.95, n_simulations=100):
-    """
-    Perform t-tests to compare model choices with real choices across sessions.
-    
-    Parameters:
-        - all_data_df : DataFrame
-            - data for all days for a single rat
-        - rat : String
-            - the rat ID
-        - tau, xi : model parameters
-        - n_simulations : number of simulations per trial
-        
-    Returns:
-        - session_results : dict
-            - contains test results for each day
-        - overall_results : dict
-            - contains test results across all days
-    """
-    all_data_df = all_data_df.sort_values('Day')
-    
-    session_results = {}
-    all_model_choices = []
-    all_real_choices = []
-    
-    for day, day_data in all_data_df.groupby('Day'):
-        chosen_idx = day_data["first"].values
-        unchosen_idx = day_data["second"].values
-        
-        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
-        n_stimuli = max(present_stimuli) + 1
-        
-        # Initialize model for this day
-        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
-        
-        # Track model choices and rat choices for this day
-        day_model_choices = []
-        day_real_choices = []
-        
-        for t in range(len(chosen_idx)):
-            # Get the rat's choice
-            real_choice = chosen_idx[t]
-            
-            # Simulate model choice multiple times and take the most frequent choice
-            model_choices_count = {chosen_idx[t]: 0, unchosen_idx[t]: 0}
-            model_choices = np.zeros(n_simulations)
-            for sim in range(n_simulations):
-                model_choice = model.choose([chosen_idx[t], unchosen_idx[t]])
-                model_choices[sim] = model_choice
-                model_choices_count[model_choice] += 1
-            
-            current_model_match_rate = np.mean(model_choices == chosen_idx[t])
-            
-            # Determine the model's preferred choice
-            model_choice = chosen_idx[t] if model_choices_count[chosen_idx[t]] > model_choices_count[unchosen_idx[t]] else unchosen_idx[t]
-            
-            day_model_choices.append(model_choice)
-            day_real_choices.append(real_choice)
-            all_model_choices.append(model_choice)
-            all_real_choices.append(real_choice)
-            
-            # Update model based on actual feedback
-            reward = 1 if chosen_idx[t] < unchosen_idx[t] else 0
-            model.update(chosen_idx[t], unchosen_idx[t], reward, current_model_match_rate, threshold=0.6)
-        
-        # Convert to arrays
-        day_model_choices = np.array(day_model_choices)
-        day_real_choices = np.array(day_real_choices)
-        
-        # make matches the match_model_rate
-        # paired 2 way t test in fuure (MAKE SURE PAIRED)
-        # Perform paired t-test for this day
-        # (comparing whether the model and rat chose the same stimulus)
-        matches = (day_model_choices == day_real_choices).astype(int)
-        t_stat, p_value = stats.ttest_1samp(matches, 0.5)  # Test if match rate is significantly different from chance
-        
-        session_results[day] = {
-            'n_trials': len(matches),
-            'match_rate': np.mean(matches),
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significant': p_value < 0.05
-        }
-    
-    # Overall test across all days
-    all_matches = (np.array(all_model_choices) == np.array(all_real_choices)).astype(int)
-    overall_t_stat, overall_p_value = stats.ttest_1samp(all_matches, 0.5)
-    
-    overall_results = {
-        'n_trials': len(all_matches),
-        'match_rate': np.mean(all_matches),
-        't_statistic': overall_t_stat,
-        'p_value': overall_p_value,
-        'significant': overall_p_value < 0.05
-    }
-    
-    return session_results, overall_results
-
-def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_values=None, tau_values=None):
+def find_optimal_tau_xi(all_data_df, rat, xi_values=None, tau_values=None):
     if xi_values is None:
         xi_values_coarse = np.arange(0.75, 0.99 + 0.01, 0.01)
         xi_values_fine = np.arange(0.99, 1.0 + 0.001, 0.001)
@@ -284,7 +199,7 @@ def find_optimal_parameters_for_rat(all_data_df, rat, n_simulations=100, xi_valu
     # find best parameter combination
     avg_performances = {params: np.mean(day_rates) for params, day_rates in param_performances.items()}
     
-    best_params = max(avg_performances, key=avg_performances.get)
+    best_params = max(avg_performances, key=lambda k: avg_performances[k])
     best_xi, best_tau = best_params
     best_performance = avg_performances[best_params]
     
@@ -356,6 +271,10 @@ def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, 
     avg_df['day'] = 'average'
     avg_df = avg_df.rename(columns={'match_rate': 'avg_match_rate'})
     
+    best_params = max(avg_performances, key=lambda k: avg_performances[k])
+    best_xi, best_tau, best_threshold = best_params
+    best_performance = avg_performances[best_params]
+    
     # separate dataframe for just the summary
     summary_df = pd.DataFrame({
         'best_xi': [best_xi],
@@ -363,10 +282,6 @@ def find_optimal_threshold(all_data_df, rat, n_simulations=100, xi_values=None, 
         'best_threshold': [best_threshold],
         'best_performance': [best_performance]
     })
-    
-    best_params = max(avg_performances, key=avg_performances.get)
-    best_xi, best_tau, best_threshold = best_params
-    best_performance = avg_performances[best_params]
     
     return best_xi, best_tau, best_threshold, best_performance, param_performances, results_df, summary_df
 
@@ -465,7 +380,8 @@ def diff_evolution(all_data, rat, verbose=True, max_iter=100, popsize=25):
 
 def check_transitive_inference(model, n_simulations=100):
     """
-    check over all decision probabilities for each possible choice
+    check over all decision probabilities for each possible choice in testing phase
+    to be compared with real choices from rats
     
     Parameters:
     - model : Betasort
@@ -498,118 +414,6 @@ def check_transitive_inference(model, n_simulations=100):
             results[(chosen_idx, other_idx)] = model_match_rate
             
     return results
-
-def analyze_vte_uncertainty(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.6, n_simulations=100):
-    """Analyze how VTEs correlate with different types of uncertainty
-
-    Args:
-        all_data_df (DataFrame): rodent choice data
-        vte_data (DataFrame): VTE data:
-        
-        rat (string): identifier
-        tau, xi, threshold (float): model parameters
-
-    Returns:
-        pair_vte_data: DataFrame wtih paired VTE & uncertainty
-        all_models: Dictionary of models for each day
-    """
-    pair_vte_data = []
-    
-    all_models = {}
-    global_U, global_L, global_R, global_N = {}, {}, {}, {}
-    
-    for day, day_data in all_data_df.groupby('Day'):
-        # extract relevant data from choice dataset
-        chosen_idx = day_data["first"].values
-        unchosen_idx = day_data["second"].values
-        rewards = day_data["correct"].values
-        traj_nums = day_data["ID"].values
-        vtes = day_data["VTE"].values
-        
-        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
-        n_stimuli = max(present_stimuli) + 1
-        
-        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
-        
-        # transfer states from previous day
-        for stim_idx in range(n_stimuli):
-            if stim_idx in global_U:
-                model.U[stim_idx] = global_U[stim_idx]
-                model.L[stim_idx] = global_L[stim_idx]
-                model.R[stim_idx] = global_R[stim_idx]
-                model.N[stim_idx] = global_N[stim_idx]
-            else:
-                print(f"stim idx {stim_idx} not found in global updates dict?? {global_U} on day {day}")
-            
-        # Initialize histories
-        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
-        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
-        model.position_history = [model.get_all_positions()]
-        model.U_history = [model.U.copy()]
-        model.L_history = [model.L.copy()]
-        
-        for t in range(len(chosen_idx)):
-            traj_num = traj_nums[t]
-            chosen = chosen_idx[t]
-            unchosen = unchosen_idx[t]
-            reward = rewards[t]
-            vte = vtes[t]
-            
-            # get uncertainty before updates - uncertainty at time of choice
-            # individual stimulus uncertainties
-            stim1_uncertainty = model.get_uncertainty_stimulus(min(chosen, unchosen))
-            stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
-            
-            # Get relational uncertainty between the specific pair
-            pair_roc_uncertainty = model.get_uncertainty_relation_ROC(min(chosen, unchosen), max(chosen, unchosen))
-            
-            vte_occurred = 0
-            if vte:
-                vte_occurred = 1
-            
-            # Store the pair-specific data
-            pair_vte_data.append({
-                'day': day,
-                'trial_num': traj_num,
-                'stim1': min(chosen, unchosen),
-                'stim2': max(chosen, unchosen),
-                'chosen': chosen,
-                'unchosen': unchosen,
-                'vte_occurred': vte_occurred,
-                'stim1_uncertainty': stim1_uncertainty,
-                'stim2_uncertainty': stim2_uncertainty,
-                'pair_relational_uncertainty': pair_relational_uncertainty,
-                'pair_roc_uncertainty': pair_roc_uncertainty,
-                'reward': reward
-            })
-            
-            # run multiple simulations to get choice probability
-            model_choices = np.zeros(n_simulations)
-            for sim in range(n_simulations):
-                model_choice = model.choose([chosen, unchosen])
-                model_choices[sim] = model_choice
-            
-            # see how well the model matches up with real choices
-            model_match_rate = np.mean(model_choices == chosen)
-            
-            # Update the model after recording uncertainty values
-            model.update(chosen, unchosen, reward, model_match_rate, threshold=threshold)
-        
-        # Store model for this day
-        all_models[day] = model
-        
-        # Update global states for the next day
-        for stim_idx in range(n_stimuli):
-            global_U[stim_idx] = model.U[stim_idx]
-            global_L[stim_idx] = model.L[stim_idx]
-            global_R[stim_idx] = model.R[stim_idx]
-            global_N[stim_idx] = model.N[stim_idx]
-    
-    # Convert to DataFrame for easier analysis
-    pair_vte_df = pd.DataFrame(pair_vte_data)
-    
-    # Return the data and models
-    return pair_vte_df, all_models
 
 def analyze_correlations(pair_vte_df):
     """
@@ -662,7 +466,7 @@ def analyze_correlations(pair_vte_df):
             try:
                 r, p = pointbiserialr(pair_data['vte_occurred'], pair_data[measure])
                 pair_results[measure] = {'r': r, 'p': p}
-            except:
+            except Exception:
                 pair_results[measure] = "Computation failed"
         
         # Logistic regression for this pair
@@ -676,7 +480,7 @@ def analyze_correlations(pair_vte_df):
                 'pvalues': logit_result.pvalues.to_dict(),
                 'pseudo_r2': logit_result.prsquared
             }
-        except:
+        except Exception:
             pair_results['logistic_regression'] = "Computation failed"
         
         results['by_pair'][pair] = pair_results

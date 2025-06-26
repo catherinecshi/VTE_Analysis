@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from models import helper
+from config.paths import paths
 from analysis import generic_statistics
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
+base_path = paths.vte_values
 
 # for each trajectory, what is the closest mistake trial before and after the trial
 until_next_mistake = {} # {traj_id: # trials until next mistake}

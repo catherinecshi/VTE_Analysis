@@ -97,7 +97,7 @@ class Betasort:
         chosen_idx = np.argmax(X) # choose stimulus with largest value
         return available_stimuli[chosen_idx]
     
-    def update(self, chosen, unchosen, reward, probability, threshold):
+    def update(self, chosen, unchosen, reward, probability, threshold, vte=False):
         """
         learning algorithm for updating memory vectors (U, L, R, N)
         
@@ -141,6 +141,10 @@ class Betasort:
                 - threshold for above which consolidation is done
         """
         self.trial += 1
+        
+        if vte:
+            self.U = self.U * 0.5
+            self.L = self.L * 0.5
         
         # relax parameters
         self.R = self.R * self.xi

@@ -1,14 +1,13 @@
-# not done right now
-
 import os
 import pandas as pd
 
+from config.paths import paths
 from utilities import conversion_utils
 from visualization import generic_plots
 
 # pylint: disable=consider-using-dict-items
 
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+vte_path = paths.vte_values
 
 vte_proportions = [] # y values
 wrong_proportions = [] # x values
@@ -83,6 +82,11 @@ for rat in os.listdir(vte_path):
                 vte_proportion = vte_trial_count / total_trial_count
                 correct_proportion = correct_trial_count / total_trial_count
                 wrong_proportion = 1 - correct_proportion
+                
+                # exclude ridiculous vte proportions
+                if vte_proportion > 0.4:
+                    print(rat, day_and_trial_type)
+                    continue
 
                 vte_proportions.append(vte_proportion)
                 wrong_proportions.append(wrong_proportion)

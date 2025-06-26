@@ -89,11 +89,10 @@ for rat in os.listdir(data_path):
             betasort_plots.plot_uncertainty_across_days(all_models)
             
             # also check with binomial test
-            binomial_results = betasort_analysis.binomial_analysis_by_session(file_csv, rat)
-            print(binomial_results)
+            #binomial_results = betasort_analysis.binomial_analysis_by_session(file_csv, rat)
+            #print(binomial_results)
             
             betasort_plots.plot_stimulus_uncertainty(model)
-            betasort_plots.plot_relational_uncertainty(model)
             betasort_plots.plot_ROC_uncertainty(model)
             betasort_plots.plot_positions(model)
             betasort_plots.plot_beta_distributions(model)

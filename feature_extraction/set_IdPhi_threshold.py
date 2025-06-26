@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+from config.paths import paths
 from visualization import generic_plots
 
 # for plotting
@@ -9,7 +10,7 @@ norm_zIdPhi_values = {}
 vte_IdPhi_values = {}
 norm_IdPhi_values = {}
 
-vte_data_path = os.path.join(helper.BASE_PATH, "processed_data", "manual_VTE")
+vte_data_path = paths.manual_vte
 for vte_filename in os.listdir(vte_data_path):
     parts = vte_filename.split("_")
     rat = parts[0]

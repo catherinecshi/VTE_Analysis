@@ -3,10 +3,11 @@ import re
 import numpy as np
 import pandas as pd
 
+from config.paths import paths
 from analysis import performance_analysis
 from visualization import generic_plots
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
+base_path = paths.vte_values
 
 VTE_trajectories = []
 VTE_infos = []

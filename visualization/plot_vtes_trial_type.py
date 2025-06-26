@@ -1,15 +1,13 @@
 import os
 import numpy as np
 import pandas as pd
-import scipy.stats as stats
-import matplotlib.pyplot as plt
 
 from scipy.stats import f_oneway, ttest_ind
-from statsmodels.stats.multicomp import MultiComparison
 
+from config.paths import paths
 from visualization import generic_plots
 
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+vte_path = paths.vte_values
 
 VTE_trials = {} # {trial_type: # VTEs}
 all_trials = {} # {trial_type: # trials}
@@ -125,72 +123,3 @@ for pair in pair_names:
     p_values.append(p_bonferroni)
     
     print(f"Comparing {group1} vs {group2}: t={t_stat:.4f}, raw p={p_raw:.4f}, adj p={p_bonferroni:.4f}, significant={p_bonferroni < 0.05}")
-
-def create_enhanced_bar_plot(data, x_ticks, errors=None, xlim=None, ylim=None, p_values=None, title="", xlabel="", ylabel=""):
-    plt.figure(figsize=(10, 6))
-    
-    # Convert proportions to percentages
-    data_percentages = [d * 100 for d in data]
-    if errors:
-        errors_percentages = [e * 100 for e in errors]
-    
-    if errors:
-        bars = plt.bar(x_ticks, data_percentages, yerr=errors_percentages, capsize=5)
-    else:
-        bars = plt.bar(x_ticks, data_percentages)
-    
-    plt.title(title, fontsize=30)
-    plt.xlabel(xlabel, fontsize=24)
-    plt.ylabel(ylabel, fontsize=24)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    
-    if xlim:
-        plt.xlim(xlim)
-    
-    if ylim:
-        # Convert proportion limits to percentage limits
-        plt.ylim((ylim[0] * 100, ylim[1] * 100))
-    
-    plt.ylim(0, 11)
-        
-    if p_values:
-        bar_positions = [bar.get_x() + bar.get_width() / 2 for bar in bars]
-        bar_heights = [bar.get_height() for bar in bars]
-        max_height = max(bar_heights)
-        
-        pair_indices = [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]
-        pair_names = ["AB-BC", "BC-CD", "CD-DE", "AB-CD", "BC-DE", "AB-DE"]
-        
-        height_offset = 0.05
-        for i, (idx1, idx2) in enumerate(pair_indices):
-            if p_values[i] < 0.05:
-                # Determine significance marker
-                if p_values[i] < 0.001:
-                    sig_marker = '***'
-                elif p_values[i] < 0.01:
-                    sig_marker = '**'
-                else:
-                    sig_marker = '*'
-                
-                # Set height for this comparison line
-                line_height = max_height * (1.05 + (i * height_offset))
-                
-                # Draw the line and marker
-                plt.plot([bar_positions[idx1], bar_positions[idx2]], [line_height, line_height], color='black')
-                #plt.text((bar_positions[idx1] + bar_positions[idx2]) / 2, line_height + (max_height * 0.02), 
-                         #sig_marker, ha='center', va='bottom', fontsize=24)
-    
-    plt.tight_layout()
-    plt.show()
-
-# Create the plot with error bars and significance indicators
-create_enhanced_bar_plot(
-    data=proportions,
-    x_ticks=trial_types,
-    errors=standard_errors,
-    title="VTE Percentage for Trial Type",
-    xlabel="Trial Types",
-    ylabel="Percentage of VTEs",
-    p_values=p_values
-)

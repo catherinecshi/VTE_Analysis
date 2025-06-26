@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import scipy.stats as stats
 
 def plot_stimulus_uncertainty(model, stimulus_labels=None, save=None):
     """

@@ -1,10 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats as stats
 
+from config.paths import paths
 from visualization import generic_plots
 
-base_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_Values")
+base_path = paths.vte_values
 
 traj_lens = []
 correct_traj_lens = []
@@ -72,8 +74,6 @@ for rat in os.listdir(base_path):
                     VTE_lengths.append(traj_len)
                 else:
                     non_VTE_lengths.append(traj_len)
-
-import scipy.stats as stats
 
 # Print the sample sizes
 print("\n----- T-Test Analysis: VTE vs Non-VTE Trajectory Lengths -----")

@@ -4,12 +4,13 @@ import os
 import numpy as np
 import pandas as pd
 
+from config.paths import paths
 from analysis import performance_analysis
 from visualization import generic_plots
 
 # get proportion of VTEs for each trial type for each rat
 proportion_of_VTEs: dict[str, dict] = {}
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+vte_path = paths.vte_values
 for rat in os.listdir(vte_path):
     if ".DS_Store" in rat:
         continue

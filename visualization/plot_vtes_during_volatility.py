@@ -3,19 +3,15 @@ import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
-import seaborn as sns
 
-from statsmodels.formula.api import ols
-from scipy.stats import f_oneway
-
+from config.paths import paths
 from analysis import generic_statistics
 from preprocessing import data_processing
 from analysis import performance_analysis
 from visualization import generic_plots
 
 # Load data structure
-data_path = os.path.join(helper.BASE_PATH, "data", "VTE_Data")
+data_path = paths.vte_data
 data_structure = data_processing.load_data_structure(data_path)
 
 # Get days since new arm added
@@ -25,7 +21,7 @@ days_since_new_arm = days_since_new_arm.astype({"rat": "str", "day": "int", "arm
 
 # Collect VTE data
 vtes_during_volatility = []
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+vte_path = paths.vte_values
 for rat in os.listdir(vte_path):
     if ".DS" in rat:
         continue
@@ -62,7 +58,8 @@ for rat in os.listdir(vte_path):
                 
 # Create DataFrame and save to CSV
 vtes_during_volatility_df = pd.DataFrame(vtes_during_volatility)
-vtes_during_volatility_df.to_csv(os.path.join(vte_path, "vtes_during_volatility.csv"))
+vtes_during_volatility_path = vte_path / "vtes_during_volatility.csv"
+vtes_during_volatility_df.to_csv(vtes_during_volatility_path)
 
 def prepare_vte_data_for_anova(vtes_volatility, min_day=0, max_day=5):
     """
