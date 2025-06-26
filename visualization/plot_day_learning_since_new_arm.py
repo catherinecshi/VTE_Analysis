@@ -1,6 +1,7 @@
 import logging
 import pandas as pd
 
+from config.paths import paths
 from preprocessing import data_processing
 from analysis import performance_analysis
 from visualization import generic_plots
@@ -13,7 +14,7 @@ logger = logging.getLogger() # creating logging object
 logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
 
 # loading
-SAVE_PATH = '/Users/catpillow/Documents/VTE_Analysis/data/VTE_Data'
+SAVE_PATH = paths.vte_data
 DATA_STRUCTURE = data_processing.load_data_structure(SAVE_PATH)
 
 # get the dataframe with days until new arm appeared

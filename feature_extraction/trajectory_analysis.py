@@ -17,7 +17,7 @@ from utilities import math_utils
 from utilities import spatial_utils
 from utilities import logging_utils
 from utilities import conversion_utils
-from utilities import error_types
+from debugging import error_types
 from utilities import file_manipulation
 from preprocessing import data_processing
 from preprocessing import process_statescript

@@ -5,7 +5,7 @@ check over data and file integrity before processing
 import numpy as np
 
 from config import settings
-from utilities import error_types
+from debugging import error_types
 
 def check_timestamps(df, timestamps):
     # first check - makes sure there is around 0.03s between each frame

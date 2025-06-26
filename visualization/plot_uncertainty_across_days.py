@@ -1,10 +1,8 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.ticker import MaxNLocator
-import os
-from models import helper
+
+from config.paths import paths
 
 def load_data(file_path):
     """
@@ -254,5 +252,5 @@ def main(file_path='experiment_data.csv'):
         print("Could not analyze data. Please check the file format.")
 
 if __name__ == "__main__":
-    file_path = os.path.join(helper.BASE_PATH, "processed_data", "new_model_data", "TH510", "vte_uncertainty.csv")
+    file_path = paths.processed / "new_model_data" / "TH510", / "vte_uncertainty.csv"
     main(file_path)

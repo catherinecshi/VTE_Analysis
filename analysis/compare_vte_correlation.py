@@ -1,12 +1,11 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import os
 from scipy import stats
-from pathlib import Path
 
-from models import helper
+from config.paths import paths
 
 # Set the style for better visualizations
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -858,7 +857,7 @@ def main(file_path):
     print(f"Uncertainty types: {', '.join(df['uncertainty_type'].unique())}")
     
     # Create output directory for plots if it doesn't exist
-    output_dir = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison", 'correlation_plots')
+    output_dir = paths.model_comparison / 'correlation_plots'
     os.makedirs(output_dir, exist_ok=True)
     
     # Run statistical tests
@@ -876,5 +875,5 @@ def main(file_path):
 # Run the script
 if __name__ == "__main__":
     # Replace this with your actual file path
-    file_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison", "combined_vte_correlations.csv")
+    file_path = paths.model_comparison / "combined_vte_correlations.csv"
     main(file_path)

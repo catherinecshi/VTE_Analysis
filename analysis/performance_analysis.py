@@ -7,7 +7,7 @@ from typing import Dict
 from config import settings
 from config.paths import paths, remote
 from utilities import logging_utils
-from utilities import error_types
+from debugging import error_types
 from preprocessing import data_processing
 from preprocessing import process_statescript
 from visualization import performance_plots

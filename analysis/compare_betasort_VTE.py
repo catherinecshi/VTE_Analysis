@@ -1,12 +1,13 @@
 import os
-import numpy as np
 import pandas as pd
 
-from models import betasort
+from config.paths import paths
+from analysis import betasort_analysis
+from visualization import betasort_plots
 
 # Main analysis
-data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
-save_path = os.path.join(helper.BASE_PATH, "processed_data", "vte_analysis")
+data_path = paths.preprocessed_data_model
+save_path = paths.processed / "vte_analysis"
 
 for rat in os.listdir(data_path):
     if "TH405" not in rat:  # Your existing filter
@@ -22,12 +23,12 @@ for rat in os.listdir(data_path):
             file_csv = pd.read_csv(file_path)
             
             # Run pair-specific VTE analysis
-            pair_vte_df, all_models = betasort.analyze_vte_uncertainty(
+            pair_vte_df, all_models = betasort_analysis.analyze_vte_uncertainty(
                 file_csv, rat, tau=0.05, xi=0.95
             )
             
             # Analyze correlations
-            correlation_results = betasort.analyze_correlations(pair_vte_df)
+            correlation_results = betasort_analysis.analyze_correlations(pair_vte_df)
             
             # Create output directory
             rat_output_dir = os.path.join(save_path, rat)
@@ -37,7 +38,7 @@ for rat in os.listdir(data_path):
             pair_vte_df.to_csv(os.path.join(rat_output_dir, f"{rat}_pair_vte_data.csv"), index=False)
             
             # Generate visualizations
-            betasort.plot_vte_uncertainty(pair_vte_df, correlation_results, rat_output_dir)
+            betasort_plots.plot_vte_uncertainty(pair_vte_df, correlation_results, rat_output_dir)
             
             # Print summary of results
             print(f"Results for {rat}:")

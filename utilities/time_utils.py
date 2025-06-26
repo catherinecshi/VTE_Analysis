@@ -9,7 +9,7 @@ import numpy as np
 from typing import Union
 
 from config import settings
-from utilities import error_types
+from debugging import error_types
 
 # ==============================================================================
 # SPEED

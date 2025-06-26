@@ -2,6 +2,8 @@ import time
 import numpy as np
 import pandas as pd
 from scipy import stats
+from scipy.stats import pointbiserialr
+import statsmodels.api as sm
 from scipy.optimize import differential_evolution
 
 from utilities import logging_utils
@@ -415,6 +417,117 @@ def check_transitive_inference(model, n_simulations=100):
             
     return results
 
+def analyze_vte_uncertainty(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.6, n_simulations=100):
+    """Analyze how VTEs correlate with different types of uncertainty
+
+    Args:
+        all_data_df (DataFrame): rodent choice data
+        vte_data (DataFrame): VTE data:
+        
+        rat (string): identifier
+        tau, xi, threshold (float): model parameters
+
+    Returns:
+        pair_vte_data: DataFrame wtih paired VTE & uncertainty
+        all_models: Dictionary of models for each day
+    """
+    pair_vte_data = []
+    
+    all_models = {}
+    global_U, global_L, global_R, global_N = {}, {}, {}, {}
+    
+    for day, day_data in all_data_df.groupby('Day'):
+        # extract relevant data from choice dataset
+        chosen_idx = day_data["first"].values
+        unchosen_idx = day_data["second"].values
+        rewards = day_data["correct"].values
+        traj_nums = day_data["ID"].values
+        vtes = day_data["VTE"].values
+        
+        present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
+        n_stimuli = max(present_stimuli) + 1
+        
+        model = Betasort(n_stimuli, rat, day, tau=tau, xi=xi)
+        
+        # transfer states from previous day
+        for stim_idx in range(n_stimuli):
+            if stim_idx in global_U:
+                model.U[stim_idx] = global_U[stim_idx]
+                model.L[stim_idx] = global_L[stim_idx]
+                model.R[stim_idx] = global_R[stim_idx]
+                model.N[stim_idx] = global_N[stim_idx]
+            else:
+                print(f"stim idx {stim_idx} not found in global updates dict?? {global_U} on day {day}")
+            
+        # Initialize histories
+        model.uncertainty_history = [model.get_all_stimulus_uncertainties()]
+        model.ROC_uncertainty_history = [model.get_all_ROC_uncertainties()]
+        model.position_history = [model.get_all_positions()]
+        model.U_history = [model.U.copy()]
+        model.L_history = [model.L.copy()]
+        
+        for t in range(len(chosen_idx)):
+            traj_num = traj_nums[t]
+            chosen = chosen_idx[t]
+            unchosen = unchosen_idx[t]
+            reward = rewards[t]
+            vte = vtes[t]
+            
+            # get uncertainty before updates - uncertainty at time of choice
+            # individual stimulus uncertainties
+            stim1_uncertainty = model.get_uncertainty_stimulus(min(chosen, unchosen))
+            stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
+            
+            # Get relational uncertainty between the specific pair
+            pair_roc_uncertainty = model.get_uncertainty_relation_ROC(min(chosen, unchosen), max(chosen, unchosen))
+            
+            vte_occurred = 0
+            if vte:
+                vte_occurred = 1
+            
+            # Store the pair-specific data
+            pair_vte_data.append({
+                'day': day,
+                'trial_num': traj_num,
+                'stim1': min(chosen, unchosen),
+                'stim2': max(chosen, unchosen),
+                'chosen': chosen,
+                'unchosen': unchosen,
+                'vte_occurred': vte_occurred,
+                'stim1_uncertainty': stim1_uncertainty,
+                'stim2_uncertainty': stim2_uncertainty,
+                'pair_roc_uncertainty': pair_roc_uncertainty,
+                'reward': reward
+            })
+            
+            # run multiple simulations to get choice probability
+            model_choices = np.zeros(n_simulations)
+            for sim in range(n_simulations):
+                model_choice = model.choose([chosen, unchosen])
+                model_choices[sim] = model_choice
+            
+            # see how well the model matches up with real choices
+            model_match_rate = np.mean(model_choices == chosen)
+            
+            # Update the model after recording uncertainty values
+            model.update(chosen, unchosen, reward, model_match_rate, threshold=threshold)
+        
+        # Store model for this day
+        all_models[day] = model
+        
+        # Update global states for the next day
+        for stim_idx in range(n_stimuli):
+            global_U[stim_idx] = model.U[stim_idx]
+            global_L[stim_idx] = model.L[stim_idx]
+            global_R[stim_idx] = model.R[stim_idx]
+            global_N[stim_idx] = model.N[stim_idx]
+    
+    # Convert to DataFrame for easier analysis
+    pair_vte_df = pd.DataFrame(pair_vte_data)
+    
+    # Return the data and models
+    return pair_vte_df, all_models
+
 def analyze_correlations(pair_vte_df):
     """
     Analyzes correlations between VTE and uncertainty measures for each stimulus pair
@@ -425,9 +538,6 @@ def analyze_correlations(pair_vte_df):
     Returns:
         - results: Dictionary of correlation results by pair
     """
-    from scipy.stats import pointbiserialr
-    import statsmodels.api as sm
-    
     # Identify all unique stimulus pairs
     pair_vte_df['pair'] = pair_vte_df.apply(lambda row: f"{row['stim1']}-{row['stim2']}", axis=1)
     unique_pairs = pair_vte_df['pair'].unique()

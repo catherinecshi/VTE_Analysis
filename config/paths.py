@@ -38,6 +38,7 @@ class ProjectPaths:
         self.manual_vte = self.processed / "manual_VTE"
         self.hull_data = self.processed / "hull_data"
         self.vertice_data = self.processed / "VTE_data"
+        self.standard_trajectories = self.processed / "standard_trajectories"
         
         # model data directories
         self.preprocessed_data_model = self.processed / "data_for_model"

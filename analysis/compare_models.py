@@ -7,11 +7,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
 from scipy.optimize import differential_evolution
 from scipy.stats import pointbiserialr
 
-from models import helper
+from config.paths import paths
 from models import bayesian_learner
 from models import neural_network
 from models import rw_generalization
@@ -778,11 +777,6 @@ def compare_ti_performance(betasort_ti_results, new_model_ti_results, actual_ti_
     Returns:
         - comparison_df: DataFrame with comparison results
     """
-    import os
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import seaborn as sns
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -1740,9 +1734,9 @@ def compare_models_with_betasort(betasort_results_path, all_data_df_path, ti_pat
 
 def run_full_analysis():
     # Base paths
-    data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
-    betasort_results_path = os.path.join(helper.BASE_PATH, "processed_data", "new_model_data")
-    comparison_output_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison")
+    data_path = paths.preprocessed_data_model
+    betasort_results_path = paths.processed / "new_model_data"
+    comparison_output_path = paths.model_comparison
     
     # Define which rats to analyze
     rats_to_analyze = [rat for rat in os.listdir(data_path) 
@@ -2189,9 +2183,9 @@ def run_optimized_analysis(optimization_iterations=10):
         - optimization_iterations: Number of iterations for DE optimization
     """
     # Base paths
-    data_path = os.path.join(helper.BASE_PATH, "processed_data", "data_for_model")
-    betasort_results_path = os.path.join(helper.BASE_PATH, "processed_data", "new_model_data")
-    comparison_output_path = os.path.join(helper.BASE_PATH, "processed_data", "model_comparison_optimized")
+    data_path = paths.preprocessed_data_model
+    betasort_results_path = paths.processed / "new_model_data"
+    comparison_output_path = paths.model_comparison
     
     # Define which rats to analyze
     rats_to_analyze = [rat for rat in os.listdir(data_path) 

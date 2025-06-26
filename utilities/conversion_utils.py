@@ -4,7 +4,7 @@ useful hard-coded conversions
 from typing import Union
 
 from config import settings
-from utilities import error_types
+from debugging import error_types
 
 # ==============================================================================
 # TRIAL TYPE CONVERSIONS

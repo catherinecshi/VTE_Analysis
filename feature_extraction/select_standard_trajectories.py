@@ -9,7 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 from matplotlib.animation import FuncAnimation
 
-from models import helper
+from config.paths import paths
 from utilities import math_utils
 
 is_good = False
@@ -107,9 +107,9 @@ def repeat_or_not():
     
     plt.show()
 
-dlc_path = os.path.join(helper.BASE_PATH, "processed_data", "cleaned_dlc")
-vte_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
-standard_traj_path = os.path.join(helper.BASE_PATH, "processed_data", "standard_trajectories")
+dlc_path = paths.cleaned_dlc
+vte_path = paths.vte_values
+standard_traj_path = paths.standard_trajectories
 for rat in os.listdir(vte_path):
     if ".DS_Store" in rat or "BP06" in rat or "zIdPhi" in rat:
         continue

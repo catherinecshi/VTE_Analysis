@@ -13,7 +13,7 @@ from config import settings
 from config.paths import paths, remote
 from preprocessing import readCameraModuleTimeStamps
 from utilities import time_utils
-from utilities import error_types
+from debugging import error_types
 from utilities import logging_utils
 
 # pylint: disable=logging-fstring-interpolation, broad-exception-caught, trailing-whitespace

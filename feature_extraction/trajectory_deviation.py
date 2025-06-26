@@ -1,13 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-
 from numpy.linalg import norm
 
-from models import helper
+from config.paths import paths
 
-standard_trajectories_path = os.path.join(helper.BASE_PATH, "processed_data", "standard_trajectories")
-all_trajectories_path = os.path.join(helper.BASE_PATH, "processed_data", "VTE_values")
+standard_trajectories_path = paths.standard_trajectories
+all_trajectories_path = paths.vte_values
 
 for rat in os.listdir(all_trajectories_path):
     if ".DS_Store" in rat:
@@ -70,4 +69,4 @@ for rat in os.listdir(all_trajectories_path):
                 smallest_distances.append(smallest_d)
             
             # check if the distances cross the threshold
-            for 
+            

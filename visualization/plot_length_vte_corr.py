@@ -6,7 +6,7 @@ from typing import List, Tuple, Dict, Union, Optional
 
 from config.paths import paths
 from utilities import logging_utils
-from utilities import error_types
+from debugging import error_types
 
 # pylint: disable=logging-fstring-interpolation
 logger = logging_utils.setup_script_logger()

@@ -10,7 +10,7 @@ import re
 import numpy as np
 from config import settings
 from utilities import logging_utils
-from utilities import error_types
+from debugging import error_types
 
 logger = logging_utils.get_module_logger("readCameraModuleTimeStamps")
 
