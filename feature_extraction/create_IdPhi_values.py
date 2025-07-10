@@ -26,8 +26,7 @@ SKIP_DAYS = [("BP06", "Day10"), ("BP10", "Day43"), ("BP10", "Day21"), ("BP10", "
              ("BP10", "Day6"), ("BP10", "Day18"), ("BP10", "Day46"), ("BP10", "Day23"),
              ("BP11", "Day6"), ("BP11", "Day1"), ("BP11", "Day4"), ("BP08", "Day25")]
 
-base_path = "/Users/catpillow/Documents/VTE_Analysis"
-dlc_path = os.path.join(base_path, "processed_data", "cleaned_dlc")
+dlc_path = paths.cleaned_dlc
 data_structure = data_processing.load_data_structure(paths.vte_data)
 
 for rat_dir in paths.vte_data.iterdir():
@@ -55,7 +54,7 @@ for rat_dir in paths.vte_data.iterdir():
             continue
 
         try:
-            save_path = os.path.join(base_path, "processed_data", "VTE_values", rat, day)
+            save_path = paths.vte_values / rat / day
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
             

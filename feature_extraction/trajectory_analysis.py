@@ -140,16 +140,20 @@ def get_trajectory(
         start: float, 
         end: float, 
         hull: ConvexHull, 
-        repeats: int = 0
+        repeats: int = 0,
+        min_length: int = 8
     ) -> tuple[Optional[list], Optional[list], Optional[float], int]:
     """
     gets all the x and y points within a trajectory given the start point and hull within which the trajectory is
+    If trajectory is too short, tries to find a new trajectory starting from the end of the previous one
     
     Parameters:
     - df: contains x and y coordinates and times for each coordinate point
-    - start: index of dataframe corresponding to start of trajectory
-    - end: index of dataframe corresponding to start of the next trajectory
+    - start: time corresponding to start of trajectory search
+    - end: time corresponding to start of the next trajectory
     - hull: hull within which trajectory is
+    - repeats: number of repeats of trajectory already
+    - min_length: minimum number of points required for a valid trajectory
     
     Returns:
     - (float array): all x points for trajectory
@@ -158,18 +162,48 @@ def get_trajectory(
     - int: number of repeats of trajectory already
     """
     try:
-        # find starting point
-        start_index, _, _, _ = find_starting_index(df, start)
+        current_start_time = start
+        max_retries = 3
+        retry_count = 0
         
-        trajectory_x, trajectory_y, start_time, end_time = extract_trajectory_points(df, start_index, end, hull)
+        while retry_count <= max_retries:
+            # find starting point
+            start_index, _, _, _ = find_starting_index(df, current_start_time)
+            
+            trajectory_x, trajectory_y, start_time, end_time = extract_trajectory_points(df, start_index, end, hull)
+            
+            duration = calculate_trajectory_duration(start_time, end_time)
+            
+            # Check if trajectory exists
+            if not trajectory_x or not trajectory_y:
+                logger.error(f"no trajectory found for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} for {settings.CURRENT_TRIAL}")
+                return None, None, None, repeats + 1
+            
+            # Check if trajectory meets minimum length requirement
+            if len(trajectory_x) >= min_length:
+                # Trajectory is long enough, return it
+                return trajectory_x, trajectory_y, duration, repeats
+            
+            # Trajectory is too short, try to find a new starting point
+            retry_count += 1
+            if retry_count <= max_retries and end_time is not None:
+                # Start next attempt from where this trajectory ended + 1
+                current_start_time = end_time + 1
+                
+                # Make sure we haven't gone past the end time
+                if current_start_time >= end:
+                    logger.warning(f"reached end of time window while retrying trajectory for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} for {settings.CURRENT_TRIAL}")
+                    break
+                
+                logger.debug(f"trajectory too short ({len(trajectory_x)} points), retrying from time {current_start_time} (attempt {retry_count}/{max_retries})")
+            else:
+                logger.error(f"no end time for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} ??? {settings.CURRENT_TRIAL}")
+                break
         
-        duration = calculate_trajectory_duration(start_time, end_time)
-        
-        if not trajectory_x or not trajectory_y:
-            logger.error(f"no trajectory found for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} for {settings.CURRENT_TRIAL}")
-            return None, None, None, repeats + 1
-        
+        # If we've exhausted retries, return the last trajectory even if it's short
+        logger.warning(f"returning short trajectory ({len(trajectory_x)} points) after {retry_count} retries for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} for {settings.CURRENT_TRIAL}")
         return trajectory_x, trajectory_y, duration, repeats
+        
     except ValueError as e:
         logger.error(f"value error {e} finding trajectory for {settings.CURRENT_RAT} on {settings.CURRENT_DAY} for {settings.CURRENT_TRIAL}")
         return None, None, None, repeats + 1
@@ -199,7 +233,7 @@ def check_timestamps(timestamps: np.ndarray):
         else:
             continue
         
-        if not_ascending_count > 2 or stagnant_count > 100:
+        if not_ascending_count > 5 or stagnant_count > 150:
             raise error_types.CorruptionError(timestamps, "check_timestamps")
         
 def check_trial_data(performance: list, trial_starts: dict) -> bool:
@@ -216,7 +250,7 @@ def trajectory_present(dlc: pd.DataFrame, start: float, end: float) -> bool:
 
 def should_exclude_trajectory(trajectory_x: list, trajectory_y: list, traj_len: float,
                               last_trajectory_x: Optional[list]) -> tuple[bool, str]:
-    """check if trajectories seem fine"""
+    """return True if trajectory should be skipped"""
     
     # not enough points
     if len(trajectory_x) < 5:
@@ -225,11 +259,11 @@ def should_exclude_trajectory(trajectory_x: list, trajectory_y: list, traj_len: 
     # if too long or too short
     try:
         if traj_len is not None:
-            if traj_len < 0.3:
+            if traj_len < 0.2:
                 return True, "Too Short"
             
             if traj_len > 4:
-                return True, "Too Long"
+                return False, "Too Long"
     except TypeError:
         # can't determine length??
         return True, "Length unknown"
@@ -243,7 +277,8 @@ def should_exclude_trajectory(trajectory_x: list, trajectory_y: list, traj_len: 
     staying_y = math_utils.check_difference(trajectory_y, threshold=10)
     
     if not staying_x or not staying_y:
-        return True, "Staying"
+        print(staying_x, staying_y)
+        return False, "Staying"
     
     return False, ""
 
@@ -260,7 +295,8 @@ def get_centre_hull() -> ConvexHull:
     - scipy.spatial.ConvexHull: convex hull corresponding to the centre zone
     """
     # path to load from
-    hull_path = paths.hull_data / f"{settings.CURRENT_RAT}_{settings.CURRENT_DAY}_hull.npy"
+    hull_path = paths.hull_data / "inferenceTesting" / f"{settings.CURRENT_RAT}_hull_test.npy"
+    #hull_path = paths.hull_data / f"{settings.CURRENT_RAT}_{settings.CURRENT_DAY}_hull.npy"
     
     # load hull
     densest_cluster_points = np.load(hull_path)
@@ -439,6 +475,18 @@ def quantify_VTE(data_structure, rat, day, save = None):
             }
             file_manipulation.add_row_to_csv(excluded_path, skip_row)
             continue
+        elif exclusion_reason != "": # not an error, record down but don't not analyse the trajectory
+            skip_row = {
+                "ID": trial_results["traj_id"],
+                "X Values": trial_results["trajectory_x"],
+                "Y Values": trial_results["trajectory_y"],
+                "Correct": trial_results["is_correct"],
+                "Choice": trial_results["choice"],
+                "Trial Type": trial_results["trial_type"],
+                "Length": trial_results["traj_len"],
+                "Reason": exclusion_reason
+            }
+            file_manipulation.add_row_to_csv(excluded_path, skip_row)
         
         last_trajectory_x = trial_results["trajectory_x"] # update
         

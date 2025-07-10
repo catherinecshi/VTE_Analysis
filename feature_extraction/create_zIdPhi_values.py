@@ -57,29 +57,38 @@ for rat_dir in paths.vte_values.iterdir():
                     day_df = pd.concat([day_df, temp_df], ignore_index=True)
                     before_zscore_df = pd.concat([before_zscore_df, temp_df], ignore_index=True)
                 else:
-                    print(f"missing columns in {rat} on {day}")
+                    logger.error(f"missing columns in {rat} on {day}")
         
         # Store the day's data for later use
         if not day_df.empty:
             day_dataframes[day] = day_df
     
+    # exclude trajectories that are too long
+    valid_length_df = before_zscore_df[before_zscore_df["Length"] <= 4].copy()
+    excluded_length_df = before_zscore_df[before_zscore_df["Length"] > 4].copy()
+    
     # Z-score across all days grouped by choice
     try:
-        grouped_by_choice = before_zscore_df.groupby(by="Choice")
+        grouped_by_choice = valid_length_df.groupby(by="Choice")
     except Exception as e:
-        print(f"error with groupby for {rat} - {e}")
+        logger.error(f"error with groupby for {rat} - {e}")
         continue
     
     # Create z-scored dataframe for all days combined
-    zscored_df = pd.DataFrame()
+    zscored_valid_df = pd.DataFrame()
     for choice, choice_group in grouped_by_choice:
         if len(choice_group) > 1:
             zIdPhis = zscore(choice_group["IdPhi"])
             choice_group["zIdPhi"] = zIdPhis
-            zscored_df = pd.concat([zscored_df, choice_group], ignore_index=True)
+            zscored_valid_df = pd.concat([zscored_valid_df, choice_group], ignore_index=True)
         else:
-            print(f"Skipping choice {choice} for {rat} - insufficient samples ({len(choice_group)})")
+            logger.warning(f"Skipping choice {choice} for {rat} - insufficient samples ({len(choice_group)})")
             continue
+    
+    # for trajectories that are too long, assign a 0 zidphi
+    if not excluded_length_df.empty:
+        excluded_length_df["zIdPhi"] = 0
+    zscored_df = pd.concat([zscored_valid_df, excluded_length_df], ignore_index=True)
     
     # Save combined z-scored data for the rat
     df_path = os.path.join(rat_path, "zIdPhis.csv")

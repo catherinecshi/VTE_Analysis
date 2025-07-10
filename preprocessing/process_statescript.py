@@ -61,7 +61,7 @@ def get_session_performance(content: str) -> tuple[np.ndarray, np.ndarray, list[
     end_of_trial = False # checks if middle_numbers should be reset
     error_trial = None
     current_trial = None
-    last_line = len(lines) - 2 # this is for the last trial of a session bc no 'New Trial' to signal end of trial
+    last_line = len(lines) - 3 # this is for the last trial of a session bc no 'New Trial' to signal end of trial
     no_trials = 0 # count number of trials that has passed
     each_trial_perf = [] # store bools here
     
@@ -89,7 +89,7 @@ def get_session_performance(content: str) -> tuple[np.ndarray, np.ndarray, list[
             end_of_trial = True
         elif end_of_trial and "trialType" in line: # this excludes 'trialType' from summaries
             try: # there were some weird errors with pressing summary right after new trial has started
-                current_trial = int(line[-1]) - 1 # last char (line[-1]) is the trial type
+                current_trial = int(line.split()[-1]) - 1
                 
                 # had a weird instance of trialtype = 0, skipping that
                 # 0 = trialtype 1 bc minus 1 earlier
@@ -122,11 +122,10 @@ def get_session_performance(content: str) -> tuple[np.ndarray, np.ndarray, list[
             if current_trial is None: # so it doesn't add to all the trials
                 continue
             
-            if len(middle_numbers) > 4: # if a rat pees in one well it might come out to be 
-                # check if something dodgy is going on or if the rat peed
-                if middle_numbers - possible_middle_numbers: # there is a value inside middle_numbers that's not arm
-                    logger.info(f"{settings.CURRENT_RAT} peed on {settings.CURRENT_DAY} at {parts[0]}")
-                    middle_numbers = middle_numbers.intersection(possible_middle_numbers)
+            # check if something dodgy is going on or if the rat peed
+            if middle_numbers - possible_middle_numbers: # there is a value inside middle_numbers that's not arm
+                logger.info(f"{settings.CURRENT_RAT} peed on {settings.CURRENT_DAY} at {parts[0]}")
+                middle_numbers = middle_numbers.intersection(possible_middle_numbers)
             
             if len(middle_numbers) == 3:
                 error_trial = True
@@ -164,6 +163,21 @@ def get_session_performance(content: str) -> tuple[np.ndarray, np.ndarray, list[
             middle_numbers = set() # reset
             no_trials += 1
             settings.update_trial(str(no_trials))
+    
+    # do analysis for the last trial
+    if middle_numbers - possible_middle_numbers: # there is a value inside middle_numbers that's not arm
+        logger.info(f"{settings.CURRENT_RAT} peed on {settings.CURRENT_DAY} at {parts[0]}")
+        middle_numbers = middle_numbers.intersection(possible_middle_numbers)
+    
+    if len(middle_numbers) == 3:
+        error_trial = True
+    elif len(middle_numbers) == 4:
+        error_trial = False
+    elif len(middle_numbers) > 4:
+        # if it is still above 4, something's wrong, but focus on resetting the problem for now
+        error_trial = False
+        logger.warning(f"something weird - middle_numbers > 4 at {parts[0]}"
+                        f"happening for {settings.CURRENT_RAT} on {settings.CURRENT_DAY}")
     
     # removing the zeroes in the trial count arrays
     total_mask = total_trials != 0

@@ -9,12 +9,13 @@ from sklearn.linear_model import LogisticRegression
 from config.paths import paths
 from analysis import betasort_analysis
 from models import betasort
+from models import betasort_test
 from visualization import betasort_plots
 
-# pylint: disable=broad-exception-caught
+# pylint: disable=broad-exception-caught, consinder-using-enumerate
 
 def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff_evolution=True,
-                                  xi=None, tau=None, threshold=None):
+                                  xi=None, tau=None, threshold=None, test=False):
     """
     Comprehensive analysis function for Betasort model that:
     1. Finds optimal parameters (optionally using differential evolution)
@@ -63,17 +64,10 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
     all_models = {}
     global_U, global_L, global_R, global_N = {}, {}, {}, {}
     
-    # VTE data collection
-    pair_vte_data = []
-    
-    # Binomial analysis storage
-    session_results_binomial = {}
-    
-    # T-test analysis storage
-    session_results_regression = []
-    
-    # Match rates for performance calculation
-    all_match_rates = []
+    pair_vte_data = [] # VTE data collection
+    session_results_binomial = {} # Binomial analysis storage
+    session_results_regression = [] # T-test analysis storage
+    all_match_rates = [] # Match rates for performance calculation
     
     # Process each day separately
     for day, day_data in all_data_df.groupby('Day'):
@@ -88,6 +82,7 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         if 'VTE' in day_data.columns:
             vtes = day_data["VTE"].values
         else:
+            print(f"WHY ARE THERE NO VTES FOR {day} FOR {rat}")
             vtes = np.zeros_like(chosen_idx)  # Default to no VTEs if not provided
             
         # Handle optional ID column
@@ -101,7 +96,10 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
         
         # Initialize a model for this day
-        model = betasort.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
+        if test:
+            model = betasort_test.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
+        else:
+            model = betasort.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
         
         # Transfer state from previous days
         for stim_idx in range(n_stimuli):
@@ -123,6 +121,33 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         model_correct_rates = []
         rat_correct_rates = []
         
+        # pre update model predictions for trial types
+        adjacent_pairs = []
+        for i in range(n_stimuli - 1):
+            if i in present_stimuli and (i + 1) in present_stimuli:
+                adjacent_pairs.append ((i, i + 1))
+        
+        pre_update_model_data = {}
+        for pair in adjacent_pairs:
+            stim1, stim2 = pair
+            model_choices = []
+            for sim in range(n_simulations):
+                if test:
+                    model_choice = model.choose(stim1, stim2, False)
+                else:
+                    model_choice = model.choose([stim1, stim2])
+                model_choices.append(model_choice)
+            
+            # correct rates for the model
+            correct_rate = np.mean([1 if choice == stim1 else 0 for choice in model_choices])
+            pre_update_model_data[pair] = {
+                'model_correct_rate': correct_rate,
+                'pair_name' : f'{stim1}-{stim2}'
+            }
+            
+        # store real rat performance
+        actual_rat_data = {pair: {'rewards': [], 'choice': []} for pair in adjacent_pairs}
+        
         # Process trials for this day
         for t in range(len(chosen_idx)):
             chosen = chosen_idx[t]
@@ -131,10 +156,15 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
             vte = vtes[t]
             traj_num = traj_nums[t]
             
+            # store rat performance
+            current_pair = (min(chosen, unchosen), max(chosen, unchosen))
+            if current_pair in adjacent_pairs:
+                actual_rat_data[current_pair]['rewards'].append(reward)
+            
             # VTE Analysis: Get uncertainties before updates
             stim1_uncertainty = model.get_uncertainty_stimulus(min(chosen, unchosen))
             stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
-            pair_roc_uncertainty = model.get_uncertainty_relation_ROC(min(chosen, unchosen), max(chosen, unchosen))
+            pair_roc_uncertainty = model.get_uncertainty_ROC(min(chosen, unchosen), max(chosen, unchosen))
             
             # Store VTE data
             vte_occurred = 1 if vte else 0
@@ -156,7 +186,10 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
             model_choices = np.zeros(n_simulations)
             model_correct = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                model_choice = model.choose([chosen, unchosen])
+                if test:
+                    model_choice = model.choose(chosen, unchosen, vte)
+                else:
+                    model_choice = model.choose([chosen, unchosen])
                 model_choices[sim] = model_choice
                 # Correct = choosing the lower-valued stimulus (as per original code)
                 model_correct[sim] = 1 if model_choice == min(chosen, unchosen) else 0
@@ -174,6 +207,55 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         
         # Store the model for this day
         all_models[day] = model
+        
+        # post update storage of model predictions
+        post_update_model_data = {}
+        for pair in adjacent_pairs:
+            stim1, stim2 = pair
+            model_choices = []
+            for sim in range(n_simulations):
+                if test:
+                    model_choice = model.choose(stim1, stim2, False)
+                else:
+                    model_choice = model.choose([stim1, stim2])
+                model_choices.append(model_choice)
+            
+            # correct rate for model
+            correct_rate = np.mean([1 if choice == stim1 else 0 for choice in model_choices])
+            post_update_model_data[pair] = {
+                'model_correct_rate': correct_rate,
+                'pair_name': f"{stim1}-{stim2}"
+            }
+        
+        # centralize session analysis data
+        actual_performance = {}
+        for pair in adjacent_pairs:
+            if len(actual_rat_data[pair]['rewards']) > 0:
+                # Rat correct rate is percentage of rewards = 1
+                rat_correct_rate = np.mean(actual_rat_data[pair]['rewards'])
+                actual_performance[pair] = {
+                    'rat_correct_rate': rat_correct_rate,
+                    'n_trials': len(actual_rat_data[pair]['rewards']),
+                    'pair_name': f"{pair[0]}-{pair[1]}"
+                }
+            else:
+                actual_performance[pair] = {
+                    'rat_correct_rate': 0,
+                    'n_trials': 0,
+                    'pair_name': f"{pair[0]}-{pair[1]}"
+                }
+
+        adjacent_pair_data = {
+            'day': day,
+            'adjacent_pairs': adjacent_pairs,
+            'pre_update_model': pre_update_model_data,
+            'post_update_model': post_update_model_data,
+            'actual_rat_performance': actual_performance
+        }
+        
+        if 'adjacent_pair_analysis' not in results:
+            results['adjacent_pair_analysis'] = {}
+        results['adjacent_pair_analysis'][day] = adjacent_pair_data
         
         # Update global states for the next day
         for stim_idx in range(n_stimuli):
@@ -268,8 +350,157 @@ def plot_and_save(plot_func, output_path, filename_prefix, *args, **kwargs):
 data_path = paths.preprocessed_data_model
 save_path = paths.betasort_data
 
+
+# === AGGREGATE ADJACENT PAIR ANALYSIS ACROSS ALL RATS ===
+print("Aggregating adjacent pair analysis across all rats...")
+
+# Storage for all rats' data
+all_rats_adjacent_data = {}
+
+# Read back the saved data for each rat to get adjacent pair analysis
 for rat in os.listdir(data_path):
-    if "TH510" not in rat:
+    rat_results_path = os.path.join(save_path, rat, "results.csv")
+    if not os.path.exists(rat_results_path):
+        continue
+    
+    if "BP09" in rat:
+        print(rat)
+        continue
+        
+    # Load the rat's data and re-run analysis to get adjacent pair data
+    rat_path = os.path.join(data_path, rat)
+    for root, _, files in os.walk(rat_path):
+        for file in files:
+            if ".DS_Store" in file or "zIdPhi" in file or "all_days" not in file:
+                continue
+
+            file_path = os.path.join(root, file)
+            file_csv = pd.read_csv(file_path)
+            
+            try:
+                # Re-run analysis to get adjacent pair data
+                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, test=True)
+                
+                if 'adjacent_pair_analysis' in all_results:
+                    # Find the last day for this rat
+                    last_day = max(all_results['adjacent_pair_analysis'].keys())
+                    last_day_data = all_results['adjacent_pair_analysis'][last_day]
+                    
+                    all_rats_adjacent_data[rat] = {
+                        'last_day': last_day,
+                        'data': last_day_data
+                    }
+                    print(f"Collected adjacent pair data for {rat}, last day: {last_day}")
+                    
+            except Exception as e:
+                print(f"Error processing {rat}: {e}")
+                continue
+
+# === AGGREGATE PERFORMANCE ACROSS RATS ===
+# Find all unique pairs across all rats
+all_pairs = set()
+for rat_data in all_rats_adjacent_data.values():
+    all_pairs.update(rat_data['data']['adjacent_pairs'])
+
+# Convert to sorted list for consistent ordering
+all_pairs = sorted(list(all_pairs))
+pair_names = [f"{p[0]}-{p[1]}" for p in all_pairs]
+
+print(f"Found pairs across all rats: {pair_names}")
+
+# Initialize storage for averaged data
+aggregated_data = {
+    'pair_names': pair_names,
+    'rat_rates': [],
+    'pre_model_rates': [],
+    'post_model_rates': [],
+    'rat_counts': [],  # Number of rats that had data for each pair
+}
+
+# Calculate averages for each pair
+for pair in all_pairs:
+    rat_rates_for_pair = []
+    pre_model_rates_for_pair = []
+    post_model_rates_for_pair = []
+    
+    for rat, rat_info in all_rats_adjacent_data.items():
+        rat_data = rat_info['data']
+        
+        if pair in rat_data['adjacent_pairs']:
+            # Get rat performance
+            if pair in rat_data['actual_rat_performance']:
+                rat_rates_for_pair.append(rat_data['actual_rat_performance'][pair]['rat_correct_rate'])
+            
+            # Get pre-update model performance
+            if pair in rat_data['pre_update_model']:
+                pre_model_rates_for_pair.append(rat_data['pre_update_model'][pair]['model_correct_rate'])
+            
+            # Get post-update model performance
+            if pair in rat_data['post_update_model']:
+                post_model_rates_for_pair.append(rat_data['post_update_model'][pair]['model_correct_rate'])
+    
+    # Calculate averages
+    aggregated_data['rat_rates'].append(np.mean(rat_rates_for_pair) if rat_rates_for_pair else 0)
+    aggregated_data['pre_model_rates'].append(np.mean(pre_model_rates_for_pair) if pre_model_rates_for_pair else 0)
+    aggregated_data['post_model_rates'].append(np.mean(post_model_rates_for_pair) if post_model_rates_for_pair else 0)
+    aggregated_data['rat_counts'].append(len(rat_rates_for_pair))
+    
+    print(f"Pair {pair[0]}-{pair[1]}: {len(rat_rates_for_pair)} rats, "
+          f"Rat avg: {np.mean(rat_rates_for_pair):.3f}, "
+          f"Pre-model avg: {np.mean(pre_model_rates_for_pair):.3f}, "
+          f"Post-model avg: {np.mean(post_model_rates_for_pair):.3f}")
+
+# === SAVE AGGREGATED DATA ===
+aggregated_results_path = os.path.join(save_path, "aggregated_adjacent_pair_analysis.json")
+with open(aggregated_results_path, 'w') as f:
+    json.dump({
+        'pair_names': aggregated_data['pair_names'],
+        'rat_rates': aggregated_data['rat_rates'],
+        'pre_model_rates': aggregated_data['pre_model_rates'],
+        'post_model_rates': aggregated_data['post_model_rates'],
+        'rat_counts': aggregated_data['rat_counts'],
+        'rats_included': list(all_rats_adjacent_data.keys()),
+        'total_rats': len(all_rats_adjacent_data)
+    }, f, indent=2)
+
+print(f"Saved aggregated data to {aggregated_results_path}")
+
+# === GENERATE AGGREGATED PLOT ===
+aggregated_plots_dir = os.path.join(save_path, "aggregated_plots")
+os.makedirs(aggregated_plots_dir, exist_ok=True)
+
+# Create the aggregated comparison plot
+plot_and_save(
+    betasort_plots.plot_aggregated_adjacent_pair_comparison,
+    aggregated_plots_dir,
+    "all_rats_adjacent_pair_comparison",
+    aggregated_data['pair_names'],
+    aggregated_data['rat_rates'],
+    aggregated_data['pre_model_rates'],
+    aggregated_data['post_model_rates'],
+    aggregated_data['rat_counts'],
+    total_rats=len(all_rats_adjacent_data)
+)
+
+print("Generated aggregated adjacent pair comparison plot")
+
+# === GENERATE POST-MODEL VS RAT ONLY PLOT ===
+# Create the simplified comparison plot (post-model vs rat only)
+plot_and_save(
+    betasort_plots.plot_post_model_vs_rat_comparison,
+    aggregated_plots_dir,
+    "all_rats_post_model_vs_rat_comparison",
+    aggregated_data['pair_names'],
+    aggregated_data['rat_rates'],
+    aggregated_data['post_model_rates'],
+    aggregated_data['rat_counts'],
+    total_rats=len(all_rats_adjacent_data)
+)
+
+print("Generated post-model vs rat comparison plot")
+
+for rat in os.listdir(data_path):
+    if "BP09" in rat:
         continue
     
     rat_path = os.path.join(data_path, rat)
@@ -283,7 +514,7 @@ for rat in os.listdir(data_path):
             
             try:
                 # analyze the data sequentially
-                all_results = analyze_betasort_comprehensive(file_csv, rat)
+                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, test=True)
             except Exception as e:
                 print(rat, file_path)
                 print(e)
@@ -292,7 +523,7 @@ for rat in os.listdir(data_path):
             # check with transitive inference
             all_models = all_results["all_models"]
             final_day = max(all_models.keys())
-            ti_result = betasort_analysis.check_transitive_inference(all_models[final_day])
+            ti_result = betasort_analysis.check_transitive_inference(all_models[final_day], test=True)
             ti_result_serializable = {f"{k[0]},{k[1]}": v for k, v in ti_result.items()}
             ti_result_json = json.dumps(ti_result_serializable)
             
@@ -309,6 +540,8 @@ for rat in os.listdir(data_path):
                           "session_binomial_test": all_results["session_results_binomial"],
                           "TI_Result": ti_result_json
                           }
+            
+            print(results["best_performance"], results["rat"])
             results_df = pd.DataFrame([results])
             pair_vte_df = pd.DataFrame(all_results["pair_vte_df"])
             
@@ -325,6 +558,7 @@ for rat in os.listdir(data_path):
             with open(uncertainty_vte_path, 'w') as f:
                 json.dump(pair_results, f, indent=2)
             
+            """
             # Plot results for each day
             for day, model in all_models.items():
                 day_plots_dir = os.path.join(results_dir, f"day_{day}")
@@ -382,5 +616,27 @@ for rat in os.listdir(data_path):
                     all_models[day],
                     stimulus_labels=stimulus_labels
                 )
-            
+
+                day_pair_data = all_results['adjacent_pair_analysis'][day]
+                
+                # Prepare data for plotting
+                pairs = day_pair_data['adjacent_pairs']
+                pair_names = [f"{p[0]}-{p[1]}" for p in pairs]
+                
+                rat_rates = [day_pair_data['actual_rat_performance'][p]['rat_correct_rate'] for p in pairs]
+                pre_model_rates = [day_pair_data['pre_update_model'][p]['model_correct_rate'] for p in pairs]
+                post_model_rates = [day_pair_data['post_update_model'][p]['model_correct_rate'] for p in pairs]
+                
+                # Create comparison plot
+                plot_and_save(
+                    betasort_plots.plot_adjacent_pair_comparison,
+                    day_plots_dir,
+                    f"{rat}_day{day}_adjacent_pair_comparison",
+                    pair_names,
+                    rat_rates,
+                    pre_model_rates,
+                    post_model_rates,
+                    day=day
+                )
+                """
             

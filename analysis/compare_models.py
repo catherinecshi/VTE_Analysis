@@ -1496,7 +1496,7 @@ def run_comparison_with_existing_betasort(all_data_df, betasort_results, ti_data
     
     # Define alternative models to compare
     models_to_compare = [
-        ("RW-Generalization", rw_generalization.RWGeneralization, {"alpha": 0.1, "beta": 0.1, "generalization_factor": 0.5}),
+        ("RW-Generalization", rw_generalization.RWGeneralization, {"alpha": 0.1, "beta": 0.1}),
         ("Bayesian", bayesian_learner.BayesianLearner, {"prior_mean": 0.5, "prior_var": 1.0}),
         ("ValueTransfer", value_transfer.ValueTransferModel, {"alpha": 0.1, "transfer_rate": 0.3, "temp": 1.0}),
         ("TD-Lambda", temporal_difference_learning.TDLambdaModel, {"alpha": 0.1, "gamma": 0.9, "lambda_": 0.6, "temp": 1.0}),
@@ -1746,7 +1746,7 @@ def run_full_analysis():
     # Start timing
     start_time = time.time()
     
-    """
+    
     # Process each rat
     for rat in rats_to_analyze:
         print(f"\nProcessing rat: {rat}")
@@ -1807,7 +1807,7 @@ def run_full_analysis():
             print(f"Completed analysis for {rat} in {rat_elapsed_time:.2f} seconds")
         except Exception as e:
             print(f"Error analyzing {rat}: {e}")
-    """
+    
     
     # Combine results across rats
     print("\nAggregating results across all rats...")
@@ -1961,7 +1961,7 @@ def define_parameter_bounds():
         rw_generalization.RWGeneralization: {
             "alpha": (0.01, 0.5),          # Learning rate
             "beta": (0.01, 5.0),           # Temperature parameter
-            "generalization_factor": (0.0, 1.0)  # Generalization factor
+            #"generalization_factor": (0.0, 1.0)  # Generalization factor
         },
         
         bayesian_learner.BayesianLearner: {

@@ -336,9 +336,9 @@ def plot_positions_across_days(all_models, mode='detailed', stimulus_labels=None
             ax.axvline(x=boundary, color='k', linestyle=':', alpha=0.5)
         
         # Add day labels at the top
-        for i, day in enumerate(days):
-            ax.text(day_midpoints[i], 1.02, f"Day {day}", ha='center', va='bottom', 
-                   transform=ax.get_xaxis_transform())
+        #for i, day in enumerate(days):
+            #ax.text(day_midpoints[i], 1.02, f"Day {day}", ha='center', va='bottom', 
+                   #transform=ax.get_xaxis_transform())
         
         # Add labels and title
         ax.set_xlabel('Trial (continuous across days)', fontsize=12)
@@ -725,6 +725,56 @@ def plot_boundaries_history(model, stimulus_labels=None, save=None):
     else:
         plt.show()
 
+def plot_rewards_history(model, stimulus_labels=None, save=None):
+    """
+    plots thei hsitory of the upper and lower parameters
+    
+    Parameters:
+        - model : Betasort
+        - stimulus_labels : list, optional
+            - labels of stimuli to plot, defaults to all
+    """
+    if stimulus_labels is None:
+        stimulus_labels = [f"Stimulus {i}" for i in range(model.n_stimuli)]
+    
+    # plot
+    fig, ax = plt.subplots(figsize=(15, 10))
+    
+    # number of trials
+    n_trials = len(model.R_history)
+    trials = range(n_trials)
+    
+    for i, label in enumerate(stimulus_labels):
+        ax.plot(trials, [r[i] for r in model.R_history],
+                label=f"R - {label}", linestyle="-")
+        ax.plot(trials, [n[i] for n in model.N_history],
+                label=f"N - {label}", linestyle="--")
+
+        # add final values annotation
+        final_R = model.R_history[-1][i]
+        final_N = model.N_history[-1][i]
+        ax.annotate(f"R{i} = {final_R:.2f}", 
+                    xy=(n_trials-1, final_R), xytext=(n_trials-10, final_R*1.05),
+                    arrowprops=dict(arrowstyle="->"))
+        ax.annotate(f"N{i} = {final_N:.2f}", 
+                    xy=(n_trials-1, final_N), xytext=(n_trials-10, final_N*0.95),
+                    arrowprops=dict(arrowstyle="->"))
+    
+    # labels
+    ax.set_xlabel("Trial")
+    ax.set_ylabel("Parameter Value")
+    ax.set_title("History of R and N Parameters")
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save)
+        plt.close()
+    else:
+        plt.show()
+
 def plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=None, figsize=(12, 8), 
                                     show_markers=False, save=None):
     """
@@ -762,7 +812,6 @@ def plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=No
         pair_labels = [f"Pair {i}-{i+1}" for i in range(max_pairs)]
     
     # Create a colormap to use different colors for each pair
-    import matplotlib.cm as cm
     colors = cm.tab10(np.linspace(0, 1, max_pairs))
     
     if mode == 'summary':
@@ -1274,4 +1323,170 @@ def plot_vte_uncertainty(pair_vte_df, results, save=None):
         plt.close()
     else:
         plt.show()
+
+def plot_adjacent_pair_comparison(pair_names, rat_rates, pre_model_rates, post_model_rates, day=None, save=None):
+    """
+    Plot comparison of rat performance vs model performance (pre and post update) for adjacent pairs
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    x = np.arange(len(pair_names))
+    width = 0.25
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    bars1 = ax.bar(x - width, rat_rates, width, label='Actual Rat Performance', color='blue', alpha=0.7)
+    bars2 = ax.bar(x, pre_model_rates, width, label='Pre-Update Model', color='orange', alpha=0.7)
+    bars3 = ax.bar(x + width, post_model_rates, width, label='Post-Update Model', color='green', alpha=0.7)
+    
+    ax.set_xlabel('Adjacent Stimulus Pairs')
+    ax.set_ylabel('Correct Choice Rate')
+    ax.set_title(f'Adjacent Pair Performance Comparison - Day {day}' if day else 'Adjacent Pair Performance Comparison')
+    ax.set_xticks(x)
+    ax.set_xticklabels(pair_names)
+    ax.legend()
+    ax.set_ylim(0, 1)
+    
+    # Add value labels on bars
+    def add_value_labels(bars):
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:.3f}',
+                       xy=(bar.get_x() + bar.get_width() / 2, height),
+                       xytext=(0, 3),  # 3 points vertical offset
+                       textcoords="offset points",
+                       ha='center', va='bottom', fontsize=8)
+    
+    add_value_labels(bars1)
+    add_value_labels(bars2)
+    add_value_labels(bars3)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+    
+    return fig
+
+def plot_aggregated_adjacent_pair_comparison(pair_names, rat_rates, pre_model_rates, post_model_rates, rat_counts, total_rats=None, save=None):
+    """
+    Plot aggregated comparison of rat performance vs model performance across all rats
+    """
+    
+    x = np.arange(len(pair_names))
+    width = 0.25
+    
+    fig, ax = plt.subplots(figsize=(14, 8))
+    
+    bars1 = ax.bar(x - width, rat_rates, width, label='Average Rat Performance', color='blue', alpha=0.7)
+    bars2 = ax.bar(x, pre_model_rates, width, label='Average Pre-Update Model', color='orange', alpha=0.7)
+    bars3 = ax.bar(x + width, post_model_rates, width, label='Average Post-Update Model', color='green', alpha=0.7)
+    
+    ax.set_xlabel('Adjacent Stimulus Pairs', fontsize=12)
+    ax.set_ylabel('Correct Choice Rate', fontsize=12)
+    title = f'Adjacent Pair Performance Comparison - Averaged Across All Rats (n={total_rats})' if total_rats else 'Adjacent Pair Performance Comparison - Averaged Across All Rats'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(pair_names)
+    ax.legend(fontsize=11)
+    ax.set_ylim(0, 1)
+    
+    # Add value labels on bars
+    def add_value_labels(bars, values):
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.annotate(f'{value:.3f}',
+                       xy=(bar.get_x() + bar.get_width() / 2, height),
+                       xytext=(0, 3),  # 3 points vertical offset
+                       textcoords="offset points",
+                       ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    add_value_labels(bars1, rat_rates)
+    add_value_labels(bars2, pre_model_rates)
+    add_value_labels(bars3, post_model_rates)
+    
+    # Add sample size information
+    for i, (x_pos, count) in enumerate(zip(x, rat_counts)):
+        ax.text(x_pos, -0.08, f'n={count}', ha='center', va='top', 
+                transform=ax.get_xaxis_transform(), fontsize=9, style='italic')
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.set_axisbelow(True)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved aggregated plot to {save}")
+    else:
+        plt.show()
+    
+    return fig
+
+def plot_post_model_vs_rat_comparison(pair_names, rat_rates, post_model_rates, rat_counts, total_rats=None, save=None):
+    """
+    Plot comparison of rat performance vs post-update model performance only
+    """
+    
+    x = np.arange(len(pair_names))
+    width = 0.35  # Wider bars since we only have two categories
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    bars1 = ax.bar(x - width/2, rat_rates, width, label='Rat Performance', color='blue', alpha=0.7)
+    bars2 = ax.bar(x + width/2, post_model_rates, width, label='Model Performance', color='green', alpha=0.7)
+    
+    ax.set_xlabel('Adjacent Stimulus Pairs', fontsize=12)
+    ax.set_ylabel('Correct Choice Rate', fontsize=12)
+    title = f'Rat vs Model Performance - Averaged Across All Rats (n={total_rats})' if total_rats else 'Rat vs Model Performance - Averaged Across All Rats'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(pair_names)
+    ax.legend(fontsize=11)
+    ax.set_ylim(0, 1)
+    
+    # Add value labels on bars
+    def add_value_labels(bars, values):
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.annotate(f'{value:.3f}',
+                       xy=(bar.get_x() + bar.get_width() / 2, height),
+                       xytext=(0, 3),  # 3 points vertical offset
+                       textcoords="offset points",
+                       ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    add_value_labels(bars1, rat_rates)
+    add_value_labels(bars2, post_model_rates)
+    
+    # Add sample size information
+    for i, (x_pos, count) in enumerate(zip(x, rat_counts)):
+        ax.text(x_pos, -0.08, f'n={count}', ha='center', va='top', 
+                transform=ax.get_xaxis_transform(), fontsize=9, style='italic')
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.set_axisbelow(True)
+    
+    # Add correlation information as text
+    correlation = np.corrcoef(rat_rates, post_model_rates)[0, 1]
+    ax.text(0.02, 0.98, f'Correlation: r = {correlation:.3f}', 
+            transform=ax.transAxes, fontsize=11, fontweight='bold',
+            verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved post-model vs rat comparison plot to {save}")
+    else:
+        plt.show()
+    
+    return fig
     

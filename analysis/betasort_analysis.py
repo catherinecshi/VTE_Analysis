@@ -81,7 +81,10 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
             # run multiple simulations to get choice probability
             model_choices = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                model_choice = model.choose([chosen_idx, other_idx])
+                if test:
+                    model_choice = model.choose(chosen_idx, other_idx, vte=vtes[index])
+                #else:
+                    #model_choice = model.choose([chosen_idx, other_idx])
                 model_choices[sim] = model_choice
             
             # see how well the model matches up with real choices
@@ -91,9 +94,9 @@ def compare_model_to_one_rat(all_data_df, rat, n_simulations=100, tau=0.01, xi=0
             # update model based on actual feedback
             reward = 1 if chosen_idx < other_idx else 0
             try:
-                model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold, vte=vtes[index])
+                model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
             except KeyError:
-                model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold, vte=False)
+                #model.update(chosen_idx, other_idx, reward, model_match_rate, threshold=threshold)
                 print(f"couldn't find vtes for trial {t} with list {vtes}")
             
             #print(t, chosen_idx, reward)
@@ -380,7 +383,7 @@ def diff_evolution(all_data, rat, verbose=True, max_iter=100, popsize=25):
     
     return best_xi, best_tau, best_threshold, best_performance
 
-def check_transitive_inference(model, n_simulations=100):
+def check_transitive_inference(model, test=False, n_simulations=100):
     """
     check over all decision probabilities for each possible choice in testing phase
     to be compared with real choices from rats
@@ -396,18 +399,24 @@ def check_transitive_inference(model, n_simulations=100):
         - chosen_idx, other_idx : % of getting it correct
     """
     
-    # check its probabiltiies on what it would choose in transitive inference choices
+    # check its probabilities on what it would choose in transitive inference choices
     results = {}
     
-    for chosen_idx in range(0, 4): # max out at 3
-        for other_idx in range(chosen_idx + 1, 5):
-            # skip same element
+    # Get the number of stimuli from the model (adaptive to model size)
+    n_stimuli = model.n_stimuli
+    
+    for chosen_idx in range(0, n_stimuli): 
+        for other_idx in range(chosen_idx + 1, n_stimuli):
+            # skip same element (though this shouldn't happen with the range)
             if chosen_idx == other_idx:
                 continue
             
             model_choices = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                model_choice = model.choose([chosen_idx, other_idx])
+                if test:
+                    model_choice = model.choose(chosen_idx, other_idx, vte=False)
+                else:
+                    model_choice = model.choose([chosen_idx, other_idx])
                 model_choices[sim] = model_choice
             
             # see how well the model matches up with real choices
@@ -552,8 +561,7 @@ def analyze_correlations(pair_vte_df):
     # Overall correlations (across all pairs)
     uncertainty_measures = [
         'stim1_uncertainty', 
-        'stim2_uncertainty', 
-        'pair_relational_uncertainty', 
+        'stim2_uncertainty',
         'pair_roc_uncertainty'
     ]
     

@@ -889,7 +889,7 @@ def load_specific_files(data_structure: Dict, rat: str, day: str) -> tuple[pd.Da
     timestamps = data_structure[rat][day][settings.TIMESTAMPS]
     trial_starts = time_utils.get_video_trial_starts(timestamps, SS_log)
     
-    dlc_path = Path(paths.cleaned_dlc) / rat
+    dlc_path = paths.cleaned_dlc / rat
     file_path = None
     
     # This assumes files are directly in the dlc_path directory

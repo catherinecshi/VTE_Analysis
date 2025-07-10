@@ -389,9 +389,9 @@ if __name__ == "__main__":
     # if getting stuff from the main folders
     included_patterns = remote.included_patterns
     main(include_patterns=included_patterns) # for retrieving data where there is one in each day folder
-    BP07(included_patterns)
+    #BP07(included_patterns)
     
     # if getting dlc stuff from one folder
-    dlc()
-    copy_timestamps()
-    copy_statescripts()
+    #dlc()
+    #copy_timestamps()
+    #copy_statescripts()

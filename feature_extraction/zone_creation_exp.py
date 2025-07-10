@@ -29,26 +29,23 @@ Procedure:
 
 """
 
-import logging
 import alphashape
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 from scipy.spatial.qhull import ConvexHull
 from matplotlib.patches import Polygon as mPolygon
 from shapely.geometry import Polygon as sPolygon
 from shapely.geometry import Point
-from datetime import datetime
+
+from config import settings
+from config.paths import paths
+from utilities import logging_utils
+from debugging import error_types
 
 ### LOGGING
-logger = logging.getLogger() # creating logging object
-logger.setLevel(logging.DEBUG) # setting threshold to DEBUG
-
-# makes a new log everytime the code runs by checking the time
-log_file = datetime.now().strftime("/Users/catpillow/Documents/VTE_Analysis/doc/creating_zones_log_%Y%m%d_%H%M%S.txt")
-handler = logging.FileHandler(log_file)
-handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
-logger.addHandler(handler)
+logger = logging_utils.setup_script_logger()
 
 ### PYLINT
 # pylint: disable=no-name-in-module, consider-using-enumerate
@@ -109,7 +106,7 @@ def create_lines(x_coords, y_coords, save=None):
     
     return lines
 
-def calculate_line_coverages(x, y, lines, num_segments=15, threshold=10, save=None):
+def calculate_line_coverages(x, y, lines, num_segments=15, threshold=20, save=None):
     """
     calculates how well each line is covered by points based on how many line segments have points in its vicinity
 
@@ -665,7 +662,7 @@ def plot_lines(x, y, lines, title=None, save=None):
     _, ax = plt.subplots()
     
     # plot data points
-    ax.scatter(x, y, label = "Data Points", color="red")
+    ax.scatter(x, y, label = "Data Points", color="blue")
     
     # get range
     x_min, x_max, y_min, y_max = calculate_range(x, y)
@@ -677,11 +674,11 @@ def plot_lines(x, y, lines, title=None, save=None):
                 x_vals = np.array([x_min, x_max])
                 y_vals = slope * x_vals + b
 
-                ax.plot(x_vals, y_vals, "g--", linewidth=0.5, alpha=0.5)
+                ax.plot(x_vals, y_vals, "r--", linewidth=0.5, alpha=0.5)
             else: # horizontal lines
-                ax.axhline(y=b, color="g", linestyle="--", linewidth=0.5)
+                ax.axhline(y=b, color="r", linestyle="--", linewidth=0.5)
         else: # vertical lines
-            ax.axvline(x=b, color="g", linestyle="--", linewidth=0.5)
+            ax.axvline(x=b, color="r", linestyle="--", linewidth=0.5)
     
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
@@ -785,3 +782,45 @@ def plot_hull_with_intx_points(x, y, intersection_points, densest_cluster_points
         plt.close()
     else:
         plt.show()
+
+if __name__ == "__main__":
+    for rat in paths.cleaned_dlc.iterdir():
+        if "TH405" not in rat.name:
+            continue
+        
+        settings.update_rat(rat.name)
+        rat_path = paths.cleaned_dlc / rat.name
+        for coordinates in rat_path.iterdir():
+            if "coordinates" not in coordinates.name:
+                continue
+            
+            day = coordinates.name.split("_")[0]
+            if "Day1" != day:
+                continue
+            settings.update_day(day)
+            
+            try:
+                df = pd.read_csv(coordinates)
+            except FileNotFoundError:
+                logger.error(f"cannot find dlc file path for {rat} on {day}")
+                raise error_types.UnexpectedNoneError("load_specific_files", "file_path")
+            
+            x = df["x"]
+            y = df["y"]
+            save_path = paths.zone_creation / rat.name / day
+            save_path.mkdir(parents=True, exist_ok=True)
+            lines_save_path = save_path / "lines.jpg"
+            lines = create_lines(x, y, save=lines_save_path) # step 1a
+            
+            segments_save_path = save_path / "coverage.jpg"
+            coverage_scores, starts, ends = calculate_line_coverages(x, y, lines, save=segments_save_path) # 2
+            
+            new_lines, new_starts, new_ends = make_new_lines(lines, coverage_scores, starts, ends, threshold=8) # 3
+            print(new_lines, new_starts, new_ends)
+            
+            intersections = find_intersections(new_lines, new_starts, new_ends) # 4
+            print(intersections)
+            
+            convex_hull, cluster_points = make_convex_hull_experimental(intersections) # 5
+            hull_save_path = save_path / "convex_hull.jpg"
+            plot_hull_with_intx_points(x, y, intersections, cluster_points, convex_hull, save=hull_save_path)

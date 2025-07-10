@@ -474,7 +474,7 @@ def main():
         # Plot the results with statistical markers
         plot_model_match_rates(model_stats, rat_level_df, combined_df, stat_results)
         
-        print(f"\nAnalysis complete! Results saved to {base_paht}")
+        print(f"\nAnalysis complete! Results saved to {base_path}")
         
     except Exception as e:
         print(f"Error: {e}")

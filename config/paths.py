@@ -37,6 +37,7 @@ class ProjectPaths:
         self.vte_values = self.processed / "VTE_values"
         self.manual_vte = self.processed / "manual_VTE"
         self.hull_data = self.processed / "hull_data"
+        self.zone_creation = self.processed / "zone_creation"
         self.vertice_data = self.processed / "VTE_data"
         self.standard_trajectories = self.processed / "standard_trajectories"
         

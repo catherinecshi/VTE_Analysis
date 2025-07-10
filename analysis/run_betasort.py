@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 from config.paths import paths
 from analysis import betasort_analysis
-from models import betasort_test
 from visualization import betasort_plots
 
 def save_plot(fig, output_dir, filename, dpi=300, close_fig=True):
@@ -56,8 +55,8 @@ data_path = paths.preprocessed_data_model
 save_path = paths.betasort_data
 
 for rat in os.listdir(data_path):
-    if rat != "TH510":
-        continue
+    #if rat != "TH510":
+        #continue
     
     rat_path = os.path.join(data_path, rat)
     for root, _, files in os.walk(rat_path):
@@ -81,9 +80,10 @@ for rat in os.listdir(data_path):
             fig, ax = betasort_plots.plot_ROC_uncertainty_across_days(all_models, mode='detailed', pair_labels=pair_labels, figsize=(12, 8), show_markers=False)
             
             print(match_rates)
-            results = betasort_analysis.check_transitive_inference(model)
+            results = betasort_analysis.check_transitive_inference(model, test=True)
             print(results)
             
+            """
             # check positions over all days
             betasort_plots.plot_positions_across_days(all_models)
             betasort_plots.plot_uncertainty_across_days(all_models)
@@ -97,4 +97,5 @@ for rat in os.listdir(data_path):
             betasort_plots.plot_positions(model)
             betasort_plots.plot_beta_distributions(model)
             betasort_plots.plot_boundaries_history(model)
-            
+            betasort_plots.plot_rewards_history(model)
+            """

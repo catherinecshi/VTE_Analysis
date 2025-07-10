@@ -104,43 +104,46 @@ def make_hull(x_coords, y_coords, hull_points, reused=False):
     return convex_hull
 
 # get all the scatter plots of every rat for each day
-dlc_path = paths.dlc_data
-hull_path = paths.hull_data
+dlc_path = paths.cleaned_dlc / "inferenceTesting"
+hull_path = paths.hull_data / "inferenceTesting"
 
-for rat in os.listdir(dlc_path):
-    if ".DS_Store" in rat:
-        continue
+#for rat in os.listdir(dlc_path):
+    #if ".DS_Store" in rat:
+       # continue
 
-    rat_path = os.path.join(dlc_path, rat)
-    reused_hull = None # reset
-    for root, _, files in os.walk(rat_path):
-        for f in files:
-            if not "coordinates" in f:
-                continue
-            
-            file_path = os.path.join(root, f)
-            parts = f.split("_")
-            day = parts[0]
-            settings.update_day(day)
-            
-            df = pd.read_csv(file_path)
-            x = df["x"]
-            y = df["y"]
-            
-            if x.empty or y.empty:
-                print(f"x or y is empty for {rat} on {day}")
-                continue
-            
-            # reuse hull if it fits
-            hull = None
-            if reused_hull is not None:
-                hull = make_hull(x, y, reused_hull, reused=True)
-            
-            current_hull_path = os.path.join(hull_path, f"{rat}_{day}_hull.npy")
-            if hull is None:
-                points = click_on_map(x, y)
-                hull = make_hull(x, y, points)
-                reused_hull = points[hull.vertices]
-                np.save(current_hull_path, points[hull.vertices])
-            else:
-                np.save(current_hull_path, reused_hull)
+    #rat_path = os.path.join(dlc_path, rat)
+reused_hull = None # reset
+for root, _, files in os.walk(dlc_path):
+    for f in files:
+        if not "coordinates" in f:
+            continue
+        
+        file_path = os.path.join(root, f)
+        parts = f.split("_")
+        rat = parts[0]
+        #day = parts[0]
+        #settings.update_day(day)
+        
+        df = pd.read_csv(file_path)
+        x = df["x"]
+        y = df["y"]
+        
+        if x.empty or y.empty:
+            #print(f"x or y is empty for {rat} on {day}")
+            print(f"x or y is empty for {f}")
+            continue
+        
+        # reuse hull if it fits
+        hull = None
+        if reused_hull is not None:
+            hull = make_hull(x, y, reused_hull, reused=True)
+        
+        #current_hull_path = os.path.join(hull_path, f"{rat}_{day}_hull.npy")
+        current_hull_path = os.path.join(hull_path, f"{rat}_hull_test.npy")
+        if hull is None:
+            points = click_on_map(x, y)
+            hull = make_hull(x, y, points)
+            reused_hull = points[hull.vertices]
+            np.save(current_hull_path, points[hull.vertices])
+        else:
+            np.save(current_hull_path, reused_hull)
