@@ -85,11 +85,11 @@ class Betasort:
                 - array of the two presented stimuli
                 - the int corresponds to index in overall list of stimuli
         """
-        if vte:
-            noise = self.tau
-        else:
-            noise = 1
-        
+        #if vte:
+            #noise = self.tau
+        #else:
+            #noise = 1
+        noise = 1
         uncertainty = self.get_uncertainty_ROC(chosen, unchosen)
         #chosen_reward_hist = self.R[chosen] / (self.R[chosen] + self.N[chosen])
         #unchosen_reward_hist = self.R[unchosen] / (self.R[unchosen] + self.N[unchosen])

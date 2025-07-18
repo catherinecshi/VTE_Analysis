@@ -189,6 +189,54 @@ def get_rat_adjacent_pair_performance(all_data_df):
     
     return results
 
+def plot_adjacent_pair_differences(trial_type_labels, test_minus_rat, regular_minus_rat, save_path=None):
+    """Create bar plot showing differences between models and rat performance (matching TI plot format)"""
+    plt.figure(figsize=(15, 8))
+    x_pos = np.arange(len(trial_type_labels))
+    width = 0.35
+    
+    bars1 = plt.bar(x_pos - width/2, test_minus_rat, width, label='Uncertainty Model', color='steelblue')
+    bars2 = plt.bar(x_pos + width/2, regular_minus_rat, width, label='Regular Model', color='forestgreen')
+    
+    # Add horizontal line at y=0 to show no difference
+    plt.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=1)
+    
+    plt.xlabel('Trial Types', fontsize=20)
+    plt.ylabel('Performance Difference', fontsize=20)
+    plt.title('Model Performance Differences before Testing Compared to Rats', fontsize=24)
+    plt.xticks(x_pos, trial_type_labels, rotation=45 if len(trial_type_labels) > 8 else 0, fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.legend(loc='upper right', fontsize=16)
+    plt.grid(True, alpha=0.3)
+    
+    # Set y-limits to accommodate all values with some padding
+    all_values = list(test_minus_rat) + list(regular_minus_rat)
+    y_min = min(all_values) - 0.05
+    y_max = max(all_values) + 0.05
+    plt.ylim(y_min, y_max)
+    
+    # Add value labels on bars
+    for i, (test_rat_diff, regular_rat_diff) in enumerate(zip(test_minus_rat, regular_minus_rat)):
+        # Adjust label position based on whether value is positive or negative
+        test_rat_offset = 0.01 if test_rat_diff >= 0 else -0.02
+        regular_rat_offset = 0.01 if regular_rat_diff >= 0 else -0.02
+        
+        va_test_rat = 'bottom' if test_rat_diff >= 0 else 'top'
+        va_regular_rat = 'bottom' if regular_rat_diff >= 0 else 'top'
+        
+        plt.text(i - width/2, test_rat_diff + test_rat_offset, f'{test_rat_diff:.3f}', 
+                ha='center', va=va_test_rat, fontsize=10)
+        plt.text(i + width/2, regular_rat_diff + regular_rat_offset, f'{regular_rat_diff:.3f}', 
+                ha='center', va=va_regular_rat, fontsize=10)
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Difference plot saved to {save_path}")
+    
+    plt.show()
+
 def plot_adjacent_pair_comparison(trial_type_labels, model_test_averages, model_regular_averages, rat_averages, save_path=None):
     """Create bar plot comparing both models vs rat performance (matching TI plot format)"""
     plt.figure(figsize=(15, 8))
@@ -368,6 +416,14 @@ def main():
     # Create comparison plot
     save_path = os.path.join(output_dir, "adjacent_pair_both_models_vs_rat_comparison.png")
     plot_adjacent_pair_comparison(trial_type_labels, model_test_averages, model_regular_averages, rat_averages, save_path)
+    
+    # create differences plot
+    test_minus_rat_diff = np.array(model_test_averages) - np.array(rat_averages)
+    regular_minus_rat_diff = np.array(model_regular_averages) - np.array(rat_averages)
+    
+    diff_save_path = os.path.join(output_dir, "model_differences.png")
+    plot_adjacent_pair_differences(trial_type_labels, test_minus_rat_diff, regular_minus_rat_diff, diff_save_path)
+    
     
     # Save detailed results
     results_df = pd.DataFrame({

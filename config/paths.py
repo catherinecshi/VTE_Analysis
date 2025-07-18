@@ -31,6 +31,7 @@ class ProjectPaths:
         
         # processed data directories
         self.processed = self.base / "processed_data"
+        self.central = self.processed / "centralized_data"
         self.performance = self.processed / "performance"
         self.dlc_data = self.processed / "dlc_data"
         self.cleaned_dlc = self.processed / "cleaned_dlc"
