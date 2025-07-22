@@ -41,7 +41,7 @@ def create_test_data_structure():
         logger.info(f"loading test data for {rat}")
         
         # Load statescript and timestamps from Day1 (since test data is Day1)
-        day_folder = rat_dir / remote.module / "Day1"
+        day_folder = rat_dir / "inferenceTesting" / "Day1"
         if not day_folder.exists():
             logger.warning(f"no Day1 folder found for {rat}")
             continue
@@ -50,8 +50,12 @@ def create_test_data_structure():
             # Load statescript
             ss_files = list(day_folder.glob("*stateScriptLog*"))
             if not ss_files:
-                logger.warning(f"no statescript found for {rat}")
-                continue
+                # Check what files are actually there
+                all_files = list(day_folder.glob("*"))
+                print(f"All files in {day_folder}: {[f.name for f in all_files]}")
+                # Check for files with similar names
+                similar_files = [f for f in all_files if 'state' in f.name.lower()]
+                print(f"Files containing 'state': {[f.name for f in similar_files]}")
             ss_log = data_processing.process_statescript_log(ss_files[0])
             
             # Load timestamps
@@ -105,8 +109,8 @@ data_structure = create_test_data_structure()
 for rat in data_structure.keys():
     settings.update_rat(rat)
     logger.info(f"creating IdPhi Values for {rat}")
-    if not "BP06" in rat:
-        continue
+    #if not "TH510" in rat:
+       # continue
     
     # For test data, we only have Day1
     day = "Day1"

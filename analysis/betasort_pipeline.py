@@ -499,6 +499,9 @@ plot_and_save(
 
 print("Generated post-model vs rat comparison plot")
 
+# --- AGGREGATE TRANSITIVE INFERENCE REAL RESULTS ACROSS RATS ---
+all_rats_ti_real = {}
+
 for rat in os.listdir(data_path):
     if "BP09" in rat:
         continue
@@ -526,6 +529,12 @@ for rat in os.listdir(data_path):
             ti_result = betasort_analysis.check_transitive_inference(all_models[final_day], test=True)
             ti_result_serializable = {f"{k[0]},{k[1]}": v for k, v in ti_result.items()}
             ti_result_json = json.dumps(ti_result_serializable)
+            
+            # check with real transitive inference
+            real_ti_data_path = os.path.join(data_path, "inferenceTesting", f"{rat}.csv")
+            real_ti_data = pd.read_csv(real_ti_data_path)
+            ti_result_real = betasort_analysis.check_transitive_inference_real(all_models[final_day], real_ti_data, test=True)
+            
             
             # check uncertainty vs vte correspondence
             pair_results = betasort_analysis.analyze_correlations(all_results["pair_vte_df"])
@@ -557,6 +566,9 @@ for rat in os.listdir(data_path):
             uncertainty_vte_path = os.path.join(save_path, rat, "uncertainty_vte.json")
             with open(uncertainty_vte_path, 'w') as f:
                 json.dump(pair_results, f, indent=2)
+            
+            # Store ti_result_real for this rat
+            all_rats_ti_real[rat] = ti_result_real
             
             """
             # Plot results for each day
@@ -639,4 +651,70 @@ for rat in os.listdir(data_path):
                     day=day
                 )
                 """
+            
+# Aggregate by trial type
+from collections import defaultdict
+import matplotlib.pyplot as plt
+
+type_to_model = defaultdict(list)
+type_to_rat = defaultdict(list)
+type_to_n = defaultdict(list)
+
+for rat, ti_dict in all_rats_ti_real.items():
+    for pair, (model_pct, rat_pct, n) in ti_dict.items():
+        type_to_model[pair].append(model_pct)
+        type_to_rat[pair].append(rat_pct)
+        type_to_n[pair].append(n)
+
+# Prepare data for plotting
+trial_types = sorted(type_to_model.keys())
+model_means = [np.mean(type_to_model[pair]) for pair in trial_types]
+rat_means = [np.mean(type_to_rat[pair]) for pair in trial_types]
+model_sems = [np.std(type_to_model[pair], ddof=1)/np.sqrt(len(type_to_model[pair])) for pair in trial_types]
+rat_sems = [np.std(type_to_rat[pair], ddof=1)/np.sqrt(len(type_to_rat[pair])) for pair in trial_types]
+labels = [f"{pair[0]}-{pair[1]}" for pair in trial_types]
+
+# Save aggregated data as CSV
+agg_df = pd.DataFrame({
+    'trial_type': labels,
+    'model_mean': model_means,
+    'model_sem': model_sems,
+    'rat_mean': rat_means,
+    'rat_sem': rat_sems,
+    'n_rats': [len(type_to_model[pair]) for pair in trial_types]
+})
+agg_csv_path = os.path.join(save_path, 'aggregated_ti_real_results.csv')
+agg_df.to_csv(agg_csv_path, index=False)
+print(f"Saved aggregated TI real results to {agg_csv_path}")
+
+# Plot
+x = np.arange(len(labels))
+width = 0.35
+fig, ax = plt.subplots(figsize=(14, 7))
+rects1 = ax.bar(x - width/2, rat_means, width, yerr=rat_sems, label='Rat', color='blue', alpha=0.7, capsize=5)
+rects2 = ax.bar(x + width/2, model_means, width, yerr=model_sems, label='Model', color='green', alpha=0.7, capsize=5)
+
+ax.set_xlabel('Trial Type', fontsize=14)
+ax.set_ylabel('Percent Correct', fontsize=14)
+ax.set_title('Transitive Inference: Model vs Rat (Averaged Across Rats)', fontsize=16)
+ax.set_xticks(x)
+ax.set_xticklabels(labels, fontsize=12)
+ax.legend(fontsize=12)
+ax.set_ylim(0, 1.05)
+
+# Add value labels
+for rects, means in zip([rects1, rects2], [rat_means, model_means]):
+    for rect, mean in zip(rects, means):
+        height = rect.get_height()
+        ax.annotate(f'{mean:.2f}',
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=10)
+
+plt.tight_layout()
+plot_path = os.path.join(save_path, 'aggregated_ti_real_plot.png')
+plt.savefig(plot_path, dpi=300)
+plt.close()
+print(f"Saved aggregated TI real plot to {plot_path}")
             
