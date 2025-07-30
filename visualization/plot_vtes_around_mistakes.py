@@ -71,6 +71,9 @@ for rat in os.listdir(base_path):
 
 all_trial_to_vtes = {} # {rat:{day:{trial # : % vte}}}
 for rat in os.listdir(base_path):
+    if rat == "inferenceTesting":
+        continue
+    
     rat_path = os.path.join(base_path, rat)
     for root, _, files in os.walk(rat_path):
         for file in files:
@@ -85,6 +88,7 @@ for rat in os.listdir(base_path):
             VTE_threshold = mean_zIdPhi + (std_zIdPhi * 1.5)
             
             # go through each day independently
+            print(rat)
             grouped_by_day = zIdPhi_csv.groupby("Day")
             for day, group in grouped_by_day:
                 trues = {}

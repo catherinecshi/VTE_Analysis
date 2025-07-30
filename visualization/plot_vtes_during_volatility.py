@@ -23,13 +23,13 @@ days_since_new_arm = days_since_new_arm.astype({"rat": "str", "day": "int", "arm
 vtes_during_volatility = []
 vte_path = paths.vte_values
 for rat in os.listdir(vte_path):
-    if ".DS" in rat:
+    if ".DS" in rat or "inferenceTesting" in rat:
         continue
 
     rat_path = os.path.join(vte_path, rat)
     for root, _, files in os.walk(rat_path):
         for f in files:
-            if "zIdPhi" not in f:
+            if "zIdPhi.csv" not in f:
                 continue
             
             file_path = os.path.join(root, f)
@@ -37,6 +37,8 @@ for rat in os.listdir(vte_path):
             
             grouped_by_day = zIdPhi_df.groupby(by="Day")
             for day, day_group in grouped_by_day:
+                day_group = day_group[day_group["zIdPhi"] != 0] # times where it was too long
+                
                 vte_trials = day_group[day_group["zIdPhi"] >= 1.5]
                 non_vte_trials = day_group[day_group["zIdPhi"] < 1.5]
                 no_vtes = len(vte_trials)

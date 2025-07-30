@@ -13,7 +13,7 @@ rat_folders = [f for f in os.listdir(os.path.join(temp_path, "processed_data/VTE
                if os.path.isdir(os.path.join(temp_path, "processed_data/VTE_values", f))]
 
 for rat in rat_folders:
-    if rat == "BP07" or rat == "convex" or rat == ".DS_Store":
+    if rat == "inferenceTesting" or rat == "convex" or rat == ".DS_Store" or rat == "BP06" or rat == "BP08":
         continue #dunno why zidphi value has bp09's data
     
     # Read zIdPhi data for this rat
@@ -38,7 +38,7 @@ for rat in rat_folders:
         vte_percentage = (vte_trials / total_trials) * 100
         
         # Get trajectory data for this day
-        traj_path = os.path.join(temp_path, "processed_data/VTE_values", rat, str(day), "trajectories.csv")
+        traj_path = os.path.join(temp_path, "processed_data/VTE_values", rat, str(day), f"{rat}_{str(day)}_trajectories.csv")
         traj_df = pd.read_csv(traj_path)
         
         # Calculate performance percentage

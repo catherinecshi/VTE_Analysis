@@ -429,66 +429,61 @@ def check_transitive_inference(model, test=False, n_simulations=100):
 
 def check_transitive_inference_real(model, ti_data, test=False, n_simulations=100):
     """
-    check over all decision probabilities for each possible choice in testing phase
-    actual order of choices this time from real data from rats
-    
-    Parameters:
-    - model : Betasort
-        - finished model
-    - ti_data : DataFrame
-        - testing phase data
-    - n_simulations : Int
-        - number of simulations for model
-    
-    Returns:
-    - results : {(int, int) : float}
-        - chosen_idx, other_idx : % of getting it correct
+    For each unique trial type (chosen_idx, unchosen_idx), compute the percentage of correct choices for both the model and the rat.
+    Returns a dictionary: {(chosen_idx, unchosen_idx): (model_percent_correct, rat_percent_correct, n_trials)}
     """
-    results = {}
-
-    # Get the number of stimuli from the model (adaptive to model size)
     n_stimuli = model.n_stimuli
-
-    # Extract relevant data
     chosen_idx = ti_data["first"].values
     unchosen_idx = ti_data["second"].values
     rewards = ti_data["correct"].values
+    vtes = ti_data["VTE"].values if "VTE" in ti_data else np.zeros_like(chosen_idx)
 
-    # process the trials for today
     participant_choices = np.column_stack((chosen_idx, unchosen_idx))
     n_trials = len(participant_choices)
-    matches = np.zeros(n_trials)
-    vtes = ti_data["VTE"]
-    
-    model_choices = np.zeros(n_trials)
-    rat_choices = np.zeros(n_trials)
+
+    # Store results by trial type
+    trial_type_results = {}
+    # For each trial, store model and rat correctness
+    trial_type_model_correct = {}
+    trial_type_rat_correct = {}
+    trial_type_counts = {}
+
     for t in range(n_trials):
-        if t % 100 == 0 or (n_trials < 100 and t % 10 == 0):
-            print(".", end="", flush=True)
-        
-        chosen_idx, other_idx = participant_choices[t]
-        #reward = rewards[t]
-        
-        # Validate indices (just in case)
-        if not (0 <= chosen_idx < n_stimuli) or not (0 <= other_idx < n_stimuli):
-            print(f"{settings.CURRENT_RAT}, Trial {t}: Invalid indices - chosen {chosen_idx} unchosen {other_idx}")
-            continue
+        chosen, other = participant_choices[t]
+        pair = (int(chosen), int(other))
+        # Always store as (min, max) for consistency
+        pair = (min(pair), max(pair))
 
+        # Model choice
         if test:
-            model_choice = model.choose(chosen_idx, other_idx, vte=vtes[index])
+            model_choice = model.choose(chosen, other, vte=vtes[t])
         else:
-            model_choice = model.choose([chosen_idx, other_idx])
-        model_choices[t] = model_choice
-        rat_choices[t] = chosen_idx
+            model_choice = model.choose([chosen, other])
+        # Model correct if chooses min(chosen, other)
+        model_correct = int(model_choice == min(chosen, other))
+        # Rat correct if chosen == min(chosen, other)
+        rat_correct = int(chosen == min(chosen, other))
 
-        # update model based on actual feedback
-        reward = 1 if chosen_idx < other_idx else 0
+        # Store
+        trial_type_model_correct.setdefault(pair, []).append(model_correct)
+        trial_type_rat_correct.setdefault(pair, []).append(rat_correct)
+        trial_type_counts[pair] = trial_type_counts.get(pair, 0) + 1
+
+        # Update model after feedback
+        reward = 1 if chosen < other else 0
         if test:
-            model.update_ti(chosen_idx, other_idx, reward)
+            model.update_ti(chosen, other, reward)
         else:
-            model.update_ti(chosen_idx, other_idx, reward)
-        
-        index += 1
+            model.update_ti(chosen, other, reward)
+
+    # Aggregate results
+    for pair in trial_type_model_correct:
+        model_pct = np.mean(trial_type_model_correct[pair])
+        rat_pct = np.mean(trial_type_rat_correct[pair])
+        count = trial_type_counts[pair]
+        trial_type_results[pair] = (model_pct, rat_pct, count)
+
+    return trial_type_results
 
 def analyze_vte_uncertainty(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.6, n_simulations=100):
     """Analyze how VTEs correlate with different types of uncertainty

@@ -295,8 +295,8 @@ def get_centre_hull() -> ConvexHull:
     - scipy.spatial.ConvexHull: convex hull corresponding to the centre zone
     """
     # path to load from
-    hull_path = paths.hull_data / "inferenceTesting" / f"{settings.CURRENT_RAT}_hull_test.npy"
-    #hull_path = paths.hull_data / f"{settings.CURRENT_RAT}_{settings.CURRENT_DAY}_hull.npy"
+    #hull_path = paths.hull_data / "inferenceTesting" / f"{settings.CURRENT_RAT}_hull_test.npy"
+    hull_path = paths.hull_data / f"{settings.CURRENT_RAT}_{settings.CURRENT_DAY}_hull.npy"
     
     # load hull
     densest_cluster_points = np.load(hull_path)
