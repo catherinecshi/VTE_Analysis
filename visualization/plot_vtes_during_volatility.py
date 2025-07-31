@@ -6,30 +6,29 @@ import matplotlib.pyplot as plt
 
 from config.paths import paths
 from analysis import generic_statistics
-from preprocessing import data_processing
 from analysis import performance_analysis
 from visualization import generic_plots
 
-# Load data structure
-data_path = paths.vte_data
-data_structure = data_processing.load_data_structure(data_path)
-
 # Get days since new arm added
-days_since_new_arm = performance_analysis.get_days_since_new_arm(data_path, data_structure)
+days_since_new_arm = performance_analysis.get_days_since_new_arm()
 days_since_new_arm["trials_available"] = days_since_new_arm["trials_available"].apply(lambda x: [int (y) for y in x])
 days_since_new_arm = days_since_new_arm.astype({"rat": "str", "day": "int", "arm_added": "bool", "days_since_new_arm": "int"})
+
+print(f"days_since_new_arm DataFrame shape: {days_since_new_arm.shape}")
+print(f"days_since_new_arm rats: {days_since_new_arm['rat'].unique()}")
+print(f"days_since_new_arm head:\n{days_since_new_arm.head()}")
 
 # Collect VTE data
 vtes_during_volatility = []
 vte_path = paths.vte_values
 for rat in os.listdir(vte_path):
-    if ".DS" in rat or "inferenceTesting" in rat:
+    if ".DS" in rat or "inferenceTesting" in rat or "BP06" in rat or "BP07" in rat or "BP08" in rat or "BP09" in rat:
         continue
 
     rat_path = os.path.join(vte_path, rat)
     for root, _, files in os.walk(rat_path):
         for f in files:
-            if "zIdPhi.csv" not in f:
+            if "zIdPhis.csv" not in f:
                 continue
             
             file_path = os.path.join(root, f)
@@ -54,6 +53,8 @@ for rat in os.listdir(vte_path):
                 
                 if not corresponding_row.empty:
                     no_days = corresponding_row["days_since_new_arm"].values[0]
+                else:
+                    print(f"{rat} on {day_number} is empty row for ")
                 
                 vtes_during_volatility.append({"rat": rat, "day": day,
                                               "perc_vtes": perc_vtes, "no_days": no_days})

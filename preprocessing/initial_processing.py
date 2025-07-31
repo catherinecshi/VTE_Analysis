@@ -10,4 +10,4 @@ BP07_PATH = SAVE_PATH / "BP07" / "inferenceTesting"
 #data_processing.initial_to_inference(BP07_PATH)
 data_processing.convert_all_timestamps(SAVE_PATH)
 data_processing.convert_all_statescripts(SAVE_PATH)
-#data_processing.concat_duplicates(SAVE_PATH)
+data_processing.concat_duplicates(SAVE_PATH)

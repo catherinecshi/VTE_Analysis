@@ -445,63 +445,107 @@ def perf_until_critera(all_rats_performances):
     
     performance_plots.plot_all_rat_perf_changes(all_rats_changes, criterias=True)
 
-def get_days_since_new_arm(save_path, data_structure):
+def get_days_since_new_arm():
     """
-    returns a DataFrame including the number of days since new arm was introduced
-
-    Args:
-        save_path (str): where the files are saved
-        data_structure (dict): dictionary with all the data
-
+    Calculate days since new arm was added for each rat based on Trial_Type changes in zIdPhi.csv files.
+        
     Returns:
-        pd.DataFrame: {'rat': rat, 'day': day, 'trials_available': trials for the day, 
-                       'arm_added': bool for whether new arm was added, 'days_since_new_arm': self-explanatory}
+        pd.DataFrame: DataFrame with columns ['rat', 'day', 'arm_added', 'days_since_new_arm', 'trials_available']
     """
+    results = []
+    vte_path = paths.vte_values
     
-    trials_available = get_trials_available(save_path, data_structure)
-    new_df_rows = []
-    
-    rats = trials_available.groupby("rat")
-    for rat, group in rats:
-        previous_number_of_trials = 0
-        days_since_new_arm = 0
-        decrease_present = None # get the number of trials available right before decrease
+    for rat in os.listdir(vte_path):
+        if ".DS" in rat or "inferenceTesting" in rat:
+            continue
         
-        sorted_by_day = group.sort_values(by="day") # continue by day
-        for _, row in sorted_by_day.iterrows():
-            day = row["day"]
-            trials_for_day = row["trials_available"]
+        rat_path = os.path.join(vte_path, rat)
+        
+        # Find zIdPhi.csv file for this rat (exact filename match only)
+        zidphi_file = None
+        for root, _, files in os.walk(rat_path):
+            for f in files:
+                if f == "zIdPhis.csv":  # Exact match only, ignore other files with zIdPhi in name
+                    zidphi_file = os.path.join(root, f)
+                    break
+            if zidphi_file:
+                break
+        
+        if not zidphi_file:
+            print(f"Warning: No zIdPhis.csv file found for rat {rat}")
+            continue
             
-            number_of_trials = len(trials_for_day)
-            if previous_number_of_trials == 0: # first day
-                arm_added = True
-                days_since_new_arm = 0
-            elif previous_number_of_trials < number_of_trials: # arm added
-                arm_added = True
-                days_since_new_arm = 0
-            elif previous_number_of_trials == number_of_trials:
-                arm_added = False
-                days_since_new_arm += 1
-            else: # decrease in trials, something wacky going on
-                arm_added = False
-                days_since_new_arm += 1
-                decrease_present = previous_number_of_trials # for checking if # trials increase in future
-                logger.warning(f"decrease in # trials for {rat} on {day}")
+        try:
+            # Load the CSV file
+            df = pd.read_csv(zidphi_file)
             
-            if decrease_present is not None:
-                if number_of_trials > decrease_present: # if rat gets a trial never experienced before
-                    decrease_present = None
-            else:
-                previous_number_of_trials = number_of_trials
+            # Extract day numbers from Day column (e.g., "Day12" -> 12)
+            df['day_num'] = df['Day'].str.extract(r'Day(\d+)').astype(int)
+            
+            # Group by day and get unique trial types for each day
+            daily_data = []
+            for day_num in sorted(df['day_num'].unique()):
+                day_data = df[df['day_num'] == day_num]
+                unique_trials = sorted(day_data['Trial_Type'].unique())
+                daily_data.append({
+                    'day_num': day_num,
+                    'day_name': day_data['Day'].iloc[0],
+                    'trials_available': unique_trials
+                })
+            
+            # Process each day to determine when new arms are added
+            previous_trial_count = 0
+            days_since_new_arm = 0
+            all_previous_trials = set()  # Track all trial types seen so far
+            
+            skip_rat = False
+            
+            for i, day_info in enumerate(daily_data):
+                current_trials = set(day_info['trials_available'])
+                current_trial_count = len(current_trials)
                 
-            new_df_rows.append({"rat": rat,
-                                "day": day,
-                                "trials_available": trials_for_day,
-                                "arm_added": arm_added,
-                                "days_since_new_arm": days_since_new_arm})
-        
-    new_arms_df = pd.DataFrame(new_df_rows)
-    path = paths.performance / "days_since_new_arm.csv"
-    new_arms_df.to_csv(path)
+                # Check for error condition: new trial types that were seen before but not in previous days
+                if i > 0:  # Skip first day
+                    new_trials = current_trials - all_previous_trials
+                    if new_trials:
+                        # If there are completely new trial types, the count should increase
+                        if current_trial_count == previous_trial_count:
+                            raise ValueError(f"Error: Rat {rat} on {day_info['day_name']} has new trial types {new_trials} but same total count as previous day. This shouldn't happen.")
+                
+                # Determine if new arm was added
+                arm_added = False
+                if i == 0:  # First day - treat as new arm introduction
+                    arm_added = True
+                    days_since_new_arm = 0
+                elif current_trial_count > previous_trial_count:
+                    # More trial types than previous day = new arm added
+                    arm_added = True
+                    days_since_new_arm = 0
+                else:
+                    # Same number of trial types as previous day
+                    days_since_new_arm += 1
+                
+                # Store result
+                results.append({
+                    'rat': rat,
+                    'day': day_info['day_num'],
+                    'arm_added': arm_added,
+                    'days_since_new_arm': days_since_new_arm,
+                    'trials_available': day_info['trials_available']
+                })
+                
+                # Update tracking variables for next iteration
+                previous_trial_count = current_trial_count
+                all_previous_trials.update(current_trials)
+            
+            if skip_rat:
+                # Remove any results added for this rat before the error
+                results = [r for r in results if r['rat'] != rat]
+                
+        except Exception as e:
+            print(f"Error processing rat {rat}: {e}")
+            # Remove any results added for this rat before the error
+            results = [r for r in results if r['rat'] != rat]
+            continue
     
-    return new_arms_df
+    return pd.DataFrame(results)
