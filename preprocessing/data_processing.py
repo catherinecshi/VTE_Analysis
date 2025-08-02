@@ -309,6 +309,7 @@ def make_concat_file_names(path_name: Optional[Union[str, Path]]) -> Optional[Pa
         return path_name.parent / new_file_name
     else:
         # Return None if no Day pattern was found
+        logger.error(f"day pattern not found for {parts} with length {len(parts)} for {settings.CURRENT_RAT} on {settings.CURRENT_DAY}")
         return None
     
 def find_duplicates(day_path: Union[str, Path]) -> Dict:
@@ -334,17 +335,17 @@ def find_duplicates(day_path: Union[str, Path]) -> Dict:
         if "old_" in f:
             continue
 
-        if f.endswith(".csv") and "_2_track" not in f and "_2." not in f:
+        if f.endswith(".csv") and "_2_track" not in f and "_2." not in f and "track.2DLC" not in f:
             duplicate_files["dlc_1"] = file_path
-        elif (f.endswith(".csv") and ("_2_track" in f or "_2." in f)):
+        elif (f.endswith(".csv") and ("_2_track" in f or "_2." in f or "track.2DLC" in f)):
             duplicate_files["dlc_2"] = file_path
         elif (f.endswith(".stateScriptLog.txt") and not f.endswith("_2.stateScriptLog.txt")):
             duplicate_files["ss_1"] = file_path
         elif "_2.stateScriptLog" in f:
             duplicate_files["ss_2"] = file_path
-        elif (f.endswith(".videoTimeStamps.npy") and not f.endswith("_2.1.videoTimeStamps.npy")):
+        elif (f.endswith(".videoTimeStamps.npy") and not (f.endswith("_2.1.videoTimeStamps.npy") or f.endswith(".2.videoTimeStamps.npy"))):
             duplicate_files["timestamps_1"] = file_path
-        elif "_2.1.videoTimeStamps" in f:
+        elif "_2.1.videoTimeStamps" in f or ".2.videoTimeStamps.npy" in f:
             duplicate_files["timestamps_2"] = file_path
         
     return duplicate_files
@@ -373,11 +374,11 @@ def find_duplicates_implanted(day_path: Union[str, Path]) -> Dict:
             duplicate_files["dlc_1"] = file_path
         elif (f.endswith(".csv") and ("_track_2" in f or "_2_track" in f)):
             duplicate_files["dlc_2"] = file_path
-        elif (f.endswith(".stateScriptLog.txt") and not f.endswith("track_2.stateScriptLog.txt")):
+        elif (f.endswith(".stateScriptLog.txt") and not f.endswith("track_2.stateScriptLog.txt") and not f.endswith("_2.stateScriptLog.txt")):
             duplicate_files["ss_1"] = file_path
-        elif "_track_2.stateScriptLog" in f:
+        elif "_track_2.stateScriptLog" in f or "_2.stateScriptLog.txt" in f:
             duplicate_files["ss_2"] = file_path
-        elif (f.endswith(".videoTimeStamps.npy") and not f.endswith("track_2.1.videoTimeStamps.npy")):
+        elif (f.endswith(".videoTimeStamps.npy") and not f.endswith("track_2.1.videoTimeStamps.npy") and not f.endswith("_track_2.videoTimeStamps.npy")):
             duplicate_files["timestamps_1"] = file_path
         elif "track_2.1.videoTimeStamps" in f or "_track_2.videoTimeStamps" in f:
             duplicate_files["timestamps_2"] = file_path
@@ -403,17 +404,14 @@ def save_concats(
                 (start of first, end of first, start of second, end of second,
                 difference between end of first and start of second)
     """
-    dlc_path = Path(dlc_path)
-    ss_path = Path(ss_path) 
-    timestamps_path = Path(timestamps_path)
-    
     dlc_diff_info = None
     ss_diff_info = None
     ts_diff_info = None
 
     # Process DLC files if duplicate
-    if duplicate_files["dlc_2"] is not None:
+    if duplicate_files["dlc_2"] is not None and duplicate_files["dlc_1"] is not None:
         logger.info(f"Concatenating DLC files for {settings.CURRENT_RAT} on {settings.CURRENT_DAY}")
+        dlc_path = Path(dlc_path)
         
         try:
             # Get the concatenated data and diff information
@@ -428,8 +426,9 @@ def save_concats(
             logger.error(f"Failed to concatenate DLC files: {e}")
             raise
 
-    if duplicate_files["ss_2"] is not None:
+    if duplicate_files["ss_2"] is not None and duplicate_files["ss_1"] is not None:
         logger.info(f"Concatenating StateScript files for {settings.CURRENT_RAT} on {settings.CURRENT_DAY}")
+        ss_path = Path(ss_path) 
         
         try:
             new_ss = concat_ss(duplicate_files["ss_1"], duplicate_files["ss_2"])
@@ -447,8 +446,9 @@ def save_concats(
             logger.error(f"Failed to concatenate StateScript files: {e}")
             raise
         
-    if duplicate_files["timestamps_2"] is not None and timestamps_path is not None:
+    if duplicate_files["timestamps_2"] is not None and duplicate_files["timestamps_1"] is not None and timestamps_path is not None:
         logger.info(f"Concatenating timestamp files for {settings.CURRENT_RAT} on {settings.CURRENT_DAY}")
+        timestamps_path = Path(timestamps_path)
         
         try:
             new_timestamps, ts_diff_info = concat_timestamps(
@@ -585,13 +585,6 @@ def concat_duplicates(save_path: Union[str, Path]):
             
             # concatenate everything
             try:
-                if dlc_path is None:
-                    raise error_types.UnexpectedNoneError("concat_duplicates", "dlc_path")
-                elif ss_path is None:
-                    raise error_types.UnexpectedNoneError("concat_duplicates", "ss_path")
-                elif timestamps_path is None:
-                    raise error_types.UnexpectedNoneError("concat_duplicates", "timestamps_path")
-                
                 dlc_diff_info, ss_diff_info, ts_diff_info = save_concats(duplicate_files, dlc_path, ss_path, timestamps_path)
             except Exception as e:
                 logger.error(f"concatenation failed for {rat_folder} on {day_folder} because error {e}")
