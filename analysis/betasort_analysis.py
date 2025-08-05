@@ -147,7 +147,7 @@ def binomial_analysis_by_session(all_data_df, rat, tau=0.05, xi=0.95, n_simulati
             model_choices = np.zeros(n_simulations)
             
             for sim in range(n_simulations):
-                model_choice = model.choose([chosen_idx[t], unchosen_idx[t]])
+                model_choice = model.choose(chosen_idx[t], unchosen_idx[t], vte=False)
                 model_choices[sim] = model_choice
                 sim_correct[sim] = 1 if model_choice == min(chosen_idx[t], unchosen_idx[t]) else 0
             
@@ -414,10 +414,7 @@ def check_transitive_inference(model, test=False, n_simulations=100):
             
             model_choices = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                if test:
-                    model_choice = model.choose(chosen_idx, other_idx, vte=False)
-                else:
-                    model_choice = model.choose([chosen_idx, other_idx])
+                model_choice = model.choose(chosen_idx, other_idx, vte=False)
                 model_choices[sim] = model_choice
             
             # see how well the model matches up with real choices
@@ -455,10 +452,8 @@ def check_transitive_inference_real(model, ti_data, test=False, n_simulations=10
         pair = (min(pair), max(pair))
 
         # Model choice
-        if test:
-            model_choice = model.choose(chosen, other, vte=vtes[t])
-        else:
-            model_choice = model.choose([chosen, other])
+        model_choice = model.choose(chosen, other, vte=vtes[t])
+        
         # Model correct if chooses min(chosen, other)
         model_correct = int(model_choice == min(chosen, other))
         # Rat correct if chosen == min(chosen, other)
@@ -571,7 +566,7 @@ def analyze_vte_uncertainty(all_data_df, rat, tau=0.05, xi=0.95, threshold=0.6, 
             # run multiple simulations to get choice probability
             model_choices = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                model_choice = model.choose([chosen, unchosen])
+                model_choice = model.choose(chosen, unchosen, vte=vte)
                 model_choices[sim] = model_choice
             
             # see how well the model matches up with real choices
@@ -657,8 +652,9 @@ def analyze_correlations(pair_vte_df):
                 'pvalues': logit_result.pvalues.to_dict(),
                 'pseudo_r2': logit_result.prsquared
             }
-        except Exception:
-            pair_results['logistic_regression'] = "Computation failed"
+        except:
+            # Skip logistic regression if it fails
+            pass
         
         results['by_pair'][pair] = pair_results
     

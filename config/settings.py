@@ -18,8 +18,17 @@ IMPLANTED_RATS = [
     "BP06", "BP07", "BP12", "BP13", "TH405", "TH508", "BP20", "TH510", "TH605", "TH608"
 ]
 
-# this is only for numbers found in statescript
+RATS_WITH_EF = [
+    "BP06", "BP07", "BP08", "BP09"
+]
+
+# for numbers found in statescript for rats who do not do EF
 TRIAL_TYPE_MAPPINGS = {
+    "AB": 1, "BC": 2, "CD": 3, "DE": 4, "BD": 5, "AE": 6
+}
+
+# this is only for numbers found in statescript for rats who do EF
+TRIAL_TYPE_MAPPINGS_EF = {
     "AB": 1, "BC": 2, "CD": 3, "DE": 4, "EF": 5,
     "BD": 6, "CE": 7, "BE": 8, "AC": 9, "DF": 10
 }

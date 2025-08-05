@@ -34,11 +34,41 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 
 from config.paths import paths
+from config.settings import HIERARCHY_MAPPINGS
 from analysis import betasort_analysis
 from models import betasort
 from models import betasort_test
 from models import betasort_OG
 from visualization import betasort_plots
+
+
+def convert_numeric_labels_to_letters(labels):
+    """
+    Convert numeric labels like '0-1' or '1-3' to letter labels like 'AB' or 'BD'
+    using the HIERARCHY_MAPPINGS from settings
+    """
+    # Create reverse mapping (number -> letter)
+    number_to_letter = {v: k for k, v in HIERARCHY_MAPPINGS.items()}
+    
+    converted_labels = []
+    for label in labels:
+        if '-' in str(label):
+            # Split on hyphen and convert each number
+            parts = str(label).split('-')
+            try:
+                letter_parts = [number_to_letter[int(part)] for part in parts]
+                converted_labels.append(''.join(letter_parts))  # Join without hyphen
+            except (ValueError, KeyError):
+                # If conversion fails, keep original label
+                converted_labels.append(str(label).replace('-', ''))
+        else:
+            # Single number
+            try:
+                converted_labels.append(number_to_letter[int(label)])
+            except (ValueError, KeyError):
+                converted_labels.append(str(label))
+    
+    return converted_labels
 
 
 class BetasortPipeline:
@@ -492,13 +522,15 @@ class BetasortPipeline:
         ti_result_serializable = {f"{k[0]},{k[1]}": v for k, v in ti_result.items()}
         
         # Check real transitive inference if data exists
-        real_ti_data_path = os.path.join(self.data_path, "inferenceTesting", f"{rat_name}.csv")
+        real_ti_data_path = os.path.join(self.data_path, "inferenceTesting", rat_name, f"{rat_name}.csv")
         if os.path.exists(real_ti_data_path):
             real_ti_data = pd.read_csv(real_ti_data_path)
             ti_result_real = betasort_analysis.check_transitive_inference_real(
                 all_models[final_day], real_ti_data, test=(self.model_type in ['betasort_test', 'betasort_OG'])
             )
         else:
+            if self.verbose:
+                print(f"    No inference testing data found for {rat_name}")
             ti_result_real = {}
         
         # Analyze correlations
@@ -507,6 +539,7 @@ class BetasortPipeline:
         # Prepare summary results
         summary_results = {
             "rat": rat_name,
+            "model_type": self.model_type,  # Store which model was used
             "best_xi": results["best_xi"],
             "best_tau": results["best_tau"],
             "best_threshold": results["best_threshold"],
@@ -518,12 +551,42 @@ class BetasortPipeline:
         
         # Save files
         results_df = pd.DataFrame([summary_results])
-        results_df.to_csv(os.path.join(rat_dir, "results.csv"), index=False)
+        results_filename = f"{self.model_type}_results.csv"
+        results_df.to_csv(os.path.join(rat_dir, results_filename), index=False)
         
         results["pair_vte_df"].to_csv(os.path.join(rat_dir, "vte_uncertainty.csv"), index=False)
         
         with open(os.path.join(rat_dir, "uncertainty_vte.json"), 'w') as f:
             json.dump(pair_results, f, indent=2)
+        
+        # Save adjacent pair analysis data
+        adjacent_pair_filename = f"{self.model_type}_adjacent_pair_analysis.json"
+        with open(os.path.join(rat_dir, adjacent_pair_filename), 'w') as f:
+            # Convert adjacent_pair_analysis to JSON-serializable format
+            serializable_adj_data = {}
+            for day, day_data in results['adjacent_pair_analysis'].items():
+                serializable_adj_data[str(day)] = {
+                    'day': day_data['day'],
+                    'adjacent_pairs': [list(pair) for pair in day_data['adjacent_pairs']],  # Convert tuples to lists
+                    'pre_update_model': {f"{k[0]}-{k[1]}": v for k, v in day_data['pre_update_model'].items()},
+                    'post_update_model': {f"{k[0]}-{k[1]}": v for k, v in day_data['post_update_model'].items()},
+                    'actual_rat_performance': {f"{k[0]}-{k[1]}": v for k, v in day_data['actual_rat_performance'].items()}
+                }
+            json.dump(serializable_adj_data, f, indent=2)
+        
+        # Save transitive inference results
+        ti_filename = f"{self.model_type}_ti_results.json"
+        with open(os.path.join(rat_dir, ti_filename), 'w') as f:
+            # Convert ti_result_real to JSON-serializable format
+            serializable_ti_data = {}
+            for pair, (model_pct, rat_pct, n) in ti_result_real.items():
+                pair_key = f"{pair[0]}-{pair[1]}" if isinstance(pair, tuple) else str(pair)
+                serializable_ti_data[pair_key] = {
+                    'model_pct': model_pct,
+                    'rat_pct': rat_pct,
+                    'n_trials': n
+                }
+            json.dump(serializable_ti_data, f, indent=2)
         
         # Store for aggregation
         self.rat_results[rat_name] = {
@@ -561,8 +624,11 @@ class BetasortPipeline:
         # Create filtered rat_results for aggregation
         filtered_rat_results = {rat: self.rat_results[rat] for rat in rats_for_aggregation}
         
-        # Aggregate adjacent pair analysis
-        self._aggregate_adjacent_pair_analysis(filtered_rat_results)
+        # Aggregate adjacent pair analysis (only if data was analyzed, not loaded)
+        if any('results' in rat_data for rat_data in filtered_rat_results.values()):
+            self._aggregate_adjacent_pair_analysis(filtered_rat_results)
+        elif self.verbose:
+            print("  Skipping adjacent pair analysis - not available in loaded data")
         
         # Aggregate transitive inference results
         self._aggregate_transitive_inference(filtered_rat_results)
@@ -676,9 +742,32 @@ class BetasortPipeline:
                 'total_rats': len(all_rats_adjacent_data)
             }, f, indent=2)
         
+        # Store individual data for box plots
+        individual_rat_data = {}
+        individual_model_data = {}
+        
+        for pair in all_pairs:
+            pair_name = f"{pair[0]}-{pair[1]}"
+            individual_rat_data[pair_name] = []
+            individual_model_data[pair_name] = []
+            
+            for rat, rat_info in all_rats_adjacent_data.items():
+                rat_data = rat_info['data']
+                
+                if pair in rat_data['adjacent_pairs']:
+                    # Get rat performance
+                    if pair in rat_data['actual_rat_performance']:
+                        individual_rat_data[pair_name].append(rat_data['actual_rat_performance'][pair]['rat_correct_rate'])
+                    
+                    # Get post-update model performance (using post-update as the primary comparison)
+                    if pair in rat_data['post_update_model']:
+                        individual_model_data[pair_name].append(rat_data['post_update_model'][pair]['model_correct_rate'])
+        
         # Store for plotting
         self.aggregated_data['adjacent_pair_results'] = aggregated_data
         self.aggregated_data['adjacent_pair_results']['total_rats'] = len(filtered_rat_results)
+        self.aggregated_data['adjacent_pair_results']['individual_rat_data'] = individual_rat_data
+        self.aggregated_data['adjacent_pair_results']['individual_model_data'] = individual_model_data
     
     def _model_choose(self, model, stimuli, vte=False):
         """
@@ -696,17 +785,11 @@ class BetasortPipeline:
         --------
         int : Chosen stimulus index
         """
-        if self.model_type == 'betasort_test' or self.model_type == 'betasort_OG':
-            # These models take (chosen, unchosen, vte) parameters
-            if isinstance(stimuli, (list, tuple)) and len(stimuli) == 2:
-                return model.choose(stimuli[0], stimuli[1], vte)
-            else:
-                raise ValueError(f"Expected 2 stimuli for {self.model_type}, got {stimuli}")
+        # These models take (chosen, unchosen, vte) parameters
+        if isinstance(stimuli, (list, tuple)) and len(stimuli) == 2:
+            return model.choose(stimuli[0], stimuli[1], vte)
         else:
-            # betasort model takes [available_stimuli] parameter (no VTE)
-            if isinstance(stimuli, tuple):
-                stimuli = list(stimuli)
-            return model.choose(stimuli)
+            raise ValueError(f"Expected 2 stimuli for {self.model_type}, got {stimuli}")
     
     def _aggregate_transitive_inference(self, filtered_rat_results):
         """
@@ -757,7 +840,9 @@ class BetasortPipeline:
             'rat_means': rat_means,
             'model_sems': model_sems,
             'rat_sems': rat_sems,
-            'labels': labels
+            'labels': labels,
+            'individual_rat_data': type_to_rat,
+            'individual_model_data': type_to_model
         }
     
     def generate_plots(self):
@@ -782,11 +867,151 @@ class BetasortPipeline:
     
     def _plot_transitive_inference(self, plots_dir):
         """
-        Generate transitive inference comparison plot
+        Generate transitive inference comparison plot with box plots and overlaid model results
         """
         if 'ti_results' not in self.aggregated_data:
             return
         
+        ti_data = self.aggregated_data['ti_results']
+        
+        # Check if we have individual data for box plots
+        if 'individual_rat_data' not in ti_data or 'individual_model_data' not in ti_data:
+            # Fallback to original bar plot if individual data not available
+            self._plot_transitive_inference_original(plots_dir)
+            return
+            
+        # Create box plot with overlaid model results
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Define desired pairs in order: AB, BC, CD, DE, BD, AE
+        desired_pairs = ['AB', 'BC', 'CD', 'DE', 'BD', 'AE']
+        
+        # Convert pairs to trial type tuples for lookup
+        rat_data_for_plot = []
+        model_data_for_plot = []
+        labels = []
+        
+        for pair in desired_pairs:
+            if len(pair) == 2:
+                # Convert letter pair to numbers
+                num1 = HIERARCHY_MAPPINGS[pair[0]]
+                num2 = HIERARCHY_MAPPINGS[pair[1]]
+                
+                # Try both orderings as keys
+                trial_key1 = (num1, num2)
+                trial_key2 = (num2, num1)
+                
+                trial_key = None
+                if trial_key1 in ti_data['individual_rat_data']:
+                    trial_key = trial_key1
+                elif trial_key2 in ti_data['individual_rat_data']:
+                    trial_key = trial_key2
+                
+                if (trial_key and 
+                    trial_key in ti_data['individual_rat_data'] and 
+                    trial_key in ti_data['individual_model_data'] and
+                    len(ti_data['individual_rat_data'][trial_key]) > 0 and
+                    len(ti_data['individual_model_data'][trial_key]) > 0):
+                    
+                    rat_data_for_plot.append(ti_data['individual_rat_data'][trial_key])
+                    model_data_for_plot.append(ti_data['individual_model_data'][trial_key])
+                    labels.append(pair)
+        
+        if not rat_data_for_plot:
+            if self.verbose:
+                print("  No individual data available for TI box plots")
+            return
+        
+        x_positions = np.arange(len(labels))
+        
+        # Create box plots for rat data (wider, behind)
+        bp_rats = ax.boxplot(rat_data_for_plot, positions=x_positions, widths=0.6, 
+                            patch_artist=True, boxprops=dict(facecolor='lightblue', alpha=0.7),
+                            medianprops=dict(color='blue', linewidth=2),
+                            whiskerprops=dict(visible=False),  # Remove whiskers
+                            capprops=dict(visible=False),      # Remove caps
+                            flierprops=dict(visible=False))    # Remove outliers
+        
+        # Create box plots for model data (narrower, overlaid on top)
+        bp_models = ax.boxplot(model_data_for_plot, positions=x_positions, widths=0.3, 
+                              patch_artist=True, boxprops=dict(facecolor='lightgreen', alpha=0.8),
+                              medianprops=dict(color='darkgreen', linewidth=2),
+                              whiskerprops=dict(visible=False),  # Remove whiskers
+                              capprops=dict(visible=False),      # Remove caps
+                              flierprops=dict(visible=False))    # Remove outliers
+        
+        # Create positions with spacing: AB BC CD DE (gap) BD (gap) AE
+        x_positions = []
+        current_pos = 0
+        
+        for i, label in enumerate(labels):
+            x_positions.append(current_pos)
+            current_pos += 1
+            
+            # Add extra space after DE and BD
+            if label == 'DE' or label == 'BD':
+                current_pos += 0.5
+        
+        x_positions = np.array(x_positions)
+        
+        # Clear and recreate plots with proper positions
+        ax.clear()
+        
+        # Create box plots with custom spacing
+        bp_rats = ax.boxplot(rat_data_for_plot, positions=x_positions, widths=0.6, 
+                            patch_artist=True, boxprops=dict(facecolor='lightblue', alpha=0.7),
+                            medianprops=dict(color='blue', linewidth=2),
+                            whiskerprops=dict(visible=False),
+                            capprops=dict(visible=False),
+                            flierprops=dict(visible=False))
+        
+        bp_models = ax.boxplot(model_data_for_plot, positions=x_positions, widths=0.3, 
+                              patch_artist=True, boxprops=dict(facecolor='lightgreen', alpha=0.8),
+                              medianprops=dict(color='darkgreen', linewidth=2),
+                              whiskerprops=dict(visible=False),
+                              capprops=dict(visible=False),
+                              flierprops=dict(visible=False))
+        
+        ax.set_xlabel('Trial Type', fontsize=22)
+        ax.set_ylabel('Percent Correct', fontsize=22)
+        ax.set_title('Transitive Inference: Rat Data vs Model Results', fontsize=24)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(labels, fontsize=16)
+        ax.set_ylim(0, 1.05)
+        ax.tick_params(axis='y', labelsize=16)
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor='lightblue', alpha=0.7, label='Rat Data'),
+                          Patch(facecolor='lightgreen', alpha=0.8, label='Model Results')]
+        ax.legend(handles=legend_elements, fontsize=16)
+        ax.set_ylim(0, 1.05)
+        
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor='lightblue', alpha=0.7, label='Rat Data'),
+                          Patch(facecolor='lightgreen', alpha=0.8, label='Model Results')]
+        ax.legend(handles=legend_elements, fontsize=12)
+        
+        # Add grid for better readability
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Update legend font size
+        ax.legend(handles=legend_elements, fontsize=16)
+        
+        plt.tight_layout()
+        plot_path = os.path.join(plots_dir, 'aggregated_ti_real_boxplot.png')
+        plt.savefig(plot_path, dpi=300)
+        plt.close()
+        
+        if self.verbose:
+            print(f"  Saved TI box plot: {plot_path}")
+    
+    def _plot_transitive_inference_original(self, plots_dir):
+        """
+        Generate original transitive inference comparison plot (fallback)
+        """
         ti_data = self.aggregated_data['ti_results']
         
         # Create plot
@@ -829,12 +1054,19 @@ class BetasortPipeline:
     
     def _plot_adjacent_pair_analysis(self, plots_dir):
         """
-        Generate adjacent pair comparison plots
+        Generate adjacent pair comparison plots with box plots and overlaid model results
         """
         if 'adjacent_pair_results' not in self.aggregated_data:
             return
         
         adj_data = self.aggregated_data['adjacent_pair_results']
+        
+        # Create new box plot with overlaid model results
+        if 'individual_rat_data' in adj_data and 'individual_model_data' in adj_data:
+            try:
+                self._plot_adjacent_pair_boxplot(plots_dir, adj_data)
+            except Exception as e:
+                print(f"  Error creating adjacent pair box plot: {e}")
         
         # Create the aggregated comparison plot (3-way comparison)
         try:
@@ -869,6 +1101,130 @@ class BetasortPipeline:
         except Exception as e:
             print(f"  Error creating post-model vs rat plot: {e}")
     
+    def _plot_adjacent_pair_boxplot(self, plots_dir, adj_data):
+        """
+        Create box plot for adjacent pair analysis with overlaid model results
+        """
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Define desired pairs in order: AB, BC, CD, DE, BD, AE
+        desired_pairs = ['AB', 'BC', 'CD', 'DE', 'BD', 'AE']
+        
+        # Filter and reorder data based on desired pairs
+        rat_data_for_plot = []
+        model_data_for_plot = []
+        valid_pair_names = []
+        
+        for pair in desired_pairs:
+            if len(pair) == 2:
+                # Convert letter pair to numeric format for lookup
+                num1 = HIERARCHY_MAPPINGS[pair[0]]
+                num2 = HIERARCHY_MAPPINGS[pair[1]]
+                numeric_key = f"{num1}-{num2}"
+                
+                if (numeric_key in adj_data['individual_rat_data'] and 
+                    numeric_key in adj_data['individual_model_data'] and
+                    len(adj_data['individual_rat_data'][numeric_key]) > 0 and
+                    len(adj_data['individual_model_data'][numeric_key]) > 0):
+                    
+                    rat_data_for_plot.append(adj_data['individual_rat_data'][numeric_key])
+                    model_data_for_plot.append(adj_data['individual_model_data'][numeric_key])
+                    valid_pair_names.append(pair)
+        
+        if not rat_data_for_plot:
+            if self.verbose:
+                print("  No individual data available for adjacent pair box plots")
+            return
+        
+        x_positions = np.arange(len(valid_pair_names))
+        
+        # Create box plots for rat data (wider, behind)
+        bp_rats = ax.boxplot(rat_data_for_plot, positions=x_positions, widths=0.6, 
+                            patch_artist=True, boxprops=dict(facecolor='lightblue', alpha=0.7),
+                            medianprops=dict(color='blue', linewidth=2),
+                            whiskerprops=dict(visible=False),  # Remove whiskers
+                            capprops=dict(visible=False),      # Remove caps
+                            flierprops=dict(visible=False))    # Remove outliers
+        
+        # Create box plots for model data (narrower, overlaid on top)
+        bp_models = ax.boxplot(model_data_for_plot, positions=x_positions, widths=0.3, 
+                              patch_artist=True, boxprops=dict(facecolor='lightgreen', alpha=0.8),
+                              medianprops=dict(color='darkgreen', linewidth=2),
+                              whiskerprops=dict(visible=False),  # Remove whiskers
+                              capprops=dict(visible=False),      # Remove caps
+                              flierprops=dict(visible=False))    # Remove outliers
+        
+        # Create positions with spacing: AB BC CD DE (gap) BD (gap) AE
+        x_positions = []
+        current_pos = 0
+        
+        for i, label in enumerate(valid_pair_names):
+            x_positions.append(current_pos)
+            current_pos += 1
+            
+            # Add extra space after DE and BD
+            if label == 'DE' or label == 'BD':
+                current_pos += 0.5
+        
+        x_positions = np.array(x_positions)
+        
+        # Clear and recreate plots with proper positions
+        ax.clear()
+        
+        # Create box plots with custom spacing
+        bp_rats = ax.boxplot(rat_data_for_plot, positions=x_positions, widths=0.6, 
+                            patch_artist=True, boxprops=dict(facecolor='lightblue', alpha=0.7),
+                            medianprops=dict(color='blue', linewidth=2),
+                            whiskerprops=dict(visible=False),
+                            capprops=dict(visible=False),
+                            flierprops=dict(visible=False))
+        
+        bp_models = ax.boxplot(model_data_for_plot, positions=x_positions, widths=0.3, 
+                              patch_artist=True, boxprops=dict(facecolor='lightgreen', alpha=0.8),
+                              medianprops=dict(color='darkgreen', linewidth=2),
+                              whiskerprops=dict(visible=False),
+                              capprops=dict(visible=False),
+                              flierprops=dict(visible=False))
+        
+        ax.set_xlabel('Adjacent Stimulus Pairs', fontsize=22)
+        ax.set_ylabel('Correct Choice Rate', fontsize=22)
+        ax.set_title('Adjacent Pair Performance: Rat Data vs Model Results', fontsize=24)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(valid_pair_names, fontsize=16)
+        ax.set_ylim(0, 1.05)
+        ax.tick_params(axis='y', labelsize=16)
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor='lightblue', alpha=0.7, label='Rat Data'),
+                          Patch(facecolor='lightgreen', alpha=0.8, label='Model Results')]
+        ax.legend(handles=legend_elements, fontsize=16)
+        
+        # Make y-tick labels larger
+        ax.tick_params(axis='y', labelsize=16)
+        ax.set_ylim(0, 1.05)
+        
+        # Create custom legend
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor='lightblue', alpha=0.7, label='Rat Data'),
+                          Patch(facecolor='lightgreen', alpha=0.8, label='Model Results')]
+        ax.legend(handles=legend_elements, fontsize=12)
+        
+        # Add grid for better readability
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Update legend font size
+        ax.legend(handles=legend_elements, fontsize=16)
+        
+        plt.tight_layout()
+        plot_path = os.path.join(plots_dir, 'adjacent_pair_boxplot_with_model_overlay.png')
+        plt.savefig(plot_path, dpi=300)
+        plt.close()
+        
+        if self.verbose:
+            print(f"  Saved adjacent pair box plot: {plot_path}")
+    
     def run_analysis_only(self, rats_to_include=None, rats_to_exclude=None):
         """
         Run only the analysis phase (no aggregation or plotting)
@@ -889,8 +1245,8 @@ class BetasortPipeline:
         original_include = self.rats_to_include
         original_exclude = self.rats_to_exclude
         
-        self.rats_to_include = rats_to_include
-        self.rats_to_exclude = rats_to_exclude or []
+        self.rats_to_include = rats_to_include if rats_to_include is not None else self.rats_to_include
+        self.rats_to_exclude = rats_to_exclude if rats_to_exclude is not None else self.rats_to_exclude
         
         # Get list of rats to process
         rats_to_process = self.get_rats_to_process()
@@ -1026,7 +1382,7 @@ class BetasortPipeline:
         if data_path is None:
             data_path = paths.preprocessed_data_model
             
-        # Create pipeline instance
+        # Create pipeline instance (model_type will be detected from saved data)
         pipeline = cls(
             data_path=data_path,
             save_path=save_path,
@@ -1049,17 +1405,47 @@ class BetasortPipeline:
                    if os.path.isdir(os.path.join(self.save_path, d))
                    and d != "aggregated_plots"]
         
+        detected_model_types = set()
+        
         for rat_name in rat_dirs:
             rat_dir = os.path.join(self.save_path, rat_name)
-            results_file = os.path.join(rat_dir, "results.csv")
             vte_file = os.path.join(rat_dir, "vte_uncertainty.csv")
             uncertainty_file = os.path.join(rat_dir, "uncertainty_vte.json")
             
-            if os.path.exists(results_file):
+            # Look for model-specific results files (new format) or fallback to old format
+            results_file = None
+            adjacent_pair_file = None
+            ti_results_file = None
+            detected_model_type = None
+            
+            for model_type in ['betasort_test', 'betasort_OG', 'betasort']:
+                potential_file = os.path.join(rat_dir, f"{model_type}_results.csv")
+                potential_adj_file = os.path.join(rat_dir, f"{model_type}_adjacent_pair_analysis.json")
+                potential_ti_file = os.path.join(rat_dir, f"{model_type}_ti_results.json")
+                if os.path.exists(potential_file):
+                    results_file = potential_file
+                    detected_model_type = model_type
+                    if os.path.exists(potential_adj_file):
+                        adjacent_pair_file = potential_adj_file
+                    if os.path.exists(potential_ti_file):
+                        ti_results_file = potential_ti_file
+                    break
+            
+            # Fallback to old filename
+            if results_file is None:
+                old_results_file = os.path.join(rat_dir, "results.csv")
+                if os.path.exists(old_results_file):
+                    results_file = old_results_file
+            
+            if results_file:
                 try:
                     # Load summary results
                     summary_df = pd.read_csv(results_file)
                     summary = summary_df.iloc[0].to_dict()
+                    
+                    # Detect model type from saved data
+                    if 'model_type' in summary:
+                        detected_model_types.add(summary['model_type'])
                     
                     # Load VTE data
                     vte_df = pd.read_csv(vte_file) if os.path.exists(vte_file) else pd.DataFrame()
@@ -1068,12 +1454,44 @@ class BetasortPipeline:
                     with open(uncertainty_file, 'r') as f:
                         uncertainty_corr = json.load(f)
                     
+                    # Load adjacent pair analysis data if available
+                    adjacent_pair_analysis = {}
+                    if adjacent_pair_file and os.path.exists(adjacent_pair_file):
+                        with open(adjacent_pair_file, 'r') as f:
+                            adj_data_json = json.load(f)
+                            # Convert back from JSON format to expected structure
+                            for day_str, day_data in adj_data_json.items():
+                                day = int(day_str)
+                                adjacent_pair_analysis[day] = {
+                                    'day': day_data['day'],
+                                    'adjacent_pairs': [tuple(pair) for pair in day_data['adjacent_pairs']],  # Convert lists back to tuples
+                                    'pre_update_model': {tuple(map(int, k.split('-'))): v for k, v in day_data['pre_update_model'].items()},
+                                    'post_update_model': {tuple(map(int, k.split('-'))): v for k, v in day_data['post_update_model'].items()},
+                                    'actual_rat_performance': {tuple(map(int, k.split('-'))): v for k, v in day_data['actual_rat_performance'].items()}
+                                }
+                    
+                    # Load transitive inference results if available
+                    ti_result_real = {}
+                    if ti_results_file and os.path.exists(ti_results_file):
+                        with open(ti_results_file, 'r') as f:
+                            ti_data_json = json.load(f)
+                            # Convert back from JSON format to expected structure
+                            for pair_key, ti_data in ti_data_json.items():
+                                # Convert "0-1" back to (0, 1) tuple
+                                pair = tuple(map(int, pair_key.split('-')))
+                                ti_result_real[pair] = (
+                                    ti_data['model_pct'],
+                                    ti_data['rat_pct'],
+                                    ti_data['n_trials']
+                                )
+                    
                     # Store in rat_results (simplified structure for loading)
                     self.rat_results[rat_name] = {
                         'summary': summary,
                         'vte_df': vte_df,
                         'uncertainty_corr': uncertainty_corr,
-                        'ti_result_real': {}  # Would need to load this separately if needed
+                        'ti_result_real': ti_result_real,
+                        'results': {'adjacent_pair_analysis': adjacent_pair_analysis} if adjacent_pair_analysis else {}
                     }
                     
                     if self.verbose:
@@ -1081,6 +1499,19 @@ class BetasortPipeline:
                         
                 except Exception as e:
                     print(f"  Error loading {rat_name}: {e}")
+        
+        # Set model type based on detected types
+        if len(detected_model_types) == 1:
+            self.model_type = detected_model_types.pop()
+            if self.verbose:
+                print(f"Detected model type: {self.model_type}")
+        elif len(detected_model_types) > 1:
+            if self.verbose:
+                print(f"WARNING: Multiple model types detected: {detected_model_types}")
+                print(f"Using default: {self.model_type}")
+        elif len(detected_model_types) == 0:
+            if self.verbose:
+                print(f"No model type found in saved data, using default: {self.model_type}")
         
         if self.verbose:
             print(f"Loaded {len(self.rat_results)} rats from saved data")
@@ -1147,18 +1578,18 @@ if __name__ == "__main__":
     print("=== FLEXIBLE WORKFLOW EXAMPLE ===")
     
     # 1. Analyze ALL rats (stores individual results)
-    pipeline = quick_analysis(rats_to_exclude=['BP06', 'BP07'])
+    
+    pipeline = BetasortPipeline(
+        rats_to_exclude=['BP07', 'BP06', 'inferenceTesting'],
+        model_type='betasort_test',
+        use_diff_evolution=False
+    )
+    pipeline.run_analysis_only()
+    
+    #pipeline = BetasortPipeline.from_saved_data()
     
     # 2. Create different aggregated views
-    print("\n--- Creating plots excluding BP06-09 ---")
-    pipeline.aggregate_and_plot(rats_to_exclude=['BP06', 'BP07', 'BP08', 'BP09'], output_suffix="_no_early")
+    print("\n--- Creating plots excluding BP06-10 ---")
+    pipeline.aggregate_and_plot(rats_to_exclude=['BP06', 'BP07', 'BP08', 'BP09', 'BP10', 'BP13'], output_suffix="_unc_betasort")
     
-    #print("\n--- Creating plots with only specific rats ---")
-    #pipeline.aggregate_and_plot(rats_to_include=['rat1', 'rat2', 'rat3'], output_suffix="_subset")
     
-    print("\n--- Creating plots with all rats ---")
-    pipeline.aggregate_and_plot(output_suffix="_all_rats")
-    
-    # Alternative: Load from existing data
-    # pipeline = BetasortPipeline.from_saved_data()
-    # pipeline.aggregate_and_plot(rats_to_exclude=['BP09'])

@@ -89,7 +89,7 @@ class Betasort:
             #self.tau = 0.75
         #else:
             #self.tau = 1
-        self.tau = 1
+        self.tau = 0.95
         #uncertainty = self.get_uncertainty_ROC(chosen, unchosen)
         #chosen_reward_hist = self.R[chosen] / (self.R[chosen] + self.N[chosen])
         #unchosen_reward_hist = self.R[unchosen] / (self.R[unchosen] + self.N[unchosen])

@@ -15,10 +15,16 @@ def string_to_int_trial_types(string_trial: str) -> int:
     converts string trial type (like "AB") to integer
     raises error if string_trial isn't a possible trial type
     """
-    int_trial_type = settings.TRIAL_TYPE_MAPPINGS.get(string_trial)
+    # Use EF mappings if current rat is in RATS_WITH_EF, otherwise use regular mappings
+    if settings.CURRENT_RAT in settings.RATS_WITH_EF:
+        mappings = settings.TRIAL_TYPE_MAPPINGS_EF
+    else:
+        mappings = settings.TRIAL_TYPE_MAPPINGS
+    
+    int_trial_type = mappings.get(string_trial)
     
     if int_trial_type is None:
-        raise error_types.ExpectationError(string_trial, settings.TRIAL_TYPE_MAPPINGS)
+        raise error_types.ExpectationError(string_trial, mappings)
     else:
         return int_trial_type
 
@@ -27,7 +33,13 @@ def int_to_string_trial_types(int_trial: int) -> str:
     converts int trial type to string (like "AB")
     raises error if int_trial isn't a possible tiral type
     """
-    reverse_mapping = {v: k for k, v in settings.TRIAL_TYPE_MAPPINGS.items()}
+    # Use EF mappings if current rat is in RATS_WITH_EF, otherwise use regular mappings
+    if settings.CURRENT_RAT in settings.RATS_WITH_EF:
+        mappings = settings.TRIAL_TYPE_MAPPINGS_EF
+    else:
+        mappings = settings.TRIAL_TYPE_MAPPINGS
+    
+    reverse_mapping = {v: k for k, v in mappings.items()}
     
     string_trial_type = reverse_mapping.get(int_trial)
     if string_trial_type is None:
@@ -83,7 +95,7 @@ def type_to_choice(trial_type: Union[int, str], correct: bool) -> str:
 
     Parameters:
     - trial_type: the number corresponding to the trial type, as shown at the start of statescript comments
-    - correct: either "correct" for correct choice, or "Wrong" for incorrect choice. Note the capitalisation
+    - correct: bool for whether correct
 
     Returns:
     - str: the letter corresponding to which arm the rat went down
@@ -111,6 +123,28 @@ def letter_to_indices(letter: str) -> int:
         raise error_types.ExpectationError(letter, settings.HIERARCHY_MAPPINGS)
     else:
         return index
+
+def type_to_elements(trial_type: Union[int, str], correct: bool) -> tuple[str, str]:
+    """
+    takes the trial type and correct and then returns the chosen and unchosen element
+    
+    Parameters:
+    - trial_type: the number corresponding to the trial type, as shown at the start of statescript comments
+    - correct: bool for whether correct
+
+    Returns:
+    - (str): chosen element
+    - (str): unchosen element
+    """
+    if isinstance(trial_type, str):
+        trial_type = int(trial_type)
+        
+    string_trial_type = int_to_string_trial_types(trial_type)
+    
+    if correct:
+        return string_trial_type[0], string_trial_type[1] # first letter of trial type is correct
+    else:
+        return string_trial_type[1], string_trial_type[0]
     
 # ==============================================================================
 # CM & PIXEL CONVERSIONS

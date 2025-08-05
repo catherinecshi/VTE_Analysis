@@ -195,6 +195,102 @@ class Betasort:
         self.R_history.append(self.R.copy())
         self.N_history.append(self.N.copy())
     
+    def update_ti(self, chosen, unchosen, reward):
+        """
+        learning algorithm for updating memory vectors (U, L, R, N)
+        
+        Description:
+        The learning algorithm has three stages
+        1. relaxation stage
+            - memory vectors depreciated by the recall rate (xi)
+            - U and L also depreciated by the reward-modulated recall rate (xi_R)
+                - so, if already lots of recent reward -> less updates
+        2. explicit feedback stage
+            - the match rate between model choice and real choice -> probability
+            - if reward but match rate < threshold
+                - U of chosen stimulus (Uch) & L of the unchosen(Luc) + 1 
+                - R chosen & U unchosen + 1
+            - if reward and match rate >= threshold
+                - U and L parameters consolidated using trial reward rate (V)
+                    - V represents the “expected” values of each stimulus
+                - R chosen & U unchosen + 1
+            - if no reward
+                - N chosen and N unchosen + 1
+                - U unchosen & L chosen + 1
+        3. implicit inference stage (only if no reward)
+            - conceptually, this is when the rest of the hierarchy adapts to explicit feedback updates
+            - stimuli lower than unchosen -> decrease (increase L)
+            - stimuli higher than chosen -> increase (increase U)
+            - between chosen & unchosen -> consolidate (increase U & L according to expected value)
+        
+        After updates, values are stored in the history arrays.
+        
+        Parameters:
+            - chosen : int
+                - index of chosen stimulus
+            - unchosen : int
+                - index of unchosen stimulus
+            - reward : int
+                - 1 for reward and 0 otherwise
+            - probability : float
+                - probability of how much the simulated data matches up with the real choice
+                - used to update the model proportionally
+            - threshold : float
+                - threshold for above which consolidation is done
+        """
+        self.trial += 1
+        
+        # relax parameters
+        self.R = self.R * self.xi
+        self.N = self.N * self.xi
+        
+        # estimate trial reward rate
+        E = self.R / (self.R + self.N)
+        xi_R = E / (E + 1) + 0.5
+        
+        # relax some more :)
+        self.U = self.U * xi_R * self.xi
+        self.L = self.L * xi_R * self.xi
+
+        # estimated value of each stimulus
+        V = self.U / (self.U + self.L)
+
+        if reward == 1:
+            self.R[unchosen] = self.R[unchosen] + 1
+            self.R[chosen] = self.R[chosen] + 1
+            
+            self.U = self.U + V
+            self.L = self.L + (1 - V)
+        else:
+            self.N[chosen] = self.N[chosen] + 1
+            self.N[unchosen] = self.N[unchosen] + 1
+            
+            self.U[unchosen] = self.U[unchosen] + 1
+            self.L[chosen] = self.L[chosen] + 1
+            
+            # process other stimuli (implicit inference)
+            for j in range(self.n_stimuli):
+                if j != chosen and j != unchosen:
+                    if V[j] > V[chosen] and V[j] < V[unchosen]:
+                        # j fell between chosen and unchosen (consolidate)
+                        self.U[j] = self.U[j] + V[j]
+                        self.L[j] = self.L[j] + (1 - V[j])
+                    elif V[j] < V[unchosen]:
+                        # shift j down
+                        self.L[j] = self.L[j] + 1
+                    elif V[j] > V[chosen]:
+                        # shift j up
+                        self.U[j] = self.U[j] + 1
+
+        # store updated uncertainties and positions upper and lower
+        self.uncertainty_history.append(self.get_all_stimulus_uncertainties())
+        self.ROC_uncertainty_history.append(self.get_all_ROC_uncertainties())
+        self.position_history.append(self.get_all_positions())
+        self.U_history.append(self.U.copy())
+        self.L_history.append(self.L.copy())
+        self.R_history.append(self.R.copy())
+        self.N_history.append(self.N.copy())
+    
     def get_uncertainty_stimulus(self, stimulus_idx):
         """
         calculates uncertainty for a given stimulus using variance of beta distribution

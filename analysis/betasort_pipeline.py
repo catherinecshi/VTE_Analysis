@@ -10,12 +10,13 @@ from config.paths import paths
 from analysis import betasort_analysis
 from models import betasort
 from models import betasort_test
+from models import betasort_OG
 from visualization import betasort_plots
 
 # pylint: disable=broad-exception-caught, consinder-using-enumerate
 
 def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff_evolution=True,
-                                  xi=None, tau=None, threshold=None, test=False):
+                                  xi=None, tau=None, threshold=None, use_model="betasort"):
     """
     Comprehensive analysis function for Betasort model that:
     1. Finds optimal parameters (optionally using differential evolution)
@@ -96,8 +97,10 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         n_stimuli = max(present_stimuli) + 1  # +1 because of 0-indexing
         
         # Initialize a model for this day
-        if test:
+        if use_model == "betasort_test":
             model = betasort_test.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
+        elif use_model == "betasort_OG":
+            model = betasort_OG.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
         else:
             model = betasort.Betasort(n_stimuli, rat, day, tau=best_tau, xi=best_xi)
         
@@ -132,10 +135,7 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
             stim1, stim2 = pair
             model_choices = []
             for sim in range(n_simulations):
-                if test:
-                    model_choice = model.choose(stim1, stim2, False)
-                else:
-                    model_choice = model.choose([stim1, stim2])
+                model_choice = model.choose(stim1, stim2, False)
                 model_choices.append(model_choice)
             
             # correct rates for the model
@@ -186,10 +186,7 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
             model_choices = np.zeros(n_simulations)
             model_correct = np.zeros(n_simulations)
             for sim in range(n_simulations):
-                if test:
-                    model_choice = model.choose(chosen, unchosen, vte)
-                else:
-                    model_choice = model.choose([chosen, unchosen])
+                model_choice = model.choose(chosen, unchosen, vte)
                 model_choices[sim] = model_choice
                 # Correct = choosing the lower-valued stimulus (as per original code)
                 model_correct[sim] = 1 if model_choice == min(chosen, unchosen) else 0
@@ -214,10 +211,7 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
             stim1, stim2 = pair
             model_choices = []
             for sim in range(n_simulations):
-                if test:
-                    model_choice = model.choose(stim1, stim2, False)
-                else:
-                    model_choice = model.choose([stim1, stim2])
+                model_choice = model.choose(stim1, stim2, False)
                 model_choices.append(model_choice)
             
             # correct rate for model
@@ -267,41 +261,6 @@ def analyze_betasort_comprehensive(all_data_df, rat, n_simulations=100, use_diff
         # Calculate day-specific match rate for performance
         day_match_rate = np.mean(day_matches)
         all_match_rates.append(day_match_rate)
-        
-        # Binomial analysis for this day
-        n_rat_correct = int(np.sum(rat_correct_rates))
-        n_trials = len(rat_correct_rates)
-        model_correct_rate = sum(model_correct_rates) / len(model_correct_rates)
-        p_value_binomial = stats.binomtest(n_rat_correct, n_trials, p=model_correct_rate)
-        
-        session_results_binomial[day] = {
-            'matches': n_rat_correct,
-            'trials': n_trials,
-            'match_rate': n_rat_correct/n_trials if n_trials > 0 else 0,
-            'p_value': p_value_binomial,
-            'model_rate': model_correct_rate,
-            'significant': p_value_binomial.pvalue < 0.05
-        }
-        
-        # calculate logistic regression
-        X = np.array(model_correct_rates).reshape(-1, 1) # model probabilities as features
-        Y = np.array(rat_correct_rates)
-        
-        # Check if there's more than one class before fitting
-        unique_classes = np.unique(Y)
-        if len(unique_classes) > 1:
-            regression_model = LogisticRegression()
-            regression_model.fit(X, Y)
-            
-            # get model accuracy for logistic regression
-            predictions = regression_model.predict(X)
-            accuracy = accuracy_score(Y, predictions)
-        else:
-            # Handle single-class case
-            # If all predictions are the same, the accuracy is either 0% or 100%
-            accuracy = float(unique_classes[0])  # If all Y are 1, accuracy is 1.0; if all Y are 0, accuracy is 0.0
-            
-        session_results_regression.append(accuracy)
     
     # Calculate overall performance
     best_performance = np.mean(all_match_rates)
@@ -379,7 +338,7 @@ for rat in os.listdir(data_path):
             
             try:
                 # Re-run analysis to get adjacent pair data
-                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, test=True)
+                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, use_model="betasort_OG")
                 
                 if 'adjacent_pair_analysis' in all_results:
                     # Find the last day for this rat
@@ -503,7 +462,7 @@ print("Generated post-model vs rat comparison plot")
 all_rats_ti_real = {}
 
 for rat in os.listdir(data_path):
-    if "BP09" in rat:
+    if "BP09" in rat or "BP06" in rat or "BP08" in rat or "BP07" in rat or "BP10" in rat or "BP13" in rat:
         continue
     
     rat_path = os.path.join(data_path, rat)
@@ -517,7 +476,7 @@ for rat in os.listdir(data_path):
             
             try:
                 # analyze the data sequentially
-                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, test=True)
+                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, use_model="betasort_OG")
             except Exception as e:
                 print(rat, file_path)
                 print(e)
@@ -531,7 +490,7 @@ for rat in os.listdir(data_path):
             ti_result_json = json.dumps(ti_result_serializable)
             
             # check with real transitive inference
-            real_ti_data_path = os.path.join(data_path, "inferenceTesting", f"{rat}.csv")
+            real_ti_data_path = os.path.join(data_path, "inferenceTesting", rat, f"{rat}.csv")
             real_ti_data = pd.read_csv(real_ti_data_path)
             ti_result_real = betasort_analysis.check_transitive_inference_real(all_models[final_day], real_ti_data, test=True)
             
@@ -570,7 +529,7 @@ for rat in os.listdir(data_path):
             # Store ti_result_real for this rat
             all_rats_ti_real[rat] = ti_result_real
             
-            """
+            
             # Plot results for each day
             for day, model in all_models.items():
                 day_plots_dir = os.path.join(results_dir, f"day_{day}")
@@ -650,7 +609,7 @@ for rat in os.listdir(data_path):
                     post_model_rates,
                     day=day
                 )
-                """
+                
             
 # Aggregate by trial type
 from collections import defaultdict

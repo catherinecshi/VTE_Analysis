@@ -446,6 +446,7 @@ def quantify_VTE(data_structure, rat, day, save = None):
         trial_results, new_repeats = process_single_trial(
             trial_info, dlc, centre_hull, performance
         )
+        
         if new_repeats is not None:
             repeats = new_repeats
         
