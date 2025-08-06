@@ -1573,9 +1573,72 @@ def quick_analysis(rats_to_exclude=None, model_type='betasort_test', verbose=Tru
     return pipeline
 
 
+def analyze_example_rats(model_type='betasort_test', n_rats=10, use_diff_evolution=False, verbose=True):
+    """
+    Helper function to easily analyze all example rats.
+    
+    Parameters:
+    -----------
+    model_type : str
+        Model type to use ('betasort', 'betasort_test', or 'betasort_OG')
+    n_rats : int
+        Number of example rats to analyze (default 10)
+    use_diff_evolution : bool
+        Whether to use differential evolution for parameter optimization
+    verbose : bool
+        Whether to print progress
+    
+    Returns:
+    --------
+    BetasortPipeline : The pipeline object with results
+    """
+    # Generate list of example rat names
+    example_rats = [f"ExampleRat{i}" for i in range(1, n_rats + 1)]
+    
+    print(f"Analyzing {n_rats} example rats with {model_type} model...")
+    print(f"Example rats: {example_rats}")
+    
+    pipeline = BetasortPipeline(
+        rats_to_include=example_rats,
+        rats_to_exclude=['inferenceTesting'],  # Exclude the inference testing directory
+        model_type=model_type,
+        use_diff_evolution=use_diff_evolution,
+        verbose=verbose
+    )
+    
+    # Run full analysis
+    pipeline.run_full_analysis()
+    
+    print(f"\n✓ Analysis complete for {n_rats} example rats")
+    print(f"✓ Results saved to: {pipeline.save_path}")
+    print(f"✓ Plots saved to: {pipeline.save_path}/aggregated_plots")
+    
+    return pipeline
+
+
+def quick_example_analysis(model_type='betasort_test', verbose=True):
+    """
+    Quick function to analyze all 10 example rats.
+    
+    Parameters:
+    -----------
+    model_type : str
+        Model type to use ('betasort', 'betasort_test', or 'betasort_OG')
+    verbose : bool
+        Whether to print progress
+    
+    Returns:
+    --------
+    BetasortPipeline : The pipeline object with results
+    """
+    return analyze_example_rats(model_type=model_type, verbose=verbose)
+
+
 if __name__ == "__main__":
     # Example of new flexible workflow
     print("=== FLEXIBLE WORKFLOW EXAMPLE ===")
+    
+    #pipeline = analyze_example_rats(model_type="betasort")
     
     # 1. Analyze ALL rats (stores individual results)
     
@@ -1587,9 +1650,10 @@ if __name__ == "__main__":
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
+    pipeline.aggregate_and_plot(output_suffix="_VTE")
     
     # 2. Create different aggregated views
-    print("\n--- Creating plots excluding BP06-10 ---")
-    pipeline.aggregate_and_plot(rats_to_exclude=['BP06', 'BP07', 'BP08', 'BP09', 'BP10', 'BP13'], output_suffix="_unc_betasort")
+    #print("\n--- Creating plots excluding BP06-10 ---")
+    #pipeline.aggregate_and_plot(rats_to_exclude=['BP06', 'BP07', 'BP08', 'BP09', 'BP10', 'BP13'], output_suffix="_OG_sim")
     
     
