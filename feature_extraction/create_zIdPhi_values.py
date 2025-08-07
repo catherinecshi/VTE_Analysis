@@ -63,6 +63,16 @@ for rat_dir in paths.vte_values.iterdir():
         if not day_df.empty:
             day_dataframes[day] = day_df
     
+    # Z-score length across ALL trajectories (before excluding long ones) grouped by choice
+    try:
+        before_zscore_df['zLength'] = before_zscore_df.groupby('Choice')['Length'].transform(
+            lambda x: zscore(x) if len(x) > 1 else np.nan
+        )
+    except KeyError:
+        print(rat)
+        print("key error for zlength")
+        continue
+    
     # exclude trajectories that are too long
     try:
         valid_length_df = before_zscore_df[before_zscore_df["Length"] <= 4].copy()
@@ -72,14 +82,14 @@ for rat_dir in paths.vte_values.iterdir():
         print("key error")
         continue
     
-    # Z-score across all days grouped by choice
+    # Z-score IdPhi only for valid length trajectories, grouped by choice
     try:
         grouped_by_choice = valid_length_df.groupby(by="Choice")
     except Exception as e:
         logger.error(f"error with groupby for {rat} - {e}")
         continue
     
-    # Z-score within each choice group and assign to a new column
+    # Z-score IdPhi within each choice group for valid length trajectories only
     valid_length_df_copy = valid_length_df.copy()
     valid_length_df_copy['zIdPhi'] = valid_length_df_copy.groupby('Choice')['IdPhi'].transform(
         lambda x: zscore(x) if len(x) > 1 else np.nan
@@ -88,7 +98,7 @@ for rat_dir in paths.vte_values.iterdir():
     # Remove rows where z-scoring couldn't be performed (groups with <= 1 sample)
     #zscored_valid_df = valid_length_df_copy.dropna(subset=['zIdPhi'])
     
-    # for trajectories that are too long, assign a 0 zidphi
+    # for trajectories that are too long, assign a 0 zidphi (zLength already calculated above)
     if not excluded_length_df.empty:
         excluded_length_df["zIdPhi"] = 0
     zscored_df = pd.concat([valid_length_df_copy, excluded_length_df], ignore_index=True)

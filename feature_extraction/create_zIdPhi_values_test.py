@@ -64,47 +64,91 @@ for rat_dir in paths.vte_values.iterdir():
         logger.warning(f"No training data found for {rat}")
         continue
     
-    # Filter by length (same as original)
+    # Calculate length z-scoring parameters from ALL trajectories grouped by choice
     try:
-        valid_length_df = before_zscore_df[before_zscore_df["Length"] <= 4].copy()
-    except KeyError:
-        logger.error(f"Length column missing for {rat}")
-        continue
-    
-    # Calculate z-scoring parameters grouped by choice
-    try:
-        grouped_by_choice = valid_length_df.groupby(by="Choice")
+        grouped_by_choice_all = before_zscore_df.groupby(by="Choice")
     except Exception as e:
         logger.error(f"error with groupby for {rat} - {e}")
         continue
     
     # Store z-scoring parameters for each choice
     choice_params = {}
+    
+    # First, get length parameters from all trajectories
+    for choice, choice_group in grouped_by_choice_all:
+        if len(choice_group) > 1:
+            choice_params[choice] = {
+                'length_mean': np.mean(choice_group["Length"]),
+                'length_std': np.std(choice_group["Length"])
+            }
+    
+    # Filter by length for IdPhi z-scoring
+    try:
+        valid_length_df = before_zscore_df[before_zscore_df["Length"] <= 4].copy()
+    except KeyError:
+        logger.error(f"Length column missing for {rat}")
+        continue
+    
+    # Calculate IdPhi z-scoring parameters from valid length trajectories only
+    try:
+        grouped_by_choice_valid = valid_length_df.groupby(by="Choice")
+    except Exception as e:
+        logger.error(f"error with groupby for valid length data for {rat} - {e}")
+        continue
+    
     zscored_valid_df = pd.DataFrame()
     
-    for choice, choice_group in grouped_by_choice:
+    for choice, choice_group in grouped_by_choice_valid:
         if len(choice_group) > 1:
-            # Store mean and std for this choice
-            choice_params[choice] = {
-                'mean': np.mean(choice_group["IdPhi"]),
-                'std': np.std(choice_group["IdPhi"])
-            }
+            # Add IdPhi parameters to existing choice_params
+            if choice in choice_params:
+                choice_params[choice].update({
+                    'idphi_mean': np.mean(choice_group["IdPhi"]),
+                    'idphi_std': np.std(choice_group["IdPhi"])
+                })
+            else:
+                choice_params[choice] = {
+                    'idphi_mean': np.mean(choice_group["IdPhi"]),
+                    'idphi_std': np.std(choice_group["IdPhi"]),
+                    'length_mean': 0,  # Fallback
+                    'length_std': 1    # Fallback
+                }
             
             # Calculate z-scores for training data
             zIdPhis = zscore(choice_group["IdPhi"])
             choice_group["zIdPhi"] = zIdPhis
             zscored_valid_df = pd.concat([zscored_valid_df, choice_group], ignore_index=True)
         else:
-            logger.warning(f"Skipping choice {choice} for {rat} - insufficient samples ({len(choice_group)})")
+            logger.warning(f"Skipping choice {choice} for {rat} IdPhi z-scoring - insufficient samples ({len(choice_group)})")
             continue
     
-    # Handle excluded length trajectories
+    # Z-score length for ALL trajectories using the full dataset parameters
+    before_zscore_df['zLength'] = before_zscore_df.groupby('Choice')['Length'].transform(
+        lambda x: zscore(x) if len(x) > 1 else np.nan
+    )
+    
+    # Filter trajectories again after adding zLength
+    valid_length_df_with_zlength = before_zscore_df[before_zscore_df["Length"] <= 4].copy()
     excluded_length_df = before_zscore_df[before_zscore_df["Length"] > 4].copy()
+    
+    # Merge the IdPhi z-scores back into the valid length dataframe
+    if not zscored_valid_df.empty:
+        # Add zIdPhi to the valid length trajectories
+        valid_length_df_with_zlength = valid_length_df_with_zlength.merge(
+            zscored_valid_df[['ID', 'Day', 'zIdPhi']], 
+            on=['ID', 'Day'], 
+            how='left'
+        )
+        valid_length_df_with_zlength['zIdPhi'] = valid_length_df_with_zlength['zIdPhi'].fillna(0)
+    else:
+        valid_length_df_with_zlength['zIdPhi'] = 0
+    
+    # Handle excluded length trajectories (zLength already calculated, just add zIdPhi = 0)
     if not excluded_length_df.empty:
         excluded_length_df["zIdPhi"] = 0
     
     # Combine all z-scored data
-    zscored_df = pd.concat([zscored_valid_df, excluded_length_df], ignore_index=True)
+    zscored_df = pd.concat([valid_length_df_with_zlength, excluded_length_df], ignore_index=True)
     
     # Calculate threshold for VTE detection
     mean_zidphi = np.mean(zscored_df["zIdPhi"])
@@ -151,6 +195,7 @@ if inference_path.exists():
         
         # Apply z-scoring using training parameters
         testing_df["zIdPhi"] = 0  # Default value
+        testing_df["zLength"] = 0  # Default value
         
         choice_params = training_params[rat]['choice_params']
         threshold = training_params[rat]['threshold']
@@ -159,21 +204,35 @@ if inference_path.exists():
         for choice in testing_df["Choice"].unique():
             if choice in choice_params:
                 choice_mask = testing_df["Choice"] == choice
-                valid_length_mask = testing_df["Length"] <= 4
-                combined_mask = choice_mask & valid_length_mask
                 
-                if combined_mask.any():
-                    # Apply z-scoring using training mean and std
-                    train_mean = choice_params[choice]['mean']
-                    train_std = choice_params[choice]['std']
+                # Apply z-scoring to all trajectories for this choice (including those > 4 length)
+                if choice_mask.any():
+                    # Apply IdPhi z-scoring using training mean and std
+                    train_idphi_mean = choice_params[choice]['idphi_mean']
+                    train_idphi_std = choice_params[choice]['idphi_std']
+                    train_length_mean = choice_params[choice]['length_mean']
+                    train_length_std = choice_params[choice]['length_std']
                     
-                    if train_std > 0:  # Avoid division by zero
+                    # Z-score IdPhi (only for trajectories <= 4 length)
+                    valid_length_mask = testing_df["Length"] <= 4
+                    combined_mask = choice_mask & valid_length_mask
+                    
+                    if combined_mask.any() and train_idphi_std > 0:
                         testing_df.loc[combined_mask, "zIdPhi"] = (
-                            testing_df.loc[combined_mask, "IdPhi"] - train_mean
-                        ) / train_std
-                    else:
-                        logger.warning(f"Zero std for choice {choice} in {rat}, setting zIdPhi to 0")
+                            testing_df.loc[combined_mask, "IdPhi"] - train_idphi_mean
+                        ) / train_idphi_std
+                    elif train_idphi_std == 0:
+                        logger.warning(f"Zero IdPhi std for choice {choice} in {rat}, setting zIdPhi to 0")
                         testing_df.loc[combined_mask, "zIdPhi"] = 0
+                    
+                    # Z-score Length for all trajectories of this choice
+                    if train_length_std > 0:
+                        testing_df.loc[choice_mask, "zLength"] = (
+                            testing_df.loc[choice_mask, "Length"] - train_length_mean
+                        ) / train_length_std
+                    else:
+                        logger.warning(f"Zero Length std for choice {choice} in {rat}, setting zLength to 0")
+                        testing_df.loc[choice_mask, "zLength"] = 0
             else:
                 logger.warning(f"Choice {choice} not found in training data for {rat}")
         

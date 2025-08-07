@@ -61,7 +61,7 @@ for rat in os.listdir(base_path):
                 
                 # get everything else for the df
                 traj_id = row["ID"]
-                length = row["Length"]
+                zlength = row["zLength"]
                 is_VTE = row["VTE"]
                 
                 rat_df.append({"ID": traj_id,
@@ -69,7 +69,7 @@ for rat in os.listdir(base_path):
                                 "second": second_index, 
                                 "correct": correct,
                                 "VTE": is_VTE,
-                                "length": length})
+                                "zlength": zlength})
     
     # sort day df by trajectory
     rat_df.sort(key=lambda x: extract_trajectory_number(x["ID"]))

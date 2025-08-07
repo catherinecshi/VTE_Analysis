@@ -85,7 +85,8 @@ class BetasortPipeline:
                  default_params=None,
                  data_path=None,
                  save_path=None,
-                 verbose=True):
+                 verbose=True,
+                 include_example_rats=False):
         """
         Initialize the analysis pipeline
         
@@ -110,6 +111,9 @@ class BetasortPipeline:
             Path to save results. Uses paths.betasort_data if None
         verbose : bool
             Whether to print progress messages
+        include_example_rats : bool
+            Whether to include ExampleRat[1-10] in analysis. Default False to exclude
+            synthetic example data unless explicitly requested.
         """
         self.rats_to_include = rats_to_include
         self.rats_to_exclude = rats_to_exclude or []
@@ -117,6 +121,7 @@ class BetasortPipeline:
         self.use_diff_evolution = use_diff_evolution
         self.n_simulations = n_simulations
         self.verbose = verbose
+        self.include_example_rats = include_example_rats
         
         # Default parameters
         self.default_params = default_params or {
@@ -158,13 +163,23 @@ class BetasortPipeline:
         else:
             rats = all_rats
         
-        # Apply exclusion filter
+        # Automatically exclude ExampleRats unless explicitly requested
+        if not self.include_example_rats:
+            example_rats = [rat for rat in rats if rat.startswith('ExampleRat')]
+            if example_rats:
+                rats = [rat for rat in rats if not rat.startswith('ExampleRat')]
+                if self.verbose and example_rats:
+                    print(f"Auto-excluding example rats: {example_rats}")
+                    print("Use include_example_rats=True or analyze_example_rats() to include them.")
+        
+        # Apply explicit exclusion filter
+        explicit_exclusions = [rat for rat in rats if rat in self.rats_to_exclude]
         rats = [rat for rat in rats if rat not in self.rats_to_exclude]
         
         if self.verbose:
             print(f"Processing {len(rats)} rats: {rats}")
-            if self.rats_to_exclude:
-                print(f"Excluding: {self.rats_to_exclude}")
+            if explicit_exclusions:
+                print(f"Explicitly excluding: {explicit_exclusions}")
         
         return rats
     
@@ -1603,7 +1618,8 @@ def analyze_example_rats(model_type='betasort_test', n_rats=10, use_diff_evoluti
         rats_to_exclude=['inferenceTesting'],  # Exclude the inference testing directory
         model_type=model_type,
         use_diff_evolution=use_diff_evolution,
-        verbose=verbose
+        verbose=verbose,
+        include_example_rats=True  # Explicitly allow example rats for this function
     )
     
     # Run full analysis
@@ -1650,7 +1666,7 @@ if __name__ == "__main__":
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
-    pipeline.aggregate_and_plot(output_suffix="_VTE")
+    pipeline.aggregate_and_plot(output_suffix="_reward_history_2")
     
     # 2. Create different aggregated views
     #print("\n--- Creating plots excluding BP06-10 ---")

@@ -66,7 +66,7 @@ for rat in os.listdir(base_path):
                     
                     # get everything else for the df
                     traj_id = row["ID"]
-                    length = row["Length"]
+                    zlength = row["zLength"]
                     is_VTE = row["VTE"]
                     day_number = extract_day_number(day)
                     
@@ -76,7 +76,7 @@ for rat in os.listdir(base_path):
                                    "second": second_index, 
                                    "correct": correct,
                                    "VTE": is_VTE,
-                                   "length": length})
+                                   "zlength": zlength})
         
         
         # sort day df by trajectory
