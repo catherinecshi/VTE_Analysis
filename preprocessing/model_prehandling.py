@@ -1,6 +1,8 @@
 import os
 import re
 import pandas as pd
+import numpy as np
+from scipy import stats
 
 from config.paths import paths
 from utilities import conversion_utils
@@ -37,6 +39,7 @@ for rat in os.listdir(base_path):
     day_folders = [day for day in os.listdir(rat_path) if ".DS_Store" not in day]
     days = sorted(day_folders, key=extract_day_number)
     
+    # First pass: collect all data including zLength values
     for day in days:
         day_df = []
         day_path = os.path.join(rat_path, day)
@@ -78,26 +81,84 @@ for rat in os.listdir(base_path):
                                    "VTE": is_VTE,
                                    "zlength": zlength})
         
-        
         # sort day df by trajectory
         day_df.sort(key=lambda x: extract_trajectory_number(x["ID"]))
         
-        # 2. Replace ID with just the trajectory number
+        # Replace ID with just the trajectory number
         for item in day_df:
             item["ID"] = extract_trajectory_number(item["ID"])
         
+        rat_df.extend(day_df)
+    
+    # Apply transformations if we have data
+    if rat_df:
+        # Extract all zLength values for this rat
+        zlength_values = np.array([item["zlength"] for item in rat_df])
+        
+        # Calculate per-rat statistics
+        zlength_min = np.min(zlength_values)
+        zlength_max = np.max(zlength_values)
+        zlength_mean = np.mean(zlength_values)
+        zlength_std = np.std(zlength_values)
+        
+        # Apply transformations to each data point
+        for item in rat_df:
+            zlength = item["zlength"]
+            
+            # Min-max scaling: (x - min) / (max - min)
+            if zlength_max != zlength_min:
+                item["zlength_minmax"] = (zlength - zlength_min) / (zlength_max - zlength_min)
+            else:
+                item["zlength_minmax"] = 0.5  # If all values are the same
+            
+            # Normal CDF: Φ((x - μ) / σ)
+            if zlength_std > 0:
+                item["zlength_norm_cdf"] = stats.norm.cdf((zlength - zlength_mean) / zlength_std)
+            else:
+                item["zlength_norm_cdf"] = 0.5  # If no variance
+            
+            # Sigmoid: 1 / (1 + exp(-(x - μ) / σ))
+            if zlength_std > 0:
+                item["zlength_sigmoid"] = 1 / (1 + np.exp(-(zlength - zlength_mean) / zlength_std))
+            else:
+                item["zlength_sigmoid"] = 0.5  # If no variance
+            
+            # Remove original zlength
+            del item["zlength"]
+        
+        # Create directories and save files
         save_dir = os.path.join(model_path, rat)
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
         
+        # Save individual day files with transformations
+        current_day = None
+        day_data = []
         
-        save_path = os.path.join(save_dir, f"{day}.csv")
-        save_df = pd.DataFrame(day_df)
-        save_df.to_csv(save_path)
+        for item in rat_df:
+            if current_day is None:
+                current_day = item["Day"]
+            
+            if item["Day"] != current_day:
+                # Save the previous day's data
+                if day_data:
+                    save_path = os.path.join(save_dir, f"Day{current_day}.csv")
+                    save_df = pd.DataFrame(day_data)
+                    save_df.to_csv(save_path)
+                
+                # Start new day
+                current_day = item["Day"]
+                day_data = []
+            
+            day_data.append(item)
         
-        rat_df.extend(day_df)
-    
-    if rat_df:
+        # Save the last day's data
+        if day_data:
+            save_path = os.path.join(save_dir, f"Day{current_day}.csv")
+            save_df = pd.DataFrame(day_data)
+            save_df.to_csv(save_path)
+        
+        # Save combined rat data
         combined_rat_df = pd.DataFrame(rat_df)
         combined_save_path = os.path.join(save_dir, f"{rat}_all_days.csv")
         combined_rat_df.to_csv(combined_save_path)

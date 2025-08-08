@@ -326,6 +326,14 @@ class BetasortPipeline:
         else:
             traj_nums = np.arange(len(chosen_idx))
         
+        # Handle zlength data
+        if 'zlength_sigmoid' in day_data.columns:
+            zlengths = day_data["zlength_sigmoid"].values
+        else:
+            if self.verbose:
+                print(f"    WARNING: There is no zlength_sigmoid column found for {rat} day {day}, defaulting to 1")
+            zlengths = np.ones(chosen_idx)
+        
         # Initialize model
         present_stimuli = set(np.concatenate([chosen_idx, unchosen_idx]))
         n_stimuli = max(present_stimuli) + 1
@@ -387,6 +395,7 @@ class BetasortPipeline:
             unchosen = unchosen_idx[t]
             reward = rewards[t]
             vte = vtes[t]
+            zlength = zlengths[t]
             traj_num = traj_nums[t]
             
             # Store rat performance for adjacent pairs
@@ -419,7 +428,7 @@ class BetasortPipeline:
             model_correct = np.zeros(self.n_simulations)
             
             for sim in range(self.n_simulations):
-                model_choice = self._model_choose(model, (chosen, unchosen), vte=vte)
+                model_choice = self._model_choose(model, (chosen, unchosen), vte=vte, zlength=zlength)
                 model_choices[sim] = model_choice
                 model_correct[sim] = 1 if model_choice == min(chosen, unchosen) else 0
             
@@ -784,7 +793,7 @@ class BetasortPipeline:
         self.aggregated_data['adjacent_pair_results']['individual_rat_data'] = individual_rat_data
         self.aggregated_data['adjacent_pair_results']['individual_model_data'] = individual_model_data
     
-    def _model_choose(self, model, stimuli, vte=False):
+    def _model_choose(self, model, stimuli, vte=False, zlength=0):
         """
         Helper function to call model.choose() with appropriate parameters for each model type
         
@@ -802,7 +811,7 @@ class BetasortPipeline:
         """
         # These models take (chosen, unchosen, vte) parameters
         if isinstance(stimuli, (list, tuple)) and len(stimuli) == 2:
-            return model.choose(stimuli[0], stimuli[1], vte)
+            return model.choose(stimuli[0], stimuli[1], vte, zlength)
         else:
             raise ValueError(f"Expected 2 stimuli for {self.model_type}, got {stimuli}")
     
@@ -1666,7 +1675,7 @@ if __name__ == "__main__":
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
-    pipeline.aggregate_and_plot(output_suffix="_reward_history_2")
+    pipeline.aggregate_and_plot(output_suffix="_length")
     
     # 2. Create different aggregated views
     #print("\n--- Creating plots excluding BP06-10 ---")
