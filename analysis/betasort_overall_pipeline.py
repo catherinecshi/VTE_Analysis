@@ -1668,14 +1668,14 @@ if __name__ == "__main__":
     # 1. Analyze ALL rats (stores individual results)
     
     pipeline = BetasortPipeline(
-        rats_to_exclude=['BP07', 'BP06', 'inferenceTesting'],
+        rats_to_exclude=['BP07', 'BP06', 'inferenceTesting', 'BP08', 'BP09', 'BP10'],
         model_type='betasort_test',
         use_diff_evolution=False
     )
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
-    pipeline.aggregate_and_plot(output_suffix="_length")
+    pipeline.aggregate_and_plot(output_suffix="_vte_reward") # output suffix meaning how the directory will be named
     
     # 2. Create different aggregated views
     #print("\n--- Creating plots excluding BP06-10 ---")
