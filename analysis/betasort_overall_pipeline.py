@@ -409,6 +409,20 @@ class BetasortPipeline:
             stim2_uncertainty = model.get_uncertainty_stimulus(max(chosen, unchosen))
             pair_roc_uncertainty = model.get_uncertainty_ROC(min(chosen, unchosen), max(chosen, unchosen))
             
+            # Get model VTE prediction using choose_VTE function
+            if hasattr(model, 'choose_VTE'):
+                try:
+                    _, model_vte_occurred = model.choose_VTE(chosen, unchosen)
+                except Exception as e:
+                    print(f"Error in choose_VTE for trial {t}: {e}")
+                    print(f"chosen={chosen}, unchosen={unchosen}")
+                    print(f"Model U shape: {model.U.shape}, L shape: {model.L.shape}")
+                    import traceback
+                    traceback.print_exc()
+                    model_vte_occurred = False
+            else:
+                model_vte_occurred = False  # Fallback for models without choose_VTE
+            
             vte_data.append({
                 'day': day,
                 'trial_num': traj_num,
@@ -417,6 +431,7 @@ class BetasortPipeline:
                 'chosen': chosen,
                 'unchosen': unchosen,
                 'vte_occurred': 1 if vte else 0,
+                'model_vte_occurred': 1 if model_vte_occurred else 0,
                 'stim1_uncertainty': stim1_uncertainty,
                 'stim2_uncertainty': stim2_uncertainty,
                 'pair_roc_uncertainty': pair_roc_uncertainty,
@@ -575,8 +590,14 @@ class BetasortPipeline:
         
         # Save files
         results_df = pd.DataFrame([summary_results])
+        
+        # Save model-specific results file
         results_filename = f"{self.model_type}_results.csv"
         results_df.to_csv(os.path.join(rat_dir, results_filename), index=False)
+        
+        # Also save generic results.csv for backward compatibility with other scripts
+        generic_results_path = os.path.join(rat_dir, "results.csv")
+        results_df.to_csv(generic_results_path, index=False)
         
         results["pair_vte_df"].to_csv(os.path.join(rat_dir, "vte_uncertainty.csv"), index=False)
         
@@ -656,6 +677,12 @@ class BetasortPipeline:
         
         # Aggregate transitive inference results
         self._aggregate_transitive_inference(filtered_rat_results)
+        
+        # Aggregate VTE analysis results (only if data was analyzed, not loaded)
+        if any('results' in rat_data for rat_data in filtered_rat_results.values()):
+            self._aggregate_vte_analysis(filtered_rat_results)
+        elif self.verbose:
+            print("  Skipping VTE analysis - not available in loaded data")
         
         if self.verbose:
             print(f"Aggregated results for {len(rats_for_aggregation)} rats")
@@ -869,6 +896,96 @@ class BetasortPipeline:
             'individual_model_data': type_to_model
         }
     
+    def _aggregate_vte_analysis(self, filtered_rat_results):
+        """
+        Aggregate VTE analysis results across rats
+        """
+        if self.verbose:
+            print("  Aggregating VTE analysis...")
+        
+        # Collect VTE data from filtered rats
+        from config.settings import HIERARCHY_MAPPINGS
+        
+        # Storage for VTE data by pair type
+        pair_vte_data = {}
+        pair_model_vte_data = {}
+        pair_match_data = {}
+        
+        for rat_name, rat_data in filtered_rat_results.items():
+            if 'results' in rat_data and 'pair_vte_df' in rat_data['results']:
+                vte_df = rat_data['results']['pair_vte_df']
+                
+                if len(vte_df) == 0:
+                    continue
+                
+                # Process each trial in the VTE dataframe
+                for _, row in vte_df.iterrows():
+                    stim1, stim2 = int(row['stim1']), int(row['stim2'])
+                    
+                    # Check if this is an adjacent pair (difference of 1)
+                    if abs(stim1 - stim2) == 1:
+                        # Convert to letter format for consistent naming
+                        letter1 = list(HIERARCHY_MAPPINGS.keys())[list(HIERARCHY_MAPPINGS.values()).index(min(stim1, stim2))]
+                        letter2 = list(HIERARCHY_MAPPINGS.keys())[list(HIERARCHY_MAPPINGS.values()).index(max(stim1, stim2))]
+                        pair_name = f"{letter1}{letter2}"
+                        
+                        # Initialize lists if not exists
+                        if pair_name not in pair_vte_data:
+                            pair_vte_data[pair_name] = []
+                            pair_model_vte_data[pair_name] = []
+                            pair_match_data[pair_name] = []
+                        
+                        # Store rat VTE occurrence
+                        rat_vte = row['vte_occurred']
+                        pair_vte_data[pair_name].append(rat_vte)
+                        
+                        # Store model VTE prediction if available
+                        if 'model_vte_occurred' in row:
+                            model_vte = row['model_vte_occurred']
+                            pair_model_vte_data[pair_name].append(model_vte)
+                            
+                            # Calculate match (1 if both agree, 0 if they disagree)
+                            match = 1 if rat_vte == model_vte else 0
+                            pair_match_data[pair_name].append(match)
+                        else:
+                            # If no model VTE data, use default values
+                            pair_model_vte_data[pair_name].append(0)
+                            pair_match_data[pair_name].append(0)
+        
+        # Calculate aggregated statistics
+        pair_names = sorted(pair_vte_data.keys())
+        rat_vte_percentages = []
+        model_vte_percentages = []
+        vte_match_rates = []
+        rat_counts = []
+        
+        for pair in pair_names:
+            if pair in pair_vte_data and len(pair_vte_data[pair]) > 0:
+                # Calculate VTE percentages
+                rat_vte_pct = np.mean(pair_vte_data[pair])
+                model_vte_pct = np.mean(pair_model_vte_data[pair])
+                
+                # Calculate match rate
+                match_rate = np.mean(pair_match_data[pair]) if pair_match_data[pair] else 0.0
+                
+                rat_vte_percentages.append(rat_vte_pct)
+                model_vte_percentages.append(model_vte_pct)
+                vte_match_rates.append(match_rate)
+                rat_counts.append(len(filtered_rat_results))
+                
+                if self.verbose:
+                    print(f"    Pair {pair}: Rat VTE: {rat_vte_pct:.3f}, Model VTE: {model_vte_pct:.3f}, Match: {match_rate:.3f}")
+        
+        # Store aggregated VTE results
+        self.aggregated_data['vte_results'] = {
+            'pair_names': pair_names,
+            'rat_vte_percentages': rat_vte_percentages,
+            'model_vte_percentages': model_vte_percentages,
+            'vte_match_rates': vte_match_rates,
+            'rat_counts': rat_counts,
+            'total_rats': len(filtered_rat_results)
+        }
+    
     def generate_plots(self):
         """
         Generate all plots and figures
@@ -885,6 +1002,9 @@ class BetasortPipeline:
         
         # Generate adjacent pair plots
         self._plot_adjacent_pair_analysis(plots_dir)
+        
+        # Generate VTE plots
+        self._plot_vte_analysis(plots_dir)
         
         if self.verbose:
             print(f"Saved plots to {plots_dir}")
@@ -1249,6 +1369,48 @@ class BetasortPipeline:
         if self.verbose:
             print(f"  Saved adjacent pair box plot: {plot_path}")
     
+    def _plot_vte_analysis(self, plots_dir):
+        """
+        Generate VTE comparison plots
+        """
+        if 'vte_results' not in self.aggregated_data:
+            if self.verbose:
+                print("  No VTE results available for plotting")
+            return
+        
+        vte_data = self.aggregated_data['vte_results']
+        
+        try:
+            # Plot 1: VTE percentage comparison between rats and model
+            betasort_plots.plot_vte_percentage_comparison(
+                vte_data['pair_names'],
+                vte_data['rat_vte_percentages'],
+                vte_data['model_vte_percentages'],
+                vte_data['rat_counts'],
+                total_rats=vte_data['total_rats'],
+                save=os.path.join(plots_dir, "vte_percentage_comparison.png")
+            )
+            
+            if self.verbose:
+                print(f"  Saved VTE percentage comparison plot")
+        except Exception as e:
+            print(f"  Error creating VTE percentage comparison plot: {e}")
+        
+        try:
+            # Plot 2: VTE match rate by trial type
+            betasort_plots.plot_vte_match_rate_by_trial_type(
+                vte_data['pair_names'],
+                vte_data['vte_match_rates'],
+                vte_data['rat_counts'],
+                total_rats=vte_data['total_rats'],
+                save=os.path.join(plots_dir, "vte_match_rate_by_trial_type.png")
+            )
+            
+            if self.verbose:
+                print(f"  Saved VTE match rate plot")
+        except Exception as e:
+            print(f"  Error creating VTE match rate plot: {e}")
+    
     def run_analysis_only(self, rats_to_include=None, rats_to_exclude=None):
         """
         Run only the analysis phase (no aggregation or plotting)
@@ -1357,6 +1519,7 @@ class BetasortPipeline:
         # Generate plots
         self._plot_transitive_inference(plots_dir)
         self._plot_adjacent_pair_analysis(plots_dir)
+        self._plot_vte_analysis(plots_dir)
         
         if self.verbose:
             print(f"Plots saved to: {plots_dir}")

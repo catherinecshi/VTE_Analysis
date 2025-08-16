@@ -1489,4 +1489,146 @@ def plot_post_model_vs_rat_comparison(pair_names, rat_rates, post_model_rates, r
         plt.show()
     
     return fig
+
+def plot_vte_percentage_comparison(pair_names, rat_vte_percentages, model_vte_percentages, rat_counts, total_rats=None, save=None):
+    """
+    Plot comparison of VTE percentages between rats and model predictions by trial type
+    
+    Parameters:
+    -----------
+    pair_names : list
+        Names of stimulus pairs (e.g., ['AB', 'BC', 'CD', 'DE'])
+    rat_vte_percentages : list
+        Percentage of trials with VTEs for actual rats
+    model_vte_percentages : list
+        Percentage of trials with VTEs predicted by model
+    rat_counts : list
+        Number of rats contributing to each pair
+    total_rats : int, optional
+        Total number of rats in analysis
+    save : str, optional
+        Path to save the figure
+    """
+    x = np.arange(len(pair_names))
+    width = 0.35
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    bars1 = ax.bar(x - width/2, rat_vte_percentages, width, 
+                   label='Rat VTE Percentage', color='blue', alpha=0.7)
+    bars2 = ax.bar(x + width/2, model_vte_percentages, width, 
+                   label='Model VTE Percentage', color='green', alpha=0.7)
+    
+    ax.set_xlabel('Trial Types', fontsize=12)
+    ax.set_ylabel('VTE Percentage', fontsize=12)
+    title = f'VTE Percentage Comparison: Rat vs Model - Averaged Across All Rats (n={total_rats})' if total_rats else 'VTE Percentage Comparison: Rat vs Model'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(pair_names)
+    ax.legend(fontsize=11)
+    ax.set_ylim(0, 1)
+    
+    # Add value labels on bars
+    def add_value_labels(bars, values):
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.annotate(f'{value:.3f}',
+                       xy=(bar.get_x() + bar.get_width() / 2, height),
+                       xytext=(0, 3),  # 3 points vertical offset
+                       textcoords="offset points",
+                       ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    add_value_labels(bars1, rat_vte_percentages)
+    add_value_labels(bars2, model_vte_percentages)
+    
+    # Add sample size information
+    for i, (x_pos, count) in enumerate(zip(x, rat_counts)):
+        ax.text(x_pos, -0.08, f'n={count}', ha='center', va='top', 
+                transform=ax.get_xaxis_transform(), fontsize=9, style='italic')
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.set_axisbelow(True)
+    
+    # Add correlation information as text
+    correlation = np.corrcoef(rat_vte_percentages, model_vte_percentages)[0, 1]
+    ax.text(0.02, 0.98, f'Correlation: r = {correlation:.3f}', 
+            transform=ax.transAxes, fontsize=11, fontweight='bold',
+            verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved VTE percentage comparison plot to {save}")
+    else:
+        plt.show()
+    
+    return fig
+
+def plot_vte_match_rate_by_trial_type(pair_names, vte_match_rates, rat_counts, total_rats=None, save=None):
+    """
+    Plot match rate between model VTE predictions and actual rat VTEs by trial type
+    
+    Parameters:
+    -----------
+    pair_names : list
+        Names of stimulus pairs (e.g., ['AB', 'BC', 'CD', 'DE'])
+    vte_match_rates : list
+        Match rate between model and rat VTEs for each trial type
+    rat_counts : list
+        Number of rats contributing to each pair
+    total_rats : int, optional
+        Total number of rats in analysis
+    save : str, optional
+        Path to save the figure
+    """
+    x = np.arange(len(pair_names))
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    bars = ax.bar(x, vte_match_rates, color='purple', alpha=0.7, 
+                  label='VTE Match Rate')
+    
+    ax.set_xlabel('Trial Types', fontsize=12)
+    ax.set_ylabel('VTE Match Rate', fontsize=12)
+    title = f'Model-Rat VTE Match Rate by Trial Type - Averaged Across All Rats (n={total_rats})' if total_rats else 'Model-Rat VTE Match Rate by Trial Type'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(pair_names)
+    ax.set_ylim(0, 1)
+    
+    # Add chance level line
+    ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Chance Level')
+    ax.legend(fontsize=11)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, vte_match_rates):
+        height = bar.get_height()
+        ax.annotate(f'{value:.3f}',
+                   xy=(bar.get_x() + bar.get_width() / 2, height),
+                   xytext=(0, 3),  # 3 points vertical offset
+                   textcoords="offset points",
+                   ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    # Add sample size information
+    for i, (x_pos, count) in enumerate(zip(x, rat_counts)):
+        ax.text(x_pos, -0.08, f'n={count}', ha='center', va='top', 
+                transform=ax.get_xaxis_transform(), fontsize=9, style='italic')
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    ax.set_axisbelow(True)
+    
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved VTE match rate plot to {save}")
+    else:
+        plt.show()
+    
+    return fig
     

@@ -308,161 +308,14 @@ def plot_and_save(plot_func, output_path, filename_prefix, *args, **kwargs):
 
 data_path = paths.preprocessed_data_model
 save_path = paths.betasort_data
-
-
-# === AGGREGATE ADJACENT PAIR ANALYSIS ACROSS ALL RATS ===
-print("Aggregating adjacent pair analysis across all rats...")
-
-# Storage for all rats' data
-all_rats_adjacent_data = {}
-
-# Read back the saved data for each rat to get adjacent pair analysis
-for rat in os.listdir(data_path):
-    rat_results_path = os.path.join(save_path, rat, "results.csv")
-    if not os.path.exists(rat_results_path):
-        continue
-    
-    if "BP09" in rat:
-        print(rat)
-        continue
-        
-    # Load the rat's data and re-run analysis to get adjacent pair data
-    rat_path = os.path.join(data_path, rat)
-    for root, _, files in os.walk(rat_path):
-        for file in files:
-            if ".DS_Store" in file or "zIdPhi" in file or "all_days" not in file:
-                continue
-
-            file_path = os.path.join(root, file)
-            file_csv = pd.read_csv(file_path)
-            
-            try:
-                # Re-run analysis to get adjacent pair data
-                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, use_model="betasort_OG")
-                
-                if 'adjacent_pair_analysis' in all_results:
-                    # Find the last day for this rat
-                    last_day = max(all_results['adjacent_pair_analysis'].keys())
-                    last_day_data = all_results['adjacent_pair_analysis'][last_day]
-                    
-                    all_rats_adjacent_data[rat] = {
-                        'last_day': last_day,
-                        'data': last_day_data
-                    }
-                    print(f"Collected adjacent pair data for {rat}, last day: {last_day}")
-                    
-            except Exception as e:
-                print(f"Error processing {rat}: {e}")
-                continue
-
-# === AGGREGATE PERFORMANCE ACROSS RATS ===
-# Find all unique pairs across all rats
-all_pairs = set()
-for rat_data in all_rats_adjacent_data.values():
-    all_pairs.update(rat_data['data']['adjacent_pairs'])
-
-# Convert to sorted list for consistent ordering
-all_pairs = sorted(list(all_pairs))
-pair_names = [f"{p[0]}-{p[1]}" for p in all_pairs]
-
-print(f"Found pairs across all rats: {pair_names}")
-
-# Initialize storage for averaged data
-aggregated_data = {
-    'pair_names': pair_names,
-    'rat_rates': [],
-    'pre_model_rates': [],
-    'post_model_rates': [],
-    'rat_counts': [],  # Number of rats that had data for each pair
-}
-
-# Calculate averages for each pair
-for pair in all_pairs:
-    rat_rates_for_pair = []
-    pre_model_rates_for_pair = []
-    post_model_rates_for_pair = []
-    
-    for rat, rat_info in all_rats_adjacent_data.items():
-        rat_data = rat_info['data']
-        
-        if pair in rat_data['adjacent_pairs']:
-            # Get rat performance
-            if pair in rat_data['actual_rat_performance']:
-                rat_rates_for_pair.append(rat_data['actual_rat_performance'][pair]['rat_correct_rate'])
-            
-            # Get pre-update model performance
-            if pair in rat_data['pre_update_model']:
-                pre_model_rates_for_pair.append(rat_data['pre_update_model'][pair]['model_correct_rate'])
-            
-            # Get post-update model performance
-            if pair in rat_data['post_update_model']:
-                post_model_rates_for_pair.append(rat_data['post_update_model'][pair]['model_correct_rate'])
-    
-    # Calculate averages
-    aggregated_data['rat_rates'].append(np.mean(rat_rates_for_pair) if rat_rates_for_pair else 0)
-    aggregated_data['pre_model_rates'].append(np.mean(pre_model_rates_for_pair) if pre_model_rates_for_pair else 0)
-    aggregated_data['post_model_rates'].append(np.mean(post_model_rates_for_pair) if post_model_rates_for_pair else 0)
-    aggregated_data['rat_counts'].append(len(rat_rates_for_pair))
-    
-    print(f"Pair {pair[0]}-{pair[1]}: {len(rat_rates_for_pair)} rats, "
-          f"Rat avg: {np.mean(rat_rates_for_pair):.3f}, "
-          f"Pre-model avg: {np.mean(pre_model_rates_for_pair):.3f}, "
-          f"Post-model avg: {np.mean(post_model_rates_for_pair):.3f}")
-
-# === SAVE AGGREGATED DATA ===
-aggregated_results_path = os.path.join(save_path, "aggregated_adjacent_pair_analysis.json")
-with open(aggregated_results_path, 'w') as f:
-    json.dump({
-        'pair_names': aggregated_data['pair_names'],
-        'rat_rates': aggregated_data['rat_rates'],
-        'pre_model_rates': aggregated_data['pre_model_rates'],
-        'post_model_rates': aggregated_data['post_model_rates'],
-        'rat_counts': aggregated_data['rat_counts'],
-        'rats_included': list(all_rats_adjacent_data.keys()),
-        'total_rats': len(all_rats_adjacent_data)
-    }, f, indent=2)
-
-print(f"Saved aggregated data to {aggregated_results_path}")
-
-# === GENERATE AGGREGATED PLOT ===
-aggregated_plots_dir = os.path.join(save_path, "aggregated_plots")
-os.makedirs(aggregated_plots_dir, exist_ok=True)
-
-# Create the aggregated comparison plot
-plot_and_save(
-    betasort_plots.plot_aggregated_adjacent_pair_comparison,
-    aggregated_plots_dir,
-    "all_rats_adjacent_pair_comparison",
-    aggregated_data['pair_names'],
-    aggregated_data['rat_rates'],
-    aggregated_data['pre_model_rates'],
-    aggregated_data['post_model_rates'],
-    aggregated_data['rat_counts'],
-    total_rats=len(all_rats_adjacent_data)
-)
-
-print("Generated aggregated adjacent pair comparison plot")
-
-# === GENERATE POST-MODEL VS RAT ONLY PLOT ===
-# Create the simplified comparison plot (post-model vs rat only)
-plot_and_save(
-    betasort_plots.plot_post_model_vs_rat_comparison,
-    aggregated_plots_dir,
-    "all_rats_post_model_vs_rat_comparison",
-    aggregated_data['pair_names'],
-    aggregated_data['rat_rates'],
-    aggregated_data['post_model_rates'],
-    aggregated_data['rat_counts'],
-    total_rats=len(all_rats_adjacent_data)
-)
-
-print("Generated post-model vs rat comparison plot")
-
 # --- AGGREGATE TRANSITIVE INFERENCE REAL RESULTS ACROSS RATS ---
 all_rats_ti_real = {}
 
 for rat in os.listdir(data_path):
-    if "BP09" in rat or "BP06" in rat or "BP08" in rat or "BP07" in rat or "BP10" in rat or "BP13" in rat:
+    if "BP09" in rat or "BP06" in rat or "BP08" in rat or "BP07" in rat or "BP10" in rat or "inferenceTesting" in rat:
+        continue
+    
+    if "TH510" not in rat:
         continue
     
     rat_path = os.path.join(data_path, rat)
@@ -476,7 +329,7 @@ for rat in os.listdir(data_path):
             
             try:
                 # analyze the data sequentially
-                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, use_model="betasort_OG")
+                all_results = analyze_betasort_comprehensive(file_csv, rat, use_diff_evolution=False, use_model="betasort_test")
             except Exception as e:
                 print(rat, file_path)
                 print(e)
@@ -555,7 +408,7 @@ for rat in os.listdir(data_path):
                 plot_and_save(
                     betasort_plots.plot_uncertainty_across_days, 
                     day_plots_dir,           # output path
-                    f"{rat}_day{day}_uncertainty_across_days",  # filename prefix
+                    f"{rat}_day{day}_uncertainty_ROC_across_days",  # filename prefix
                     all_models,              # first argument (all_models)
                     uncertainty_type='ROC',  # additional kwargs
                     mode='detailed',

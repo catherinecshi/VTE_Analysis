@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import differential_evolution
 from scipy.stats import pointbiserialr
 
+from config import settings
 from config.paths import paths
 from models import bayesian_learner
 from models import neural_network
@@ -1120,6 +1121,7 @@ def aggregate_vte_correlations(comparison_output_path):
         
         # Save combined results
         combined_df.to_csv(os.path.join(comparison_output_path, "combined_vte_correlations.csv"), index=False)
+        print(f"vte correlations made for {settings.CURRENT_RAT}")
         
         return combined_df
     else:
@@ -1750,6 +1752,9 @@ def run_full_analysis():
     # Process each rat
     for rat in rats_to_analyze:
         print(f"\nProcessing rat: {rat}")
+        if rat == "BP06" or rat == "BP07" or rat == "BP08" or rat == "BP09" or rat == "BP10":
+            continue
+        settings.update_rat(rat)
         
         # Find the relevant data files
         rat_data_path = os.path.join(data_path, rat)
