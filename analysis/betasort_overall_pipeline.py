@@ -633,6 +633,54 @@ class BetasortPipeline:
                 }
             json.dump(serializable_ti_data, f, indent=2)
         
+        # Save VTE analysis results per rat
+        vte_filename = f"{self.model_type}_vte_analysis.json"
+        with open(os.path.join(rat_dir, vte_filename), 'w') as f:
+            # Analyze VTE data for this specific rat
+            vte_df = results["pair_vte_df"]
+            rat_vte_analysis = {}
+            
+            if len(vte_df) > 0:
+                # Group by adjacent pairs and calculate statistics
+                from config.settings import HIERARCHY_MAPPINGS
+                
+                for _, row in vte_df.iterrows():
+                    stim1, stim2 = int(row['stim1']), int(row['stim2'])
+                    
+                    # Check if this is an adjacent pair (difference of 1)
+                    if abs(stim1 - stim2) == 1:
+                        # Convert to letter format for consistent naming
+                        letter1 = list(HIERARCHY_MAPPINGS.keys())[list(HIERARCHY_MAPPINGS.values()).index(min(stim1, stim2))]
+                        letter2 = list(HIERARCHY_MAPPINGS.keys())[list(HIERARCHY_MAPPINGS.values()).index(max(stim1, stim2))]
+                        pair_name = f"{letter1}{letter2}"
+                        
+                        if pair_name not in rat_vte_analysis:
+                            rat_vte_analysis[pair_name] = {
+                                'rat_vte_trials': [],
+                                'model_vte_trials': [],
+                                'vte_matches': []
+                            }
+                        
+                        # Store individual trial data
+                        rat_vte = row['vte_occurred']
+                        model_vte = row.get('model_vte_occurred', 0)
+                        
+                        rat_vte_analysis[pair_name]['rat_vte_trials'].append(rat_vte)
+                        rat_vte_analysis[pair_name]['model_vte_trials'].append(model_vte)
+                        rat_vte_analysis[pair_name]['vte_matches'].append(1 if rat_vte == model_vte else 0)
+                
+                # Calculate summary statistics for each pair
+                for pair_name in rat_vte_analysis:
+                    trials_data = rat_vte_analysis[pair_name]
+                    rat_vte_analysis[pair_name] = {
+                        'rat_vte_percentage': np.mean(trials_data['rat_vte_trials']),
+                        'model_vte_percentage': np.mean(trials_data['model_vte_trials']),
+                        'vte_match_rate': np.mean(trials_data['vte_matches']),
+                        'total_trials': len(trials_data['rat_vte_trials'])
+                    }
+            
+            json.dump(rat_vte_analysis, f, indent=2)
+        
         # Store for aggregation
         self.rat_results[rat_name] = {
             'results': results,
@@ -1838,7 +1886,7 @@ if __name__ == "__main__":
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
-    pipeline.aggregate_and_plot(output_suffix="_vte_reward") # output suffix meaning how the directory will be named
+    pipeline.aggregate_and_plot(rats_to_exclude="BP13", output_suffix="_0.1") # output suffix meaning how the directory will be named
     
     # 2. Create different aggregated views
     #print("\n--- Creating plots excluding BP06-10 ---")
