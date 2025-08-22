@@ -12,7 +12,8 @@ vte_path = paths.vte_values
 VTE_trials = {} # {trial_type: # VTEs}
 all_trials = {} # {trial_type: # trials}
 for rat in os.listdir(vte_path):
-    if ".DS_Store" in rat:
+    if ".DS_Store" in rat or "BP0" in rat or "BP10" in rat or "inferenceTesting" in rat:
+        print(rat)
         continue
     
     rat_path = os.path.join(vte_path, rat)

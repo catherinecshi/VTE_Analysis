@@ -1886,7 +1886,7 @@ if __name__ == "__main__":
     pipeline.run_analysis_only()
     
     #pipeline = BetasortPipeline.from_saved_data()
-    pipeline.aggregate_and_plot(rats_to_exclude="BP13", output_suffix="_0.1") # output suffix meaning how the directory will be named
+    pipeline.aggregate_and_plot(rats_to_exclude="BP13", output_suffix="_prediction_unchosen") # output suffix meaning how the directory will be named
     
     # 2. Create different aggregated views
     #print("\n--- Creating plots excluding BP06-10 ---")

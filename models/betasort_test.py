@@ -154,13 +154,16 @@ class Betasort:
                 X[i] = np.random.beta(self.U[stim_idx] + 1, self.L[stim_idx] + 1)
         
         # simulate vte choice
-        if chosen < unchosen:
-            if vte_uncertainty + 0.1 < 1:
-                vte_uncertainty += 0.1
-            else:
-                vte_uncertainty = 1
+        #if chosen < unchosen:
+            #if vte_uncertainty + 0.1 < 1:
+                #vte_uncertainty += 0.1
+            #else:
+                #vte_uncertainty = 1
         
-        if np.random.random() < vte_uncertainty:
+        #if np.random.random() < vte_uncertainty:
+            #vte_occurred = True
+        
+        if (uncertainty_unchosen * 10) > 0.3:
             vte_occurred = True
         
         chosen_idx = np.argmax(X) # choose stimulus with largest value
